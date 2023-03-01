@@ -49,7 +49,4 @@ jobs:
         git add README.md
         git commit -m "$(date '+%Y-%m-%d %H:%M:%S')合并节点"
     - name: Push
-      uses:  ad-m/github-push-action@master
-      with:
-        branch: master
-        github_token: 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
+      uses: GuillaumeFalourd/git-commit-push@v1.3
