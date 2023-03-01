@@ -52,4 +52,4 @@ jobs:
       uses:  ad-m/github-push-action@master
       with:
         branch: master
-        #github_token: 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
+        github_token: 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
