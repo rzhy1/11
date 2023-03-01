@@ -209,19 +209,19 @@
   },
   {
     "id": 26,
-    "remarks": "KYLELI1991/sysucc",
-    "site": "https://github.com/KYLELI1991/sysucc",
-    "url": "https://raw.githubusercontent.com/KYLELI1991/sysucc/main/Temp",
+    "remarks": "learnhard-cn/free_proxy_ss",
+    "site": "https://github.com/learnhard-cn/free_proxy_ss",
+    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/clash.provider.yaml|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/ssr/ssrsub|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/v2ray/v2raysub",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 27,
-    "remarks": "mhmhone/shadowrocket-free-subscribe",
-    "site": "https://github.com/mhmhone/shadowrocket-free-subscribe",
-    "url": "https://bulink.me/sub/m5aep/cl",
+    "remarks": "changfengoss",
+    "site": "https://github.com/ronghuaxueleng/get_v2",
+    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/combine.yaml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 28,
