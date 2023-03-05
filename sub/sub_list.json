@@ -3,7 +3,7 @@
     "id": 0,
     "remarks": "pojiezhiyuanjun/freev2",
     "site": "https://github.com/pojiezhiyuanjun/freev2",
-    "url": "https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0301.txt",
+    "url": "https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0305.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -35,7 +35,7 @@
     "id": 4,
     "remarks": "learnhard-cn/free_proxy_ss",
     "site": "https://github.com/learnhard-cn/free_proxy_ss",
-    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_free.yaml|https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_home_netflix.yaml|https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_netflix.yaml|https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_outwall.yaml",
+    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_free.yaml||https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_netflix.yaml",
     "update_method": "auto",
     "enabled": true
   },
@@ -93,7 +93,7 @@
     "site": "https://github.com/Jason6111/TopFreeProxies",
     "url": "https://raw.githubusercontent.com/Jason6111/TopFreeProxies/main/Eternity",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 12,
@@ -101,7 +101,7 @@
     "site": "https://github.com/tbbatbb/Proxy/",
     "url": "https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/v2ray.config.txt",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 13,
@@ -219,7 +219,7 @@
     "id": 27,
     "remarks": "changfengoss",
     "site": "https://github.com/ronghuaxueleng/get_v2",
-    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/combine.yaml",
+    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml",
     "update_method": "auto",
     "enabled": true
   },
@@ -229,7 +229,7 @@
     "site": "https://github.com/aiboboxx/v2rayfree",
     "url": "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 29,
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2023/03/20230301.txt",
+    "url": "https://nodefree.org/dy/2023/03/20230305.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -323,7 +323,7 @@
     "id": 40,
     "remarks": "ClashNode",
     "site": "https://clashnode.com/f/freenode",
-    "url": "https://clashnode.com/wp-content/uploads/2023/03/20230301.txt",
+    "url": "https://clashnode.com/wp-content/uploads/2023/03/20230305.txt",
     "update_method": "change_date",
     "enabled": true
   }
