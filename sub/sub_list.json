@@ -97,11 +97,11 @@
   },
   {
     "id": 12,
-    "remarks": "itbbatbb/Proxy",
-    "site": "https://github.com/tbbatbb/Proxy/",
-    "url": "https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/v2ray.config.txt",
+    "remarks": "mahdibland/V2RayAggregator",
+    "site": "https://github.com/mahdibland/V2RayAggregator/",
+    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_yaml.yml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 13,
