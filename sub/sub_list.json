@@ -101,7 +101,7 @@
     "site": "https://github.com/mahdibland/V2RayAggregator/",
     "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_yaml.yml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 13,
