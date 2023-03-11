@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
+from bs4 import BeautifulSoup
 import json, re
 import requests
 
