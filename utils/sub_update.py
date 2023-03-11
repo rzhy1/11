@@ -73,7 +73,6 @@ class update():
                 link_url = link["href"]
                 link_response = requests.get(link_url)
                 link_soup = BeautifulSoup(link_response.text, "html.parser")
-                new_url = None
                 for txt_link in link_soup.find_all("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt")):
                     txt_link_url = txt_link["href"]
                     txt_response = requests.get(txt_link_url)
