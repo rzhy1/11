@@ -66,21 +66,24 @@ class update():
         if id == 28:
             url_date = datetime.today().strftime('%Y%m%d')
             url = "https://www.cfmem.com/"
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            link = soup.find("a", href=lambda href: href and url_date in href)
-            if link:
-                link_url = urljoin(url, link["href"])
-                link_response = requests.get(link_url)
-                link_soup = BeautifulSoup(link_response.text, "html.parser")
+            try:
+                response = requests.get(url)
+                soup = BeautifulSoup(response.text, "html.parser")
+                link = soup.find("a", href=lambda href: href and url_date in href)
+                if link:
+                    link_url = urljoin(url, link["href"])
+                    link_response = requests.get(link_url)
+                    link_soup = BeautifulSoup(link_response.text, "html.parser")
+                    new_url = None
+                    for txt_link in link_soup.find_all("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt")):
+                        txt_link_url = txt_link["href"]
+                        txt_response = requests.get(txt_link_url)
+                        if txt_response.status_code == 200:
+                            new_url = txt_response.text
+                            break
+            except requests.exceptions.RequestException as e:
+                print("An error occurred:", e)
                 new_url = None
-                for txt_link in link_soup.find_all("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt")):
-                    txt_link_url = txt_link["href"]
-                    txt_response = requests.get(txt_link_url)
-                    if txt_response.status_code == 200:
-                        txt_link_url = txt_response.text
-                        break
-                new_url = txt_link_url
         if id == 32:
             today = datetime.today().strftime('%Y%m%d')
             this_month = datetime.today().strftime('%m')
