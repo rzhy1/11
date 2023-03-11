@@ -69,6 +69,7 @@ class update():
             response = requests.get(url)
             soup = BeautifulSoup(response.text, "html.parser")
             link = soup.find("a", href=lambda href: href and url_date in href)
+            new_url = None
             if link:
                 link_url = link["href"]
                 link_response = requests.get(link_url)
