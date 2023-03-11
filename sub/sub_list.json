@@ -291,11 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-<<<<<<< HEAD
-    "url": "https://nodefree.org/dy/2023/03/20230305.txt",
-=======
     "url": "https://nodefree.org/dy/2023/03/20230311.txt",
->>>>>>> 7299c431f1a16404674520f31927fe36187b52c3
     "update_method": "change_date",
     "enabled": true
   },
@@ -327,11 +323,7 @@
     "id": 40,
     "remarks": "ClashNode",
     "site": "https://clashnode.com/f/freenode",
-<<<<<<< HEAD
-    "url": "https://clashnode.com/wp-content/uploads/2023/03/20230306.txt",
-=======
     "url": "https://clashnode.com/wp-content/uploads/2023/03/20230311.txt",
->>>>>>> 7299c431f1a16404674520f31927fe36187b52c3
     "update_method": "change_date",
     "enabled": true
   }
