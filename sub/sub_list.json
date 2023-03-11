@@ -225,11 +225,11 @@
   },
   {
     "id": 28,
-    "remarks": "aiboboxx/v2rayfree",
-    "site": "https://github.com/aiboboxx/v2rayfree",
-    "url": "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
-    "update_method": "auto",
-    "enabled": false
+    "remarks": "av2rayse.com",
+    "site": "https://oss.v2rayse.com",
+    "url": "https://oss.v2rayse.com/proxies/data/2023-03-11/n25NwS6.txt",
+    "update_method": "change_date",
+    "enabled": true
   },
   {
     "id": 29,
