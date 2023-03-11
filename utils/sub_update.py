@@ -73,11 +73,12 @@ class update():
                 link_url = link["href"]
                 link_response = requests.get(link_url)
                 link_soup = BeautifulSoup(link_response.text, "html.parser")
-                for txt_link in link_soup.find_all("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt")):
-                    txt_link_url = txt_link["href"]
-                    txt_response = requests.get(txt_link_url)
-                    if txt_response.status_code == 200:
-                        new_url = txt_response.text
+                new_url = None
+                for string in link_soup.stripped_strings:
+                    if string.startswith("v2ray订阅链接") and string.endswith(".txt"):
+                        start = string.index("https://")
+                        end = string.index(".txt") + 4
+                        new_url = string[start:end]
                         break
         if id == 32:
             today = datetime.today().strftime('%Y%m%d')
