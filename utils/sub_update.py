@@ -64,27 +64,23 @@ class update():
             url_end = '.txt'
             new_url = url_front + today + url_end     
         if id == 28:
-            today, this_month, this_year = datetime.today().strftime('%d %m %Y').split()
-            url_date = this_year + this_month + today
+            url_date = datetime.today().strftime('%Y%m%d')
             url = "https://www.cfmem.com/"
-            try:
-                response = requests.get(url)
-                soup = BeautifulSoup(response.text, "html.parser")
-                link = soup.find("a", href=lambda href: href and url_date in href)
-                if link:
-                    link_url = urljoin(url, link["href"])
-                    link_response = requests.get(link_url)
-                    link_soup = BeautifulSoup(link_response.text, "html.parser")
-                    txt_link = link_soup.find("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt"))
-                    if txt_link:
-                        txt_link_url = txt_link["href"]
-                        txt_response = requests.get(txt_link_url)
-                        if txt_response.status_code == 200:
-                            new_url = txt_link_url
-            except requests.exceptions.RequestException as e:
-                print("An error occurred:", e)
-            else:
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            link = soup.find("a", href=lambda href: href and url_date in href)
+            if link:
+                link_url = urljoin(url, link["href"])
+                link_response = requests.get(link_url)
+                link_soup = BeautifulSoup(link_response.text, "html.parser")
                 new_url = None
+                for txt_link in link_soup.find_all("a", href=lambda href: href and href.startswith("https://") and href.endswith(".txt")):
+                    txt_link_url = txt_link["href"]
+                    txt_response = requests.get(txt_link_url)
+                    if txt_response.status_code == 200:
+                        txt_link_url = txt_response.text
+                        break
+                new_url = txt_link_url
         if id == 32:
             today = datetime.today().strftime('%Y%m%d')
             this_month = datetime.today().strftime('%m')
