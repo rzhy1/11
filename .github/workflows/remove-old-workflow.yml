@@ -9,9 +9,6 @@ jobs:
   del_runs:
     name: Delete old runs
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write 
     steps:
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v2.0.3
