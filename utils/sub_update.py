@@ -114,6 +114,36 @@ class update():
                     return current_url
             except Exception:
                 return current_url
+
+        if id == 31:
+            url = 'https://agit.ai/12/a/src/branch/master/'
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # 获取最新提交的文件夹链接
+            latest_folder_url = ''
+            for link in soup.find_all('a', class_='btn btn-sm btn-outline-secondary ml-1'):
+                folder_url = url + link['href']
+                if folder_url.endswith('/'):
+                    latest_folder_url = folder_url
+
+            # 打开最新文件夹并查找最新文件链接
+            if latest_folder_url:
+                folder_response = requests.get(latest_folder_url)
+                folder_soup = BeautifulSoup(folder_response.content, 'html.parser')
+                latest_file_url = ''
+                for link in folder_soup.find_all('a', class_='btn btn-outline-dark file-link'):
+                    file_url = latest_folder_url + link['href']
+                    if not latest_file_url or link['data-modified'] > latest_file_url['data-modified']:
+                        latest_file_url = file_url
+                        new_url = latest_file_url
+                if latest_file_url:
+                    print('最新文件的链接是：', latest_file_url)
+                else:
+                    print('在最新文件夹中未找到任何文件链接。')
+            else:
+                print('未找到任何文件夹链接。')
+                        
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
 
