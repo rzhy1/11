@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": "https://oss.v2rayse.com/proxies/data/2023-03-21/LerNV3l.txt",
+    "url": "https://oss.v2rayse.com/proxies/data/2023-03-22/3L83Xik.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2023/03/20230321.txt",
+    "url": "https://nodefree.org/dy/2023/03/20230322.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -323,7 +323,7 @@
     "id": 40,
     "remarks": "ClashNode",
     "site": "https://clashnode.com/f/freenode",
-    "url": "https://clashnode.com/wp-content/uploads/2023/03/20230321.txt",
+    "url": "https://clashnode.com/wp-content/uploads/2023/03/20230322.txt",
     "update_method": "change_date",
     "enabled": true
   }
