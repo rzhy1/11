@@ -104,35 +104,22 @@ class update():
             return current_url
 
     def find_link(self,id,current_url):
-        if id == 38:
-            try:
-                res_json = requests.get('https://api.github.com/repos/mianfeifq/share/contents/').json()
-                for file in res_json:
-                    if file['name'].startswith('data'):
-                        return file['download_url'] 
+        if id == 31:
+            url = "https://agit.ai/12/a/src/branch/master/3"
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, "html.parser")
+            latest_file = None
+            latest_URL = None
+            new_url = None
+            for row in soup.find_all("tr"):
+                link = row.find("a")
+                if link and link.text.startswith("3"):
+                    latest_file = link.text
+                    latest_URL = url + "/" + link.text
+                    new_url = latest_URL.replace("/src/", "/raw/")
+                    return new_url
                 else:
                     return current_url
-            except Exception:
-                return current_url
-
-        if id == 31:
-            try:
-                url = "https://agit.ai/12/a/src/branch/master/3"
-                response = requests.get(url)
-                soup = BeautifulSoup(response.content, "html.parser")
-                latest_file = None
-                latest_URL = None
-                new_url = None
-                for row in soup.find_all("tr"):
-                    link = row.find("a")
-                    if link and link.text.startswith("3"):
-                        latest_file = link.text
-                        latest_URL = url + "/" + link.text
-                        new_url = latest_URL.replace("/src/", "/raw/")
-                        return new_url
-                    else:
-                        return current_url
-
                         
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
@@ -150,6 +137,17 @@ class update():
                 except Exception:
                     return current_url
             else:
+                return current_url
+                
+        if id == 38:
+            try:
+                res_json = requests.get('https://api.github.com/repos/mianfeifq/share/contents/').json()
+                for file in res_json:
+                    if file['name'].startswith('data'):
+                        return file['download_url'] 
+                else:
+                    return current_url
+            except Exception:
                 return current_url
 
 if __name__ == '__main__':
