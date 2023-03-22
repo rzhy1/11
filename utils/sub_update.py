@@ -116,19 +116,22 @@ class update():
                 return current_url
 
         if id == 31:
-            url = "https://agit.ai/12/a/src/branch/master/3"
-            response = requests.get(url)
-            soup = BeautifulSoup(response.content, "html.parser")
-            latest_file = None
-            latest_URL = None
-            new_url = None
-            for row in soup.find_all("tr"):
-                link = row.find("a")
-                if link and link.text.startswith("3"):
-                    latest_file = link.text
-                    latest_URL = url + "/" + link.text
-                    new_url = latest_URL.replace("/src/", "/raw/")
-
+            try:
+                url = "https://agit.ai/12/a/src/branch/master/3"
+                response = requests.get(url)
+                soup = BeautifulSoup(response.content, "html.parser")
+                latest_file = None
+                latest_URL = None
+                new_url = None
+                for row in soup.find_all("tr"):
+                    link = row.find("a")
+                    if link and link.text.startswith("3"):
+                        latest_file = link.text
+                        latest_URL = url + "/" + link.text
+                        new_url = latest_URL.replace("/src/", "/raw/")
+                        return new_url
+                    else:
+                        return current_url
 
                         
         if id == 33:
