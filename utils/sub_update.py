@@ -118,7 +118,6 @@ class update():
                     break
                 else:
                     return current_url
-                return new_url
                         
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
