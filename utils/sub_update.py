@@ -104,7 +104,7 @@ class update():
             return current_url
 
     def find_link(self,id,current_url):
-        if id == 31:
+        if id == 11:
             url = "https://agit.ai/12/a/src/branch/master/3"
             response = requests.get(url)
             soup = BeautifulSoup(response.content, "html.parser")

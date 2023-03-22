@@ -89,11 +89,11 @@
   },
   {
     "id": 11,
-    "remarks": "Jason6111/TopFreeProxies",
-    "site": "https://github.com/Jason6111/TopFreeProxies",
-    "url": "https://raw.githubusercontent.com/Jason6111/TopFreeProxies/main/Eternity",
-    "update_method": "auto",
-    "enabled": false
+    "remarks": "阿伟科技",
+    "site": "https://agit.ai/12/a/",
+    "url": "https://agit.ai/12/a/src/branch/master/3/3.14v2awkj",
+    "update_method": "page_release",
+    "enabled": true
   },
   {
     "id": 12,
@@ -249,11 +249,11 @@
   },
   {
     "id": 31,
-    "remarks": "阿伟科技",
-    "site": "https://agit.ai/12/a/",
-    "url": "https://agit.ai/12/a/src/branch/master/3/3.14v2awkj",
-    "update_method": "page_release",
-    "enabled": true
+    "remarks": "Jason6111/TopFreeProxies",
+    "site": "https://github.com/Jason6111/TopFreeProxies",
+    "url": "https://raw.githubusercontent.com/Jason6111/TopFreeProxies/main/Eternity",
+    "update_method": "auto",
+    "enabled": false
   },
   {
     "id": 32,
