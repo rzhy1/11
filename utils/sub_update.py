@@ -76,7 +76,6 @@ class update():
                 if link and link.text.startswith(this_month + "."):
                     latest_URL = url + "/" + link.text
                     new_url = latest_URL.replace("/src/", "/raw/")
-                    break
            
         if id == 28:
             url_date = datetime.today().strftime('%Y%m%d')
