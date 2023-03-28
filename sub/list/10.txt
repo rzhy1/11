@@ -1,2 +1,2 @@
-trojan://45c40b80-3d85-47aa-b6e4-3e0e2a066842@kt.p.mkitty.top:443?allowInsecure=0#%F0%9F%87%AC%F0%9F%87%A7%20Relay_%F0%9F%87%AC%F0%9F%87%A7GB-%F0%9F%87%AC%F0%9F%87%A7GB_31
-trojan://cf4295378e209e70d12c5bdd017144dfd1c772d3@170-187-134-190.ipv4.rush.ml:8443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%BA%F0%9F%87%B8US_122
+trojan://5a035db3-34ea-48ca-9aa2-72c8229e1532@ru.mjt001.com:443?allowInsecure=0#HK_28
+trojan://cf4295378e209e70d12c5bdd017144dfd1c772d3@170-187-134-190.ipv4.rush.ml:8443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%BA%F0%9F%87%B8US_118
