@@ -97,11 +97,11 @@
   },
   {
     "id": 12,
-    "remarks": "mahdibland/V2RayAggregator",
-    "site": "https://github.com/mahdibland/V2RayAggregator/",
-    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_yaml.yml",
+    "remarks": "SS-Kcptun",
+    "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun",
+    "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun/ssconfig.txt",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 13,
@@ -177,11 +177,11 @@
   },
   {
     "id": 22,
-    "remarks": "v2rayshare.com/wp-content",
-    "site": "https://v2rayshare.com/wp-content/",
-    "url": "https://v2rayshare.com/wp-content/uploads/2023/02/20230223.txt",
+    "remarks": "free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
+    "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr",
+    "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
     "update_method": "change_date",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 23,
