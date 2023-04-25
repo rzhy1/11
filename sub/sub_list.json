@@ -180,7 +180,7 @@
     "remarks": "free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
     "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr",
     "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
-    "update_method": "change_date",
+    "update_method": "auto",
     "enabled": true
   },
   {
