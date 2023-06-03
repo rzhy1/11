@@ -4,6 +4,7 @@ import json, os, base64, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from subconverter import convert, base64_decode
 
+merge_path = './sub/sub_merge_base64.txt'
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -89,6 +90,23 @@ class merge():
              data = ''.join(lines)
              print('完成!\n')
              f.write(data)
+    # 读取并解码 Base64 编码的节点信息
+    with open(merge_path, 'rb') as file:
+        encoded_content = file.read().decode('utf-8')
+        decoded_content = base64.b64decode(encoded_content).decode('utf-8')
+
+    # 进行 Trojan 节点过滤
+    filtered_content = ''
+    for line in decoded_content.splitlines():
+        if 'trojan' not in line.lower():
+            filtered_content += line + '\n'
+
+    # 将过滤后的节点信息保存到文件
+    filtered_path = './sub/sub_merge_filtered.txt'
+    with open(filtered_path, 'w', encoding='utf-8') as file:
+        file.write(filtered_content)
+
+    print(f'Trojan nodes filtered. Filtered nodes saved to {filtered_path}.')
         
 if __name__ == '__main__':
     merge()
