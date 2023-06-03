@@ -237,7 +237,7 @@
     "site": "https://github.com/V2RayAggregator",
     "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_base64.txt",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 30,
