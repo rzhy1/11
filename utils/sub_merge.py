@@ -30,7 +30,7 @@ class merge():
     def read_list(self): # 将 sub_list.json Url 内容读取为列表
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
-        return [item for item in raw_list if item['enabled'] and item['type'] != 'trojan']
+        return [item for item in raw_list if item['enabled'] and not item['remarks'].startswith('trojan')]
 
     def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64, ，并输出文件，输入订阅列表。
         url_list = self.url_list
