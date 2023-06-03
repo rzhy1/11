@@ -41,9 +41,9 @@
   },
   {
     "id": 5,
-    "remarks": "vpei/Free-Node-Merge",
-    "site": "https://github.com/vpei/Free-Node-Merge",
-    "url": "https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/allnode.txt",
+    "remarks": "Free-Node-Merge",
+    "site": "https://github.com/vpei",
+    "url": "https://raw.githubusercontent.com/vpei/free-node-1/main/o/allnode.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/node.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/nodecn.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/proxies.txt",
     "update_method": "auto",
     "enabled": true
   },
@@ -149,7 +149,7 @@
     "site": "https://github.com/vpei/Free-Node-Merge/tree/main/o",
     "url": "https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/allnode.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/node.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/nodecn.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/proxies.txt",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 19,
@@ -233,11 +233,11 @@
   },
   {
     "id": 29,
-    "remarks": "moneyfly1/sublist",
-    "site": "https://github.com/moneyfly1/sublist",
-    "url": "https://raw.githubusercontent.com/moneyfly1/sublist/main/clash.yml",
+    "remarks": "V2RayAggregator",
+    "site": "https://github.com/V2RayAggregator",
+    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_yaml.yml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 30,
