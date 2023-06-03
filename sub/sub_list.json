@@ -181,7 +181,7 @@
     "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr",
     "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 23,
@@ -235,7 +235,7 @@
     "id": 29,
     "remarks": "V2RayAggregator",
     "site": "https://github.com/V2RayAggregator",
-    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_yaml.yml",
+    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_base64.txt",
     "update_method": "auto",
     "enabled": true
   },
