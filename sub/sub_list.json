@@ -91,7 +91,7 @@
     "id": 11,
     "remarks": "阿伟科技",
     "site": "https://agit.ai/12/a/",
-    "url": "https://agit.ai/12/a/raw/branch/master/6/6.14v2",
+    "url": "https://agit.ai/12/a/raw/branch/master/6/6.16v2-awkj2",
     "update_method": "change_date",
     "enabled": true
   },
@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": "https://oss.v2rayse.com/proxies/data/2023-06-15/EEbaiHj.txt",
+    "url": "https://oss.v2rayse.com/proxies/data/2023-06-16/4LRzSs1.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2023/06/20230615.txt",
+    "url": "https://nodefree.org/dy/2023/06/20230616.txt",
     "update_method": "change_date",
     "enabled": true
   },
