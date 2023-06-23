@@ -97,11 +97,11 @@
   },
   {
     "id": 12,
-    "remarks": "SS-Kcptun",
-    "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun",
-    "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun/ssconfig.txt",
+    "remarks": "Leon406/SubCrawler",
+    "site": "https://github.com/Leon406/SubCrawler",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 13,
