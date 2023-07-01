@@ -21,7 +21,7 @@ def convert(subscription,target,other_config={}):
 
     default_config = {
         'target': target,
-        'deduplicate':False,'keep_nodes':1,
+        'deduplicate':True,'keep_nodes':1,
         'rename':'','include':'','exclude':'','config':''
     }
     default_config.update(other_config)
