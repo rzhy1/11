@@ -3,7 +3,7 @@
     "id": 0,
     "remarks": "pojiezhiyuanjun/freev2",
     "site": "https://github.com/pojiezhiyuanjun/freev2",
-    "url": "https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0604.txt",
+    "url": "https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0701.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -75,7 +75,7 @@
     "id": 9,
     "remarks": "Leon406/SubCrawler",
     "site": "https://github.com/Leon406/SubCrawler",
-    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/v2",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/all2",
     "update_method": "auto",
     "enabled": true
   },
@@ -91,17 +91,17 @@
     "id": 11,
     "remarks": "阿伟科技",
     "site": "https://agit.ai/12/a/",
-    "url": "https://agit.ai/12/a/raw/branch/master/6/6.4v2-awkj2",
+    "url": "https://agit.ai/12/a/raw/branch/master/7/7.1v2",
     "update_method": "change_date",
     "enabled": true
   },
   {
     "id": 12,
-    "remarks": "SS-Kcptun",
-    "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun",
-    "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/SS-Kcptun/ssconfig.txt",
+    "remarks": "Leon406/SubCrawler",
+    "site": "https://github.com/Leon406/SubCrawler",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 13,
@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": "https://oss.v2rayse.com/proxies/data/2023-06-04/jzAPMj4.txt",
+    "url": "https://oss.v2rayse.com/proxies/data/2023-07-01/Jyuwnmq.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2023/06/20230604.txt",
+    "url": "https://nodefree.org/dy/2023/07/20230701.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -307,7 +307,7 @@
     "id": 38,
     "remarks": "mianfeifq/share",
     "site": "https://github.com/mianfeifq/share",
-    "url": "https://raw.githubusercontent.com/mianfeifq/share/main/data2023061.txt",
+    "url": "https://raw.githubusercontent.com/mianfeifq/share/main/data2023070.txt",
     "update_method": "page_release",
     "enabled": true
   },
@@ -323,7 +323,7 @@
     "id": 40,
     "remarks": "ClashNode",
     "site": "https://clashnode.com/f/freenode",
-    "url": "https://clashnode.com/wp-content/uploads/2023/06/20230604.txt",
+    "url": "https://clashnode.com/wp-content/uploads/2023/07/20230701.txt",
     "update_method": "change_date",
     "enabled": true
   }
