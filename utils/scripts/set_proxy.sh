@@ -1,5 +1,5 @@
 # Download clash
-wget -O clash.gz https://github.com/Dreamacro/clash/releases/download/v1.11.4/clash-linux-amd64-v1.11.4.gz
+wget -O clash.gz https://github.com/Dreamacro/clash/releases/download/v1.17.0/clash-linux-amd64-v1.17.0.gz
 gunzip clash.gz
 # Initialize Clash
 chmod +x ./clash && ./clash &
