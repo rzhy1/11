@@ -155,98 +155,30 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
 
     os.chdir(work_dir)
     return output
-def deduplicate(clash_provider,keep_nodes=1): # Proxies deduplicate. If proxies with the same servers are greater than keep_nodes, they will not be added.
+def deduplicate(clash_provider, keep_nodes=1):
     lines = re.split(r'\n+', clash_provider)[1:]
     print('Starting deduplicate...')
     print(f'Init amount: {len(lines)}')
-    try:
-        proxies = yaml.safe_load(clash_provider)['proxies'] # load all proxies from clash provider
-    except Exception:
-        il_chars = ['|', '?', '[', ']', '@', '!', '%', ':']
 
-        line_fixed = ['proxies:']
-        for line in lines:
-            try_load = 'proxies:\n' + line
-            try:
-                yaml.safe_load(try_load)
-                line_fixed.append(line)
-            except Exception:
-                line = line.replace('\'', '').replace('"', '')
-                value_list = re.split(r': |, ', line)
-                if len(value_list) > 6:
-                    value_list_fix = []
-                    for value in value_list:
-                        for char in il_chars:
-                            value_il = False
-                            if char in value:
-                                value_il = True
-                                break
-                        if value_il == True and ('{' not in value and '}' not in value):
-                            value = '"' + value + '"'
-                            value_list_fix.append(value)
-                        elif value_il == True and '}' in value:
-                            if '}}}' in value:
-                                host_part = value.replace('}}}','')
-                                host_value = '"'+host_part+'"}}}'
-                                value_list_fix.append(host_value)
-                            elif '}}' not in value:
-                                host_part = value.replace('}','')
-                                host_value = '"'+host_part+'"}'
-                                value_list_fix.append(host_value)
-                        else:
-                            value_list_fix.append(value)
-                        line_fix = line
-                    for index in range(len(value_list_fix)):
-                        line_fix = line_fix.replace(value_list[index], value_list_fix[index])
-                else:
-                    pass
-                try:
-                    try_load = 'proxies:\n' + line_fix
-                    yaml.safe_load(try_load)
-                    line_fixed.append(line_fix)
-                except Exception:
-                    pass
-        fix_provider = '\n'.join(line_fixed)
-        
+    unique_proxies = set()
+    deduplicated_proxies = []
+
+    for line in lines:
         try:
-            proxies = yaml.safe_load(fix_provider)['proxies']
-        except Exception:
-            print('Deduplicate failed, skip')
-            output = clash_provider
-            return output
-    
-    servers = {}
-    for proxy in proxies:
-        server = proxy['server'] # assign remote server
-        if server.replace('.','').isdigit():
-            ip = server
-        else:
-            try:
-                ip = socket.gethostbyname(server)
-            except Exception:
-                ip = server
+            proxy = yaml.safe_load(line)
+            server = proxy.get('server')
+            port = proxy.get('port')
 
-        if ip in servers:
-            servers[ip].append(proxy) # add proxy to its remote server list
-        elif server not in servers:
-            servers[ip] = [proxy] # init remote server list, add first proxy
+            if server and port and f"{server}:{port}" not in unique_proxies:
+                deduplicated_proxies.append(proxy)
+                unique_proxies.add(f"{server}:{port}")
+        except Exception as e:
+            print(f"Error parsing proxy line: {line}")
+            print(f"Error message: {e}")
 
-    proxies = []
-    for server in servers:
-        # if len(servers[server]) > 3: # if proxy amount is greater than 4 then just add 4 proxies
-        #     add_list = servers[server][:3]
-        #     for add in add_list:
-        #         proxies.append(add)
-        # else:
-        #     add_list = servers[server] # if proxy amount is less than 4 then add all proxies
-        #     for add in add_list:
-        #         proxies.append(add)
-        try:
-            add_list = servers[server][:keep_nodes]
-        except Exception:
-            add_list = servers[server]
-        for x in add_list:
-            proxies.append(x)
+    proxies = deduplicated_proxies
+
+    # Rest of the code...
     print(f'Dedupicate success, remove {len(lines)-len(proxies)} duplicate proxies')
     print(f'Output amount: {len(proxies)}')
 
