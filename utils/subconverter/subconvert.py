@@ -165,13 +165,17 @@ def deduplicate(clash_provider, keep_nodes=1):
 
     for line in lines:
         try:
-            proxy = yaml.safe_load(line)
-            server = proxy.get('server')
-            port = proxy.get('port')
+            proxies = yaml.safe_load(line)
+            if isinstance(proxies, list):
+                for proxy in proxies:
+                    server = proxy.get('server')
+                    port = proxy.get('port')
 
-            if server and port and f"{server}:{port}" not in unique_proxies:
-                deduplicated_proxies.append(proxy)
-                unique_proxies.add(f"{server}:{port}")
+                    if server and port and f"{server}:{port}" not in unique_proxies:
+                        deduplicated_proxies.append(proxy)
+                        unique_proxies.add(f"{server}:{port}")
+            else:
+                print(f"Invalid proxy line format: {line}")
         except Exception as e:
             print(f"Error parsing proxy line: {line}")
             print(f"Error message: {e}")
@@ -179,7 +183,7 @@ def deduplicate(clash_provider, keep_nodes=1):
     proxies = deduplicated_proxies
 
     # Rest of the code...
-    print(f'Dedupicate success, remove {len(lines)-len(proxies)} duplicate proxies')
+    print(f'Deduplicate success, remove {len(lines)-len(proxies)} duplicate proxies')
     print(f'Output amount: {len(proxies)}')
 
     output = yaml.dump({'proxies': proxies}, default_flow_style=False, sort_keys=False, allow_unicode=True, indent=2)
