@@ -81,6 +81,7 @@ trojan://3228a77c-c1c3-451f-9112-e6e766684558@fschk.fscloud123456789.com:443?all
 trojan://7a73f1dc97a70905870c0c0484b12145@trs22.bolab.net:443?allowInsecure=0#%F0%9F%87%AF%F0%9F%87%B5%20Relay_%F0%9F%87%AF%F0%9F%87%B5JP-%F0%9F%87%AF%F0%9F%87%B5JP_20%20%7C12.65Mb
 trojan://8876657a-6a91-4ee4-8539-cf52f5dfa6f5@ovohk.ovogreat.com:443?allowInsecure=0#%F0%9F%87%AF%F0%9F%87%B5%20Relay_%F0%9F%87%AF%F0%9F%87%B5JP-%F0%9F%87%AD%F0%9F%87%B0HK_21%20%7C22.06Mb
 trojan://6455f944-7c07-4ab0-b88f-440e581f41d9@kr2.twincloud.xyz:443?allowInsecure=0#%F0%9F%87%B0%F0%9F%87%B7%20Relay_%F0%9F%87%B0%F0%9F%87%B7KR-%F0%9F%87%B0%F0%9F%87%B7KR_22%20%7C10.98Mb
+trojan://9995cc0e-2e9d-4c80-8c81-4fdbb6322a3a@fscus.fscloud123456789.com:443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%BA%F0%9F%87%B8US_104%20%7C12.81Mb
 trojan://6455f944-7c07-4ab0-b88f-440e581f41d9@jp2.twincloud.xyz:443?allowInsecure=0#US_105
 trojan://6f96d269-31bb-4914-b2c9-629e117265ed@uk.stablize.top:443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%AB%F0%9F%87%B7FR_107
 trojan://xxoo@us.blazeppn.info:443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%BA%F0%9F%87%B8US_110%20%7C%208.17Mb
