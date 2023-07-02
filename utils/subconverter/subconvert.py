@@ -5,7 +5,7 @@ import argparse, configparser
 import base64, yaml
 import socket
 import geoip2.database
-
+import ruamel.yaml
 
 def convert(subscription,target,other_config={}):
     """Wrapper for subconverter
@@ -165,7 +165,7 @@ def deduplicate(clash_provider, keep_nodes=1):
 
     for line in lines:
         try:
-            proxies = yaml.load(line, Loader=yaml.SafeLoader)
+            proxies = yaml.load(line, Loader=yaml.FullLoader)
             if isinstance(proxies, list):
                 for proxy in proxies:
                     server = proxy.get('server')
