@@ -163,9 +163,10 @@ def deduplicate(clash_provider, keep_nodes=1):
     unique_proxies = set()
     deduplicated_proxies = []
 
+    yaml = ruamel.yaml.YAML(typ='safe')
     for line in lines:
         try:
-            proxies = yaml.load(line, Loader=yaml.FullLoader)
+            proxies = yaml.load(line)
             if isinstance(proxies, list):
                 for proxy in proxies:
                     server = proxy.get('server')
@@ -186,7 +187,7 @@ def deduplicate(clash_provider, keep_nodes=1):
     print(f'Deduplicate success, remove {len(lines)-len(proxies)} duplicate proxies')
     print(f'Output amount: {len(proxies)}')
 
-    output = yaml.dump({'proxies': proxies}, default_flow_style=False, sort_keys=False, allow_unicode=True, indent=2)
+    output = yaml.dump(proxies)
     return output
 
 def base64_decode(content):
