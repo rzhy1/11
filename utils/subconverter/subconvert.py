@@ -165,7 +165,7 @@ def deduplicate(clash_provider, keep_nodes=1):
 
     for line in lines:
         try:
-            proxies = yaml.safe_load(line)
+            proxies = yaml.load(line, Loader=yaml.SafeLoader)
             if isinstance(proxies, list):
                 for proxy in proxies:
                     server = proxy.get('server')
