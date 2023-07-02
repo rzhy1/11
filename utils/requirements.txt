@@ -2,4 +2,3 @@ geoip2
 PyYAML
 requests
 beautifulsoup4
-ruamel.yaml
