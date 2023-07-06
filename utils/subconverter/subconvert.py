@@ -194,7 +194,7 @@ def base64_decode(content):
         content = content.replace('-', '+')
     if '_' in content:
         content = content.replace('_', '/')
-    #print(len(url_content))
+    print(len(url_content))
     missing_padding = len(content) % 4
     if missing_padding != 0:
         content += '='*(4 - missing_padding) # 不是4的倍数后加= https://www.cnblogs.com/wswang/p/7717997.html
