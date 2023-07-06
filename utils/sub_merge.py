@@ -58,7 +58,7 @@ class merge():
         print('Merging nodes...')
         content = '\n'.join(content_set)
         content = convert(content, 'base64', self.format_config)
-        content = content.replace('<str>', '')
+        content = content.replace('!<str>', '')
         merge_path = f'{merge_dir}/sub_merge_base64.txt'
         with open(merge_path, 'wb') as file:
             file.write(content.encode('utf-8'))
