@@ -92,8 +92,9 @@ class merge():
              f.write(data)
     # 读取并解码 Base64 编码的节点信息
     with open(merge_path, 'rb') as file:
-        encoded_content = file.read().decode('utf-8')
-        decoded_content = base64.b64decode(encoded_content).decode('utf-8')
+        encoded_content = file.read().strip()
+    # 进行 Base64 解码和解析
+    decoded_content = base64_decode(encoded_content)
 
     # 进行 Trojan 节点过滤
     filtered_content = ''
