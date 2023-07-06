@@ -44,7 +44,7 @@ class merge():
 
         content_set = set()
         for url in url_list:
-            content = convert(url['url'], 'url', {'keep_encode': True})
+            content = convert(url['url'], 'url')
             if content:
                 content_set.update(content.splitlines())
                 print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
@@ -58,6 +58,7 @@ class merge():
         print('Merging nodes...')
         content = '\n'.join(content_set)
         content = convert(content, 'base64', self.format_config)
+        content = content.replace('!<str>', '')
         merge_path = f'{merge_dir}/sub_merge_base64.txt'
         with open(merge_path, 'wb') as file:
             file.write(content.encode('utf-8'))
