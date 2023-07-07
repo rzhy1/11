@@ -157,12 +157,12 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
     return output
 def deduplicate(clash_provider, keep_nodes=1):
     lines = re.split(r'\n+', clash_provider)[1:]
+    lines = [line.replace('!<str>', '') for line in lines]
     print('Starting deduplicate...')
     print(f'Init amount: {len(lines)}')
 
     unique_proxies = set()
     deduplicated_proxies = []
-    print(lines)
     for line in lines:
         try:
             proxies = yaml.safe_load(line)  # Use safe_load instead of load
