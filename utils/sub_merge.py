@@ -45,7 +45,6 @@ class merge():
         content_set = set()
         for url in url_list:
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
-            print(content)  # 打印节点字典的内容
             if content:
                 content_set.update(content.splitlines())
                 print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
