@@ -47,6 +47,7 @@ class merge():
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             if content:
                 content_set.update(content.splitlines())
+                content = content.replace('!<str>', '')  # 替换密码字段为纯数字的部分为空
                 print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
             else:
                 content = 'No nodes were found in url.'
