@@ -44,6 +44,7 @@ class merge():
 
         content_set = set()
         for url in url_list:
+            print(url)  # 打印节点字典的内容
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             if content:
                 content_set.update(content.splitlines())
