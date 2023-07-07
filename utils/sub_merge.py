@@ -45,9 +45,9 @@ class merge():
         content_set = set()
         for url in url_list:
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': True})
-            content = content.replace("!<str> ", "")
             if content:
                 content_set.update(content.splitlines())
+                content = content.replace("!<str> ", "")
                 print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
             else:
                 content = 'No nodes were found in url.'
