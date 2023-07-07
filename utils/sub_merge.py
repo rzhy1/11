@@ -41,17 +41,19 @@ class merge():
         for dirpath, dirnames, filenames in os.walk(list_dir):
             for filename in filenames:
                 os.remove(os.path.join(dirpath, filename))
-
-        content_set = set()
-        for url in url_list:
+                
+        def convert_node(url):
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             if content:
                 content = content.replace('!<str>', '')  # 替换密码字段为纯数字的部分为空
-                content_set.update(content.splitlines())
-                print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
+                return content
             else:
-                content = 'No nodes were found in url.'
-                print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
+                return 'No nodes were found in url.'
+        content_set = set()
+        for url in url_list:
+            content = convert_node(url)
+            content_set.update(content.splitlines())
+            print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
             if self.list_dir:
                 with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
                     file.write(content)
