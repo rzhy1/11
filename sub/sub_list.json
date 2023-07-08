@@ -145,11 +145,11 @@
   },
   {
     "id": 18,
-    "remarks": "Free-Node-Merge",
-    "site": "https://github.com/vpei/Free-Node-Merge/tree/main/o",
-    "url": "https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/allnode.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/node.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/nodecn.txt|https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/proxies.txt",
+    "remarks": "aiboboxx/v2rayfree",
+    "site": "https://github.com/aiboboxx/v2rayfree",
+    "url": "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 19,
