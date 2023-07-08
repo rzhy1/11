@@ -125,7 +125,7 @@ class update():
             try:
                 resp = requests.get(url_update, timeout=5)
                 raw_content = resp.text
-
+                print(raw_content)
                 pattern = re.compile(r'https://bitbucket.org/huwo1/proxy_nodes/raw/.*?/proxy\.md')
                 new_url = re.search(pattern, raw_content).group()
                 return new_url
