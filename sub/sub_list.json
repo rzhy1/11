@@ -53,7 +53,7 @@
     "site": "https://github.com/colatiger/v2ray-nodes",
     "url": "https://bitbucket.org/huwo1/proxy_nodes/raw/f31ca9ec67b84071515729ff45b011b6b09c10f2/proxy.md",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 7,
@@ -177,11 +177,11 @@
   },
   {
     "id": 22,
-    "remarks": "free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
-    "site": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr",
-    "url": "https://gitlab.com/free9999/ipupdate/-/raw/master/ssr/ssconfig.txt",
+    "remarks": "bitbucket.org/huwo1/",
+    "site": "https://bitbucket.org/huwo1/proxy_nodes/src/main/",
+    "url": "https://bitbucket.org/huwo1/proxy_nodes/raw/f31ca9ec67b84071515729ff45b011b6b09c10f2/proxy.md",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 23,
