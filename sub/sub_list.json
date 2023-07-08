@@ -179,8 +179,8 @@
     "id": 22,
     "remarks": "bitbucket.org/huwo1/",
     "site": "https://bitbucket.org/huwo1/proxy_nodes/src/main/",
-    "url": "https://bitbucket.org/huwo1/proxy_nodes/raw/f31ca9ec67b84071515729ff45b011b6b09c10f2/proxy.md",
-    "update_method": "auto",
+    "url": "https://bitbucket.org/huwo1/proxy_nodes/raw/f31ca9ec67b84071515729ff45b011b6b09c10f1/proxy.md",
+    "update_method": "page_release",
     "enabled": true
   },
   {
