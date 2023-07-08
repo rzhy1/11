@@ -118,21 +118,7 @@ class update():
             return current_url
 
     def find_link(self, id, current_url):
-        if id == 22:
-            url_update = 'https://bitbucket.org/huwo1/proxy_nodes/src/main/'
-
-            #if self.url_updated(url_update):
-            try:
-                resp = requests.get(url_update, timeout=5)
-                raw_content = resp.text
-                print(raw_content)
-                pattern = re.compile(r'https://bitbucket.org/huwo1/proxy_nodes/raw/.*?/proxy\.md')
-                new_url = re.search(pattern, raw_content).group()
-                return new_url
-            except Exception:
-                return current_url
-
-    
+  
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
 
