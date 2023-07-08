@@ -133,7 +133,8 @@ class update():
                     return current_url
             else:
                 return current_url
-                
+        else:
+                return current_url        
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
 
