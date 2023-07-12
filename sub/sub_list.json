@@ -49,11 +49,11 @@
   },
   {
     "id": 6,
-    "remarks": "colatiger/v2ray-nodes",
-    "site": "https://github.com/colatiger/v2ray-nodes",
-    "url": "https://bitbucket.org/huwo1/proxy_nodes/raw/f31ca9ec67b84071515729ff45b011b6b09c10f2/proxy.md",
+    "remarks": "proxy.huwo.top",
+    "site": "https://proxy.huwo.top/",
+    "url": "https://proxy.huwo.top/dy/78c.yaml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 7,
