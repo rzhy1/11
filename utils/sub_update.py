@@ -66,6 +66,7 @@ class update():
             
         if id == 11:
             this_month = datetime.today().strftime('%m').lstrip('0')
+            today = datetime.today().strftime('%d').lstrip('0')
             url = f"https://agit.ai/12/a/src/branch/master/{this_month}"
             response = requests.get(url)
             soup = BeautifulSoup(response.content, "html.parser")
@@ -73,7 +74,7 @@ class update():
             new_url = None
             for row in soup.find_all("tr"):
                 link = row.find("a")
-                if link and f"{this_month}." in link.text:
+                if link and f"{this_month}" in link.text and f"{today}" in link.text:
                     latest_URL = f"{url}/{link.text}"
                     new_url = latest_URL.replace("/src/", "/raw/")
            
