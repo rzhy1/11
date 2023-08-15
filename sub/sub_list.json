@@ -97,11 +97,11 @@
   },
   {
     "id": 12,
-    "remarks": "Leon406/SubCrawler",
-    "site": "https://github.com/Leon406/SubCrawler",
-    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
+    "remarks": "ermaozi01/free_clash_vpn",
+    "site": "https://github.com/ermaozi01/free_clash_vpn",
+    "url": "https://raw.githubusercontent.com/ermaozi01/free_clash_vpn/main/subscribe/v2ray.txt",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 13,
