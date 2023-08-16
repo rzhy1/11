@@ -67,7 +67,7 @@ class update():
         if id == 11:
             this_month = datetime.today().strftime('%m').lstrip('0')
             today = datetime.today().strftime('%d').lstrip('0')
-            url = f"https://agit.ai/12/a/src/branch/master/{this_month}"
+            url = f"https://agit.ai/231/123321312/src/branch/master/{this_month}"
             response = requests.get(url)
             soup = BeautifulSoup(response.content, "html.parser")
             latest_URL = None
