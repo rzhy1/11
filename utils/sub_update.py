@@ -82,13 +82,13 @@ class update():
                 if link and f"{this_month}" in link.text and f"{today}" in link.text:
                     latest_URL = f"{url}/{link.text}"
                     new_url_today = latest_URL.replace("/src/", "/raw/")
-                    print('本日地址:' + new_url)
+                    print('本日地址:' + new_url_today)
                 else:
                     if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
                         latest_URL = f"{url}/{link.text}"
                         new_url_yesterday = latest_URL.replace("/src/", "/raw/")
-                        print('昨天地址:' + new_url)
-            if f"{today}":
+                        print('昨天地址:' + new_url_yesterday)
+            if new_url_today:
                 new_url = new_url_today
             else:
                 new_url = new_url_yesterday
