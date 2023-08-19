@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json, re
@@ -67,6 +67,7 @@ class update():
         if id == 11:
             this_month = datetime.today().strftime('%m').lstrip('0')
             today = datetime.today().strftime('%d').lstrip('0')
+            yesterday = (datetime.today() - timedelta(days=1)).strftime('%d').lstrip('0')
             url = f"https://agit.ai/231/123321312/src/branch/master/{this_month}"
             response = requests.get(url)
             soup = BeautifulSoup(response.content, "html.parser")
@@ -75,6 +76,10 @@ class update():
             for row in soup.find_all("tr"):
                 link = row.find("a")
                 if link and f"{this_month}" in link.text and f"{today}" in link.text:
+                    latest_URL = f"{url}/{link.text}"
+                    new_url = latest_URL.replace("/src/", "/raw/")
+            else:
+                if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
                     latest_URL = f"{url}/{link.text}"
                     new_url = latest_URL.replace("/src/", "/raw/")
            
