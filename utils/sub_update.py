@@ -79,13 +79,17 @@ class update():
                 link = row.find("a")
                 if link and f"{this_month}" in link.text and f"{today}" in link.text:
                     latest_URL = f"{url}/{link.text}"
-                    new_url = latest_URL.replace("/src/", "/raw/")
+                    new_url_today = latest_URL.replace("/src/", "/raw/")
                     print('本日地址:' + new_url)
                 else:
                     if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
                         latest_URL = f"{url}/{link.text}"
-                        new_url = latest_URL.replace("/src/", "/raw/")
+                        new_url_yesterday = latest_URL.replace("/src/", "/raw/")
                         print('昨天地址:' + new_url)
+            if f"{today}":
+                new_url = new_url_today
+            else:
+                new_url = new_url_yesterday
            
         if id == 28:
             url_date = datetime.today().strftime('%Y%m%d')
