@@ -73,15 +73,19 @@ class update():
             soup = BeautifulSoup(response.content, "html.parser")
             latest_URL = None
             new_url = None
+            print(today)
+            print(yesterday)
             for row in soup.find_all("tr"):
                 link = row.find("a")
                 if link and f"{this_month}" in link.text and f"{today}" in link.text:
                     latest_URL = f"{url}/{link.text}"
                     new_url = latest_URL.replace("/src/", "/raw/")
+                    print(new_url)
                 else:
                     if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
                         latest_URL = f"{url}/{link.text}"
                         new_url = latest_URL.replace("/src/", "/raw/")
+                        print(new_url)
            
         if id == 28:
             url_date = datetime.today().strftime('%Y%m%d')
