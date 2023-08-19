@@ -78,10 +78,10 @@ class update():
                 if link and f"{this_month}" in link.text and f"{today}" in link.text:
                     latest_URL = f"{url}/{link.text}"
                     new_url = latest_URL.replace("/src/", "/raw/")
-            else:
-                if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
-                    latest_URL = f"{url}/{link.text}"
-                    new_url = latest_URL.replace("/src/", "/raw/")
+                else:
+                    if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
+                        latest_URL = f"{url}/{link.text}"
+                        new_url = latest_URL.replace("/src/", "/raw/")
            
         if id == 28:
             url_date = datetime.today().strftime('%Y%m%d')
