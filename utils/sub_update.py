@@ -77,11 +77,11 @@ class update():
             new_url_yesterday = None
             for row in soup.find_all("tr"):
                 link = row.find("a")
-                if link and f"{this_month}" in link.text and f"{today}" in link.text:
+                if link and f"{this_month}" in link.text and f"{today}" in link.text and "yml" not in link.text: 
                     latest_URL = f"{url}/{link.text}"
                     new_url_today = latest_URL.replace("/src/", "/raw/")
                 else:
-                    if link and f"{this_month}" in link.text and f"{yesterday}" in link.text:
+                    if link and f"{this_month}" in link.text and f"{yesterday}" in link.text and "yml" not in link.text: 
                         latest_URL = f"{url}/{link.text}"
                         new_url_yesterday = latest_URL.replace("/src/", "/raw/")
             if new_url_today:
