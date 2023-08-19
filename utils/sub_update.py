@@ -73,7 +73,7 @@ class update():
             soup = BeautifulSoup(response.content, "html.parser")
             latest_URL = None
             new_url = None
-            new_url_todayl = None
+            new_url_today = None
             new_url_yesterday = None
             print(today)
             print(yesterday)
