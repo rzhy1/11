@@ -219,7 +219,7 @@
     "id": 27,
     "remarks": "changfengoss",
     "site": "https://github.com/ronghuaxueleng/get_v2",
-    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml",
+    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/jiang.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/cfmem.yaml",
     "update_method": "auto",
     "enabled": true
   },
