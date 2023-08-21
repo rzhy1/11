@@ -1,15 +1,15 @@
 {
-    "group": "FreeProxies",
-    "speedtestMode": "all",
-    "pingMethod": "googleping",
-    "sortMethod": "rspeed",
-    "concurrency": 16,
-    "testMode": 10,
-    "subscription": "../../sub/sub_merge_base64.txt",
-    "timeout": 8,
-    "language": "cn",
-    "fontSize": 24,
-    "theme": "rainbow",
-    "generatePicMode": 0,
-    "outputRange": "99"
+    "group":"job",
+    "speedtestMode":"pingonly", // speedonly pingonly all
+    "pingMethod":"googleping",  // googleping tcpping
+    "sortMethod":"rspeed",
+    "concurrency":100,  // 并发数
+    "testMode":2,   // 2: ALLTEST 3: RETEST
+    "subscription":"../../sub/sub_merge_base64.txt",
+    "timeout":10,
+    "language":"cn",
+    "fontSize":24,
+	"unique": true,  // remove duplicated value
+    "theme":"rainbow",
+    "outputMode": 4  // 0: base64 1: pic path 2: no pic 3: json 4: txt
 }
