@@ -1,5 +1,5 @@
 # Download clash
-wget -O clash.gz https://github.com/MetaCubeX/Clash.Meta/releases/download/v1.15.1/clash.meta-linux-amd64-v1.15.1.gz
+wget -O clash.gz https://github.com/Dreamacro/clash/releases/download/v1.18.0/clash-linux-amd64-v1.18.0.gz
 gunzip clash.gz
 # Initialize Clash
 chmod +x ./clash && ./clash &
