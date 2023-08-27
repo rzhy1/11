@@ -35,7 +35,7 @@
     "id": 4,
     "remarks": "learnhard-cn/free_proxy_ss",
     "site": "https://github.com/learnhard-cn/free_proxy_ss",
-    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_free.yaml||https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/providers/provider_netflix.yaml",
+    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/clash.provider.yaml",
     "update_method": "auto",
     "enabled": true
   },
@@ -45,7 +45,7 @@
     "site": "https://github.com/vpei",
     "url": "https://raw.githubusercontent.com/vpei/free-node-1/main/o/allnode.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/node.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/nodecn.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/proxies.txt",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 6,
@@ -65,11 +65,11 @@
   },
   {
     "id": 8,
-    "remarks": "ssrsub/ssr",
+    "remarks": "ssrsub/ssr不存在",
     "site": "https://github.com/ssrsub/ssr",
     "url": "https://raw.githubusercontent.com/ssrsub/ssr/master/V2Ray|https://raw.githubusercontent.com/ssrsub/ssr/master/ss-sub|https://raw.githubusercontent.com/ssrsub/ssr/master/ssrsub|https://raw.githubusercontent.com/ssrsub/ssr/master/trojan",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 9,
@@ -141,7 +141,7 @@
     "site": "https://github.com/wrfree/free",
     "url": "https://raw.githubusercontent.com/wrfree/free/main/v2",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 18,
@@ -171,7 +171,7 @@
     "id": 21,
     "remarks": "vveg26/getProxy",
     "site": "https://github.com/vveg26/getProxy",
-    "url": "https://raw.githubusercontent.com/vveg26/get_proxy/main/dist/v2ray.config.txt",
+    "url": "https://raw.githubusercontent.com/vveg26/big_node/main/combine/v2ray.config.txt",
     "update_method": "auto",
     "enabled": true
   },
@@ -209,11 +209,11 @@
   },
   {
     "id": 26,
-    "remarks": "learnhard-cn/free_proxy_ss",
+    "remarks": "learnhard-cn/free_proxy_ss重复",
     "site": "https://github.com/learnhard-cn/free_proxy_ss",
     "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/clash.provider.yaml|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/ssr/ssrsub|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/v2ray/v2raysub",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 27,
