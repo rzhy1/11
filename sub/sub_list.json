@@ -59,7 +59,7 @@
     "id": 7,
     "remarks": "oslook/clash-freenode",
     "site": "https://github.com/oslook/clash-freenode",
-    "url": "https://raw.githubusercontent.com/oslook/clash-freenode/main/clash.yaml",
+    "url": "https://raw.githubusercontent.com/oslook/clash-freenode/main/v2ray.txt",
     "update_method": "auto",
     "enabled": true
   },
