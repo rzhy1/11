@@ -26,6 +26,9 @@ def convert(subscription, target, other_config={}):
         # Your code to convert vless nodes here
         # Make sure to read the input_file and use the config for the conversion
         # Return the converted vless nodes as a string
+        with open(input_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        converted_vless_nodes = ""
         return converted_vless_nodes
 
     default_config = {
