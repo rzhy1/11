@@ -35,7 +35,7 @@ jobs:
     - name: Merge & speedtest
       run: |
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
-        chmod +x ./utils/litespeedtest/lite-linux-amd64
+        #chmod +x ./utils/litespeedtest/lite-linux-amd64
         python ./utils/main.py
     - name: Commit change
       run: |
