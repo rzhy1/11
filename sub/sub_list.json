@@ -41,11 +41,11 @@
   },
   {
     "id": 5,
-    "remarks": "Free-Node-Merge",
-    "site": "https://github.com/vpei",
-    "url": "https://raw.githubusercontent.com/vpei/free-node-1/main/o/allnode.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/node.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/nodecn.txt|https://raw.githubusercontent.com/vpei/free-node-1/main/o/proxies.txt",
+    "remarks": "Leon406/SubCrawler_vless",
+    "site": "https://github.com/Leon406/SubCrawler",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 6,
