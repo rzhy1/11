@@ -3,46 +3,9 @@
 import os, re, subprocess
 import argparse, configparser
 import base64, yaml
-import urllib.parse, socket
+import socket
 import geoip2.database
 
-def parse_vless_subscription(subscription_link):
-    parsed_link = urllib.parse.urlparse(subscription_link)
-    query_params = urllib.parse.parse_qs(parsed_link.query)
-
-    vless_info = {
-        "id": parsed_link.username,
-        "server": parsed_link.hostname,
-        "port": parsed_link.port,
-        "type": query_params.get("type")[0],
-        "encryption": query_params.get("encryption")[0],
-        "path": urllib.parse.unquote(query_params.get("path")[0]),
-        "security": query_params.get("security")[0],
-        "sni": query_params.get("sni")[0],
-        "packetEncoding": query_params.get("packetEncoding")[0]
-    }
-
-    return vless_info
-
-def vless_to_clash(vless_info):
-    clash_config = {
-        "name": "VLESS Node",
-        "type": "vmess",
-        "server": vless_info["server"],
-        "port": vless_info["port"],
-        "uuid": vless_info["id"],
-        "alterId": 64,  # 根据需要进行调整
-        "cipher": vless_info["encryption"],
-        "tls": True,
-        "network": vless_info["type"],
-        "ws-path": vless_info["path"],
-        "tlsServerName": vless_info["sni"],
-        "ws-headers": {
-            "Host": vless_info["sni"]
-        }
-    }
-
-    return clash_config
 
 def convert(subscription,target,other_config={}):
     """Wrapper for subconverter
