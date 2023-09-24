@@ -44,7 +44,7 @@
     "remarks": "Leon406/SubCrawler_vless",
     "site": "https://github.com/Leon406/SubCrawler",
     "url": "https://raw.githubusercontent.com/rzhy1/r/main/vless_nodes.yaml",
-    "update_method": "page_release",
+    "update_method": "auto",
     "enabled": true
   },
   {
