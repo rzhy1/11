@@ -44,7 +44,11 @@ class merge():
 
         content_set = set()
         for url in url_list:
-            content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
+            if 'vless://' in url['url']:  
+        # 使用特定方法处理VLESS协议的URL  
+                content = convert_vless(url['url'])  
+            else: 
+                content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             if content:
                 content_set.update(content.splitlines())
                 print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
