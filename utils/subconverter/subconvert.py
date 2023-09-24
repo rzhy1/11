@@ -43,6 +43,12 @@ def convert(subscription, target, other_config={}):
     work_dir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+    # Check if the target is 'vless'
+    if target == 'vless':
+        output = vlessconverter('./temp', config)
+    else:
+        output = subconverterhandler('./temp', config)
+
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
     else:
@@ -78,12 +84,6 @@ def convert(subscription, target, other_config={}):
 
     with open('./temp', 'w', encoding='utf-8') as temp_file:
         temp_file.write(clash_provider)
-
-    # Check if the target is 'vless'
-    if target == 'vless':
-        output = vlessconverter('./temp', config)
-    else:
-        output = subconverterhandler('./temp', config)
 
     os.chdir(work_dir)
     return output
