@@ -1,56 +1,34 @@
 #!/usr/bin/env python3
 
+import os, re, subprocess
+import argparse, configparser
+import base64, yaml
+import socket
+import geoip2.database
 
-import os
-import re
-import subprocess
-import argparse
-import configparser
-import base64
-import yaml
 
-def convert(subscription, target, other_config={}):
+def convert(subscription,target,other_config={}):
     """Wrapper for subconverter
-    subscription: subscription url or content string or local file path, add URL support.
+    subscription: subscription url or content string or local file path, add url support.
     target: target subconvert configuration
     other_config:
         deduplicate: whether to deduplicate
         keep_nodes: amounts of nodes to keep when they are deduplicated
         include: include string in remark
         exclude: exclude string in remark
-        config: output subscription config
+        config: output subcription config
     """
-
-    def vlessconverter(input_file, config):
-        """Convert vless nodes to the desired format."""
-        # Your code to convert vless nodes here
-        # Make sure to read the input_file and use the config for the conversion
-        # Return the converted vless nodes as a string
-        with open(input_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        converted_vless_nodes = ""
-        return converted_vless_nodes
 
     default_config = {
         'target': target,
-        'deduplicate': False,
-        'keep_nodes': 1,
-        'rename': '',
-        'include': '',
-        'exclude': '',
-        'config': ''
+        'deduplicate':False,'keep_nodes':1,
+        'rename':'','include':'','exclude':'','config':''
     }
     default_config.update(other_config)
     config = default_config
-
+    
     work_dir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-    # Check if the target is 'vless'
-    if target == 'vless':
-        output = vlessconverter('./temp', config)
-    else:
-        output = subconverterhandler('./temp', config)
 
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
@@ -78,16 +56,16 @@ def convert(subscription, target, other_config={}):
                     clash_provider = subconverterhandler('./subscription')
                     os.remove('./subscription')
             except Exception:
-                print('No nodes were found in the URL.')
+                print('No nodes were found in url.')
                 os.chdir(work_dir)
                 return ''
 
     if config['deduplicate']:
-        clash_provider = deduplicate(clash_provider, config['keep_nodes'])
+        clash_provider = deduplicate(clash_provider,config['keep_nodes'])
 
-    with open('./temp', 'w', encoding='utf-8') as temp_file:
+    with open('./temp', 'w', encoding= 'utf-8') as temp_file:
         temp_file.write(clash_provider)
-
+    output = subconverterhandler('./temp',config)
     os.chdir(work_dir)
     return output
 
