@@ -1,10 +1,3 @@
-trojan://opentunnel.net-newdday@cat-1.opensvr.net:443?allowInsecure=0#%F0%9F%87%A8%F0%9F%87%A6%20Relay_%F0%9F%87%A8%F0%9F%87%A6CA-%F0%9F%87%A8%F0%9F%87%A6CA_04
-trojan://2b2d6a27-6e72-4090-bb53-26f45558a0bc@ap.stablize.top:443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%A9%F0%9F%87%AADE_22
-trojan://5b51e0af-08af-4208-b834-6d6ac5721837@sg.stablize.top:443?allowInsecure=0#%F0%9F%87%BA%F0%9F%87%B8%20Relay_%F0%9F%87%BA%F0%9F%87%B8US-%F0%9F%87%B8%F0%9F%87%ACSG_23
-trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@hk02.trojanyyds.xyz:443?allowInsecure=0#US_24
-trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@sk01.trojanyyds.xyz:443?allowInsecure=0#US_25
-trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@tw01.trojanyyds.xyz:443?allowInsecure=0#US_26
-trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@hk03.trojanyyds.xyz:443?allowInsecure=0#US_27
-trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_28
-trojan://36fe28a331638747@5.44.249.42:3306?allowInsecure=0#ZZ_29
-trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_30
+trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_10
+trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_11
+trojan://36fe28a331638747@5.44.249.42:3306?allowInsecure=0#ZZ_12
