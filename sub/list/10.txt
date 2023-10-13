@@ -1,3 +1,5 @@
-trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_34
-trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_35
-trojan://36fe28a331638747@5.44.249.42:3306?allowInsecure=0#ZZ_36
+trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@hk03.trojanyyds.xyz:443?allowInsecure=0#US_40
+trojan://8d1e94cd-23cf-4267-b630-c6894e6e1b4d@tw01.trojanyyds.xyz:443?allowInsecure=0#US_41
+trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_42
+trojan://36fe28a331638747@5.44.249.42:3306?allowInsecure=0#ZZ_43
+trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_44
