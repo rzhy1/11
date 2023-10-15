@@ -1,3 +1,4 @@
-trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_41
+trojan://ee5d4ca4-cb15-4201-ba4f-4709b5a833d4@v234.jsvpn.xyz:443?allowInsecure=0#%F0%9F%87%B7%F0%9F%87%BA%20Relay_%F0%9F%87%B7%F0%9F%87%BARU-%F0%9F%87%B7%F0%9F%87%BARU_07
+trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_41
 trojan://36fe28a331638747@5.44.249.42:3306?allowInsecure=0#ZZ_42
-trojan://faf42aa0a9ad4c1e@5.44.249.50:3306?allowInsecure=0#ZZ_43
+trojan://5227e84e4f026b71@5.44.249.43:3306?allowInsecure=0#ZZ_43
