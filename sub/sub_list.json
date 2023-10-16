@@ -171,7 +171,7 @@
     "id": 21,
     "remarks": "vveg26/getProxy",
     "site": "https://github.com/vveg26/getProxy",
-    "url": "https://raw.githubusercontent.com/vveg26/big_node/main/combine/v2ray.config.txt",
+    "url": "https://raw.githubusercontent.com/vveg26/chromego_merge/main/sub/merged_warp_proxies_new.yaml",
     "update_method": "auto",
     "enabled": true
   },
