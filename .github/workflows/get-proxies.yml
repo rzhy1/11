@@ -28,7 +28,9 @@ jobs:
     - name: Set timezone
       run: sudo timedatectl set-timezone 'Asia/Shanghai'
     - name: Install dependencies
-      run: pip install -r ./utils/requirements.txt
+      run: |
+        pip install --upgrade pip
+        pip install -r ./utils/requirements.txt
     - name: Start Clash proxy environment
       run: |
         sudo sh ./utils/scripts/set_proxy.sh
