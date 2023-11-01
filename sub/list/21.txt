@@ -1,1 +1,2 @@
 trojan://72ac875a-f5b9-461e-a7a4-942b468b0d83@a:1?allowInsecure=1&sni=gw.alicdn.com#%E6%B2%B9%E7%AE%A1-%E7%BB%B5%E9%98%BF%E7%BE%8A
+ss://MjAyMi1ibGFrZTMtY2hhY2hhMjAtcG9seTEzMDU6MmZ2VDhEU201Z1E5bmpEdUwwbGljQk4yOVRWSmV1UzVzYnQyWkJ3VWRVcz0@45.145.72.223:19981#meta_ss_81
