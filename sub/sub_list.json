@@ -57,10 +57,10 @@
   },
   {
     "id": 7,
-    "remarks": "oslook/clash-freenode",
-    "site": "https://github.com/oslook/clash-freenode",
-    "url": "https://raw.githubusercontent.com/oslook/clash-freenode/main/v2ray.txt",
-    "update_method": "auto",
+    "remarks": "freenode.openrunner.net",
+    "site": "https://freenode.openrunner.net/",
+    "url": "https://freenode.openrunner.net/uploads/20231118-v2ray.txt",
+    "update_method": "change_date",
     "enabled": true
   },
   {

@@ -62,7 +62,10 @@ class update():
             today = datetime.today().strftime('%m%d')
             url_front = 'https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/'
             url_end = '.txt'
-            new_url = url_front + today + url_end  
+            new_url = url_front + today + url_end
+            
+        if id == 7:
+            new_url = datetime.today().strftime('https://freenode.openrunner.net/uploads/%Y%m%d-v2ray.txt')
             
         if id == 11:
             this_month = datetime.today().strftime('%m').lstrip('0')
