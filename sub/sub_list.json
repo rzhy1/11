@@ -59,7 +59,7 @@
     "id": 7,
     "remarks": "freenode.openrunner.net",
     "site": "https://freenode.openrunner.net/",
-    "url": "https://freenode.openrunner.net/uploads/20231213-v2ray.txt",
+    "url": "https://freenode.openrunner.net/uploads/20231214-v2ray.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2023/12/20231213.txt",
+    "url": "https://nodefree.org/dy/2023/12/20231214.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -323,7 +323,7 @@
     "id": 40,
     "remarks": "ClashNode",
     "site": "https://clashnode.com/f/freenode",
-    "url": "https://clashnode.com/wp-content/uploads/2023/12/20231213.txt",
+    "url": "https://clashnode.com/wp-content/uploads/2023/12/20231214.txt",
     "update_method": "change_date",
     "enabled": true
   }
