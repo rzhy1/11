@@ -59,7 +59,7 @@
     "id": 7,
     "remarks": "freenode.openrunner.net",
     "site": "https://freenode.openrunner.net/",
-    "url": "https://freenode.openrunner.net/uploads/20240128-v2ray.txt",
+    "url": "https://freenode.openrunner.net/uploads/20240129-v2ray.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": "https://oss.v2rayse.com/proxies/data/2024-01-28/kNCuA8D.txt",
+    "url": "https://oss.v2rayse.com/proxies/data/2024-01-29/ALzo4hF.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -291,7 +291,7 @@
     "id": 36,
     "remarks": "Nodefree.org",
     "site": "https://github.com/Fukki-Z/nodefree",
-    "url": "https://nodefree.org/dy/2024/01/20240128.txt",
+    "url": "https://nodefree.org/dy/2024/01/20240129.txt",
     "update_method": "change_date",
     "enabled": true
   },
