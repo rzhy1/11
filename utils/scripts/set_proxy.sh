@@ -1,5 +1,5 @@
 # Download clash
-wget -O clash.gz https://github.com/Dreamacro/clash/releases/download/v1.18.0/clash-linux-amd64-v1.18.0.gz
+wget -O clash.gz https://github.com/MetaCubeX/subconverter/releases/download/Alpha/subconverter_linux64.tar.gz
 gunzip clash.gz
 # Initialize Clash
 chmod +x ./clash && ./clash &
