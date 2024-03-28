@@ -29,7 +29,20 @@ def convert(subscription,target,other_config={}):
     
     work_dir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
+    
+    if subscription[:7] == 'vless://':
+        vless_match = re.match(r"vless://(.+?)@(.+?):(\d+)", subscription)
+        if vless_match:
+            uuid = vless_match.group(1)
+            server = vless_match.group(2)
+            port = vless_match.group(3)
+            config['type'] = 'vless'
+            config['uuid'] = uuid
+            config['server'] = server
+            config['port'] = port
+            # 处理其他vless节点参数，例如encryption、security、sni、type、path等
+            # 根据实际情况添加到config字典中
+    
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
     else:
@@ -97,6 +110,11 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
     configparse.set(target,'include',include)
     configparse.set(target,'exclude',exclude)
     configparse.set(target,'config',config)
+    # 新增设置vless配置
+    configparse.set(target, 'type', 'vless')
+    configparse.set(target, 'tls', 'tls')
+    configparse.set(target, 'encryption', 'none')  # 根据实际需要进行设置
+    configparse.set(target, 'security', 'none')  # 根据实际需要进行设置
 
     origin_configparse = configparser.ConfigParser()
     origin_configparse.read('./generate.ini',encoding='utf-8')
