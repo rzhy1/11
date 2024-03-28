@@ -1,6 +1,7 @@
 # Download clash
 wget -O clash.gz https://github.com/MetaCubeX/mihomo/releases/download/v1.18.2/mihomo-linux-amd64-v1.18.2.gz
 gunzip clash.gz
+mv mihomo-linux-amd64 clash  # 重命名为 clash
 # Initialize Clash
 chmod +x ./clash && ./clash &
 # Setup proxychains
