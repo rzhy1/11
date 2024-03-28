@@ -1,5 +1,5 @@
 # Download clash
-wget -O clash.gz https://github.com/MetaCubeX/subconverter/releases/download/Alpha/subconverter_linux64.tar.gz
+wget -O clash.gz https://github.com/MetaCubeX/mihomo/releases/download/v1.18.2/mihomo-linux-amd64-v1.18.2.gz
 gunzip clash.gz
 # Initialize Clash
 chmod +x ./clash && ./clash &
