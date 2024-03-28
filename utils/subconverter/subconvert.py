@@ -3,7 +3,7 @@
 import os, re, subprocess
 import argparse, configparser
 import base64, yaml
-import socket
+import socket, urllib.parse
 import geoip2.database
 
 
@@ -36,13 +36,29 @@ def convert(subscription,target,other_config={}):
             uuid = vless_match.group(1)
             server = vless_match.group(2)
             port = vless_match.group(3)
-            config['type'] = 'vless'
-            config['uuid'] = uuid
-            config['server'] = server
-            config['port'] = port
-            # 处理其他vless节点参数，例如encryption、security、sni、type、path等
-            # 根据实际情况添加到config字典中
-    
+
+            # Extract additional VLESS parameters from the URL
+            parsed_url = urllib.parse.urlparse(subscription)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            encryption = query_params.get('encryption', ['none'])[0]
+            security = query_params.get('security', ['none'])[0]
+            sni = query_params.get('sni', [server])[0]  # Use server as default SNI
+            type = query_params.get('type', ['ws'])[0]
+            path = urllib.parse.unquote(query_params.get('path', ['/'])[0])
+
+            # Create Clash configuration for VLESS node
+            config['proxies'] = [{
+                'name': parsed_url.fragment,  # Use remark as name
+                'type': 'vless',
+                'server': server,
+                'port': int(port),
+                'uuid': uuid,
+                'cipher': encryption,  # Use encryption as cipher
+                'tls': security == 'tls',
+                'sni': sni,
+                'ws-path': path,  # Use path for ws-path
+            }]
+            
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
     else:
@@ -110,11 +126,6 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
     configparse.set(target,'include',include)
     configparse.set(target,'exclude',exclude)
     configparse.set(target,'config',config)
-    # 新增设置vless配置
-    configparse.set(target, 'type', 'vless')
-    configparse.set(target, 'tls', 'tls')
-    configparse.set(target, 'encryption', 'none')  # 根据实际需要进行设置
-    configparse.set(target, 'security', 'none')  # 根据实际需要进行设置
 
     origin_configparse = configparser.ConfigParser()
     origin_configparse.read('./generate.ini',encoding='utf-8')
