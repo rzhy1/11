@@ -175,9 +175,9 @@ def deduplicate(clash_provider, keep_nodes=1):
                         cipher = proxy.get('cipher')
                         serviceName = proxy.get('serviceName')  # 添加对 serviceName 的支持
 
-                    else server and port and f"{server}:{port}" not in unique_proxies:
-                        deduplicated_proxies.append(proxy)
-                        unique_proxies.add(f"{server}:{port}")
+                        if server and port and f"{server}:{port}" not in unique_proxies:
+                            deduplicated_proxies.append(proxy)
+                            unique_proxies.add(f"{server}:{port}")
             else:
                 print(f"Invalid proxy line format: {line}")
         except Exception as e:
