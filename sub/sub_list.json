@@ -301,7 +301,7 @@
     "site": "https://github.com/Rokate/Proxy-Sub",
     "url": "https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_ssr.yml|https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_v2ray.yml|https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_trojan.yml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 38,
@@ -325,6 +325,6 @@
     "site": "https://clashnode.com/f/freenode",
     "url": "https://clashnode.com/wp-content/uploads/2024/03/20240328.txt",
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   }
 ]
