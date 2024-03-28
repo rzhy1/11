@@ -29,7 +29,7 @@ def convert(subscription,target,other_config={}):
     
     work_dir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-            
+
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
     else:
@@ -106,9 +106,9 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
         configparse.write(ini,space_around_delimiters=False)
 
     if os.name == 'posix':
-        args = ['./subconverter-linux-amd64', '-g', '--artifact', target, '--vless']
+        args = ['./subconverter-linux-amd64', '-g', '--artifact', target]
     elif os.name == 'nt':
-        args = ['./subconverter-windows-amd64.exe', '-g', '--artifact', target, '--vless']
+        args = ['.\subconverter-windows-amd64.exe', '-g', '--artifact', target]
     subconverter = subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,universal_newlines=True,encoding='utf-8',bufsize=1)
     logs = subconverter.stdout.readlines()
     subconverter.wait()
@@ -170,14 +170,10 @@ def deduplicate(clash_provider, keep_nodes=1):
                 for proxy in proxies:
                     server = proxy.get('server')
                     port = proxy.get('port')
-                    if proxy.get('type') == 'vless':
-                        uuid = proxy.get('uuid')
-                        cipher = proxy.get('cipher')
-                        serviceName = proxy.get('serviceName')  # 添加对 serviceName 的支持
 
-                        if server and port and f"{server}:{port}" not in unique_proxies:
-                            deduplicated_proxies.append(proxy)
-                            unique_proxies.add(f"{server}:{port}")
+                    if server and port and f"{server}:{port}" not in unique_proxies:
+                        deduplicated_proxies.append(proxy)
+                        unique_proxies.add(f"{server}:{port}")
             else:
                 print(f"Invalid proxy line format: {line}")
         except Exception as e:
