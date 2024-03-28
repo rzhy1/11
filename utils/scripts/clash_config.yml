@@ -25,15 +25,7 @@ proxy-groups:
     url: 'http://www.gstatic.com/generate_204'
     interval: 300
 
-proxy-providers:
-  all:
-    type: http
-    url: "https://proxies.bihai.cf/clash/proxies?c=HK,TW,JP,SG"
-    path: bihai/provider-cn.yaml
-    health-check:
-      enable: true
-      interval: 600
-      url: http://www.gstatic.com/generate_204
+
 
 rules:
   - DOMAIN-SUFFIX,githubusercontent.com,DIRECT
