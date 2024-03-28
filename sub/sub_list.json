@@ -85,7 +85,7 @@
     "site": "https://proxy.yugogo.xyz",
     "url": "https://proxy.yugogo.xyz/trojan/sub",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 11,
@@ -109,7 +109,7 @@
     "site": "https://proxy.yugogo.xyz",
     "url": "https://proxy.yugogo.xyz/vmess/sub",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 14,
@@ -117,7 +117,7 @@
     "site": "https://proxy.yugogo.xyz",
     "url": "https://proxy.yugogo.xyz/sip002/sub",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 15,
@@ -125,7 +125,7 @@
     "site": "https://github.com/Jsnzkpg/Jsnzkpg",
     "url": "https://raw.githubusercontent.com/Jsnzkpg/Jsnzkpg/Jsnzkpg/Jsnzkpg",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 16,
@@ -173,7 +173,7 @@
     "site": "https://github.com/vveg26/getProxy",
     "url": "https://raw.githubusercontent.com/vveg26/chromego_merge/main/sub/merged_proxies_new.yaml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 22,
