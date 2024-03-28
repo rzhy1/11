@@ -3,7 +3,7 @@
 import os, re, subprocess
 import argparse, configparser
 import base64, yaml
-import socket, urllib.parse
+import socket
 import geoip2.database
 
 
@@ -29,35 +29,6 @@ def convert(subscription,target,other_config={}):
     
     work_dir = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    
-    if subscription[:7] == 'vless://':
-        vless_match = re.match(r"vless://(.+?)@(.+?):(\d+)", subscription)
-        if vless_match:
-            uuid = vless_match.group(1)
-            server = vless_match.group(2)
-            port = vless_match.group(3)
-
-            # Extract additional VLESS parameters from the URL
-            parsed_url = urllib.parse.urlparse(subscription)
-            query_params = urllib.parse.parse_qs(parsed_url.query)
-            encryption = query_params.get('encryption', ['none'])[0]
-            security = query_params.get('security', ['none'])[0]
-            sni = query_params.get('sni', [server])[0]  # Use server as default SNI
-            type = query_params.get('type', ['ws'])[0]
-            path = urllib.parse.unquote(query_params.get('path', ['/'])[0])
-
-            # Create Clash configuration for VLESS node
-            config['proxies'] = [{
-                'name': parsed_url.fragment,  # Use remark as name
-                'type': 'vless',
-                'server': server,
-                'port': int(port),
-                'uuid': uuid,
-                'cipher': encryption,  # Use encryption as cipher
-                'tls': security == 'tls',
-                'sni': sni,
-                'ws-path': path,  # Use path for ws-path
-            }]
             
     if subscription[:8] == 'https://':
         clash_provider = subconverterhandler(subscription)
@@ -135,9 +106,9 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
         configparse.write(ini,space_around_delimiters=False)
 
     if os.name == 'posix':
-        args = ['./subconverter-linux-amd64', '-g', '--artifact', target]
+        args = ['./subconverter-linux-amd64', '-g', '--artifact', target, '--vless']
     elif os.name == 'nt':
-        args = ['./subconverter-windows-amd64.exe', '-g', '--artifact', target]
+        args = ['./subconverter-windows-amd64.exe', '-g', '--artifact', target, '--vless']
     subconverter = subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,universal_newlines=True,encoding='utf-8',bufsize=1)
     logs = subconverter.stdout.readlines()
     subconverter.wait()
@@ -199,8 +170,12 @@ def deduplicate(clash_provider, keep_nodes=1):
                 for proxy in proxies:
                     server = proxy.get('server')
                     port = proxy.get('port')
+                    if proxy.get('type') == 'vless':
+                        uuid = proxy.get('uuid')
+                        cipher = proxy.get('cipher')
+                        serviceName = proxy.get('serviceName')  # 添加对 serviceName 的支持
 
-                    if server and port and f"{server}:{port}" not in unique_proxies:
+                    else server and port and f"{server}:{port}" not in unique_proxies:
                         deduplicated_proxies.append(proxy)
                         unique_proxies.add(f"{server}:{port}")
             else:
