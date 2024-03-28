@@ -137,7 +137,7 @@ def subconverterhandler(subscription,input_config={'target':'transfer','rename':
     if os.name == 'posix':
         args = ['./subconverter-linux-amd64', '-g', '--artifact', target]
     elif os.name == 'nt':
-        args = ['.\subconverter-windows-amd64.exe', '-g', '--artifact', target]
+        args = ['./subconverter-windows-amd64.exe', '-g', '--artifact', target]
     subconverter = subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,universal_newlines=True,encoding='utf-8',bufsize=1)
     logs = subconverter.stdout.readlines()
     subconverter.wait()
