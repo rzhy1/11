@@ -25,9 +25,6 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r .\utils\requirements.txt
-    - name: Start Clash proxy environment
-      run: |
-        .\utils\scripts\set_proxy.bat
     - name: Merge & speedtest
       run: |
         .\utils\subconverter\subconverter-windows-amd64.exe
