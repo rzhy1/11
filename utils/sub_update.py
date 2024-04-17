@@ -127,10 +127,10 @@ class update():
             url_end = '.txt'
             new_url = url_front + this_year + '/' + this_month + '/' + today + url_end
 
-        if self.url_updated(new_url):
-            return new_url
-        else:
-            return current_url
+            if self.url_updated(new_url):
+                return new_url
+            else:
+                return current_url
 
     def find_link(self, id, current_url):
   
