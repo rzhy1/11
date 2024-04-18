@@ -229,7 +229,7 @@
     "site": "https://oss.v2rayse.com",
     "url": "https://oss.v2rayse.com/proxies/data/2024-04-18/BeJsAke.txt",
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 29,
