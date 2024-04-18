@@ -59,7 +59,7 @@
     "id": 7,
     "remarks": "freenode.openrunner.net",
     "site": "https://freenode.openrunner.net/",
-    "url": https://freenode.openrunner.net/uploads/20240418-clash.yaml,
+    "url": "https://freenode.openrunner.net/uploads/20240418-clash.yaml",
     "update_method": "change_date",
     "enabled": true
   },
