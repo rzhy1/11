@@ -3,9 +3,9 @@
     "id": 0,
     "remarks": "pojiezhiyuanjun/freev2",
     "site": "https://github.com/pojiezhiyuanjun/freev2",
-    "url": null,
+    "url": https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0406.txt,
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 1,
@@ -59,7 +59,7 @@
     "id": 7,
     "remarks": "freenode.openrunner.net",
     "site": "https://freenode.openrunner.net/",
-    "url": null,
+    "url": https://freenode.openrunner.net/uploads/20240418-clash.yaml,
     "update_method": "change_date",
     "enabled": true
   },
@@ -93,7 +93,7 @@
     "site": "https://agit.ai/12/a/",
     "url": null,
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 12,
@@ -153,8 +153,8 @@
   },
   {
     "id": 19,
-    "remarks": "ObcbO/auto-subscribe",
-    "site": "https://github.com/ObcbO/auto-subscribe",
+    "remarks": "mfuu/v2ray",
+    "site": "https://github.com/mfuu/v2ray/",
     "url": "https://raw.githubusercontent.com/mfuu/v2ray/master/v2ray",
     "update_method": "auto",
     "enabled": true
@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": null,
+    "url": https://oss.v2rayse.com/proxies/data/2024-04-18/BeJsAke.txt,
     "update_method": "change_date",
     "enabled": true
   },
@@ -259,7 +259,7 @@
     "id": 32,
     "remarks": "nodefree.org",
     "site": "https://nodefree.org",
-    "url": "https://nodefree.org/dy/2023/02/20230224.txt",
+    "url": "https://nodefree.org/dy/2024/04/20240418.txt",
     "update_method": "change_date",
     "enabled": false
   },
