@@ -227,7 +227,7 @@
     "id": 28,
     "remarks": "www.cfmem.com",
     "site": "https://oss.v2rayse.com",
-    "url": "https://oss.v2rayse.com/proxies/data/2024-04-17/BeJsAke.txt",
+    "url": "https://oss.v2rayse.com/proxies/data/2024-04-18/BeJsAke.txt",
     "update_method": "change_date",
     "enabled": true
   },
@@ -269,7 +269,7 @@
     "site": "https://github.com/Pawdroid/Free-servers",
     "url": "https://shadowshare.v2cross.com/publicserver/servers/temp/6etNgGmDo0kilQJq",
     "update_method": "page_release",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 34,
