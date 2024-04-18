@@ -44,9 +44,6 @@ class merge():
 
         content_set = set()
         for url in url_list:
-            if url['url'] is None:
-                print(f"Error: URL for {url['remarks']} is None.")
-                continue  # 跳过当前循环
             content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             print(f"Content: {content}")  # 打印 convert 函数的返回值
             if content:
