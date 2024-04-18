@@ -61,7 +61,7 @@
     "site": "https://freenode.openrunner.net/",
     "url": "https://freenode.openrunner.net/uploads/20240417-clash.yaml",
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 8,
@@ -189,7 +189,7 @@
     "site": "https://github.com/ronghuaxueleng/get_v2",
     "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/combine.yaml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 24,
@@ -197,7 +197,7 @@
     "site": "https://github.com/anaer/Sub",
     "url": "https://raw.githubusercontent.com/anaer/Sub/main/clash.yaml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 25,
@@ -221,7 +221,7 @@
     "site": "https://github.com/ronghuaxueleng/get_v2",
     "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/jiang.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/cfmem.yaml",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 28,
