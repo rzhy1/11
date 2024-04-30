@@ -119,6 +119,10 @@ class update():
             new_url = url_front + this_year + '/' + this_month + '/' + today + url_end
         if id == 40:
             new_url = datetime.today().strftime('https://clashgithub.com/wp-content/uploads/rss/%Y%m%d.txt')
+            if self.url_updated(new_url):
+                return new_url
+            else:
+                return current_url
         if id == 36:
             today = datetime.today().strftime('%Y%m%d')
             this_month = datetime.today().strftime('%m')
