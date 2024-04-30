@@ -66,6 +66,10 @@ class update():
             
         if id == 7:
             new_url = datetime.today().strftime('https://freenode.openrunner.net/uploads/%Y%m%d-clash.yaml')
+            if self.url_updated(new_url):
+                return new_url
+            else:
+                return current_url
             
         if id == 111:
             this_month = datetime.today().strftime('%m').lstrip('0')
