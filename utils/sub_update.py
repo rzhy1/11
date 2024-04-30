@@ -118,7 +118,7 @@ class update():
             url_end = '.txt'
             new_url = url_front + this_year + '/' + this_month + '/' + today + url_end
         if id == 40:
-            new_url = datetime.today().strftime('https://clashnode.com/wp-content/uploads/%Y/%m/%Y%m%d.txt')
+            new_url = datetime.today().strftime('https://clashgithub.com/wp-content/uploads/rss/%Y%m%d.txt')
         if id == 36:
             today = datetime.today().strftime('%Y%m%d')
             this_month = datetime.today().strftime('%m')
