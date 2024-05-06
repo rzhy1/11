@@ -31,9 +31,9 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r ./utils/requirements.txt
-    - name: Start Clash proxy environment
-      run: |
-        sudo sh ./utils/scripts/set_proxy.sh
+#    - name: Start Clash proxy environment
+#      run: |
+#        sudo sh ./utils/scripts/set_proxy.sh
     - name: Merge & speedtest
       run: |
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
