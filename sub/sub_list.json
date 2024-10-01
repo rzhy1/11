@@ -75,7 +75,7 @@
     "id": 9,
     "remarks": "Leon406/SubCrawler",
     "site": "https://github.com/Leon406/SubCrawler",
-    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/all3",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/refs/heads/main/sub/share/all5",
     "update_method": "auto",
     "enabled": true
   },
@@ -131,7 +131,7 @@
     "id": 16,
     "remarks": "ermaozi/get_subscribe",
     "site": "https://github.com/ermaozi/get_subscribe",
-    "url": "https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt",
+    "url": "https://github.com/ermaozi/get_subscribe/blob/main/subscribe/clash.yml",
     "update_method": "auto",
     "enabled": true
   },
