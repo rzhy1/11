@@ -34,6 +34,13 @@ jobs:
 #    - name: Start Clash proxy environment
 #      run: |
 #        sudo sh ./utils/scripts/set_proxy.sh
+    - name: 安装crosstool-ng
+          git clone https://github.com/crosstool-ng/crosstool-ng.git
+          cd crosstool-ng
+          ./bootstrap
+          ./configure --prefix=/usr
+          make
+          sudo make install
     - name: Merge & speedtest
       run: |
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
