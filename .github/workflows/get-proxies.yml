@@ -41,6 +41,8 @@ jobs:
           ./configure --prefix=/usr
           make
           sudo make install
+          which ct-ng
+          ct-ng --version
     - name: Merge & speedtest
       run: |
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
