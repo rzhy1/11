@@ -35,6 +35,7 @@ jobs:
 #      run: |
 #        sudo sh ./utils/scripts/set_proxy.sh
     - name: 安装crosstool-ng
+      run: |
           git clone https://github.com/crosstool-ng/crosstool-ng.git
           cd crosstool-ng
           ./bootstrap
