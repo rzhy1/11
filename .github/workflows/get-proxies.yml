@@ -46,8 +46,6 @@ jobs:
         git pull origin master
         git add ./sub
         git add ./update
-        git add ./Eternity
-        git add ./Eternity.yaml
         git add README.md
         git commit -m "$(date '+%Y-%m-%d %H:%M:%S')合并节点"
     - name: Push
