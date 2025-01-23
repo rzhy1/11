@@ -233,27 +233,27 @@
   },
   {
     "id": 29,
-    "remarks": "V2RayAggregator数量多",
-    "site": "https://github.com/V2RayAggregator",
-    "url": "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_base64.txt",
+    "remarks": "xiaoji235/airport-free",
+    "site": "https://github.com/xiaoji235/airport-free",
+    "url": "https://cdn.jsdelivr.net/gh/xiaoji235/airport-free/v2ray.txt",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 30,
-    "remarks": "poduv/poduv",
-    "site": "https://github.com/poduv/poduv",
-    "url": "https://raw.githubusercontent.com/poduv/poduv/i/long",
+    "remarks": "dongchengjie/airport",
+    "site": "https://github.com/dongchengjie/airport",
+    "url": "https://raw.githubusercontent.com/dongchengjie/airport/main/subs/merged/tested_within.yaml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 31,
-    "remarks": "Jason6111/TopFreeProxies",
-    "site": "https://github.com/Jason6111/TopFreeProxies",
-    "url": "https://raw.githubusercontent.com/Jason6111/TopFreeProxies/main/Eternity",
+    "remarks": "acymz/AutoVPN",
+    "site": "https://github.com/acymz/AutoVPN",
+    "url": "https://raw.githubusercontent.com/acymz/AutoVPN/refs/heads/main/data/V2.txt",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 32,
@@ -281,11 +281,11 @@
   },
   {
     "id": 35,
-    "remarks": "kxswa/k",
-    "site": "https://github.com/kxswa/k",
-    "url": "https://raw.githubusercontent.com/kxswa/k/k/base64",
+    "remarks": "Flikify/getNode",
+    "site": "https://github.com/Flikify/getNode",
+    "url": "https://raw.githubusercontent.com/Flikify/getNode/refs/heads/main/clash.yaml",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 36,
@@ -297,11 +297,11 @@
   },
   {
     "id": 37,
-    "remarks": "Rokate/Proxy-Sub",
-    "site": "https://github.com/Rokate/Proxy-Sub",
-    "url": "https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_ssr.yml|https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_v2ray.yml|https://raw.githubusercontent.com/Rokate/Proxy-Sub/main/clash/clash_trojan.yml",
+    "remarks": "mai19950/free_nodes",
+    "site": "https://github.com/mai19950/free_nodes",
+    "url": "https://raw.githubusercontent.com/mai19950/free_nodes/refs/heads/main/sub/v2ray/base64",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 38,
