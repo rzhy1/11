@@ -1,4 +1,4 @@
-name: Get Proxies
+name: Check Version
 
 # 触发条件
 on:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   main:
-    name: Merge & speedtest
+    name: Check Version
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
@@ -19,24 +19,16 @@ jobs:
       with:
         python-version: '3.x'
         cache: 'pip'
-    - uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/run_in_Actions/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: check version
+    - name: Check Version
       run: |
         python check_version.py >> README.md
     - name: Commit change
       run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "GitHub Actions"
-        git pull origin master
-        git add ./sub
-        git add ./update
-        git add README.md
-        git commit -m "$(date '+%Y-%m-%d %H:%M:%S')合并节点"
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git pull origin master
+          git add README.md
+          git commit -m "$(date '+%Y-%m-%d %H:%M:%S') 更新版本信息"
     - name: Push
       uses:  ad-m/github-push-action@master
       with:
