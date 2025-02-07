@@ -35,7 +35,8 @@ current_versions = {
     "expat": "2.6.4",
     "libmetalink": "0.1.3",
     "gnutls": "3.8.8",
-    "openssl": "1.1.1w", # 或 "3.4.0"，脚本中注释的是 3.4.0，实际下载的是 1.1.1w
+    "nghttp2": "1.64.0",
+    "libmicrohttpd": "1.0.1",
 }
 
 ## 重试函数 (支持代理)
@@ -48,7 +49,7 @@ def retry(func, url, max_retries=5, delay=2, proxies=None):
             return response
         except requests.exceptions.RequestException as e:
             attempts += 1
-            print(f"请求失败，重试中 ({attempts}/{max_retries})...")
+            print(f"- {program}请求失败，重试中 ({attempts}/{max_retries})...")
             if attempts == max_retries:
                 raise e
             time.sleep(delay)
@@ -238,38 +239,42 @@ def get_latest_version(program, proxies=None):
         return latest_version, download_url
 
     elif program == "gnutls":
-        base_url = "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/" # Direct to v3.8 as base, will improve later if needed
-        response = retry(requests.get, base_url, proxies=proxies) # Go directly to v3.8 for now
-        matches = re.findall(r'href="gnutls-([\d.]+)\.tar\.xz"', response.text) # Regex in v3.8 dir
+        base_url = "https://www.gnupg.org/ftp/gcrypt/gnutls/" # 返回到基础 URL 以列出版本
+        response = retry(requests.get, base_url, proxies=proxies)
+        version_dir_matches = re.findall(r'href="v([\d.]+)"', response.text) # 再次查找版本目录
+        if not version_dir_matches:
+            return current_versions["gnutls"], f"https://www.gnupg.org/ftp/gcrypt/gnutls/gnutls-{current_versions['gnutls']}.tar.xz"
+        latest_version_dir = max(version_dir_matches, key=version.parse) # 获取最新的版本目录
+        version_url = base_url + f"v{latest_version_dir}/" # 构建最新的版本目录的 URL
+        version_response = retry(requests.get, version_url, proxies=proxies) # 获取最新的版本目录页面
+        matches = re.findall(r'href="gnutls-([\d.]+)\.tar\.xz"', version_response.text) # 在最新的版本目录中查找 tar.xz 文件
         if not matches:
              return current_versions["gnutls"], f"https://www.gnupg.org/ftp/gcrypt/gnutls/gnutls-{current_versions['gnutls']}.tar.xz"
-        latest_version = max(matches, key=lambda x: version.parse(x))[0]
-        download_url = f"https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-{latest_version}.tar.xz" # Hardcoded v3.8 for now, if needed will improve
+        latest_version = max(matches, key=version.parse) # Corrected max call with version.parse as key
+        download_url = f"https://www.gnupg.org/ftp/gcrypt/gnutls/v{latest_version_dir}/gnutls-{latest_version}.tar.xz" # 使用最新的版本目录构建正确的 URL
         return latest_version, download_url
-
-
-    elif program == "openssl":
-        base_url = "https://www.openssl.org/source/old/1.1.1/" # Direct to 1.1.1 as base, will improve later if needed
-        response = retry(requests.get, base_url, proxies=proxies) # Go directly to 1.1.1 for now
-        matches = re.findall(r'href="openssl-([\d.]+[a-z]?)\.tar\.gz"', response.text) # Regex for openssl versions, incl. letters
-        if not matches:
-            return current_versions["openssl"], f"https://www.openssl.org/source/old/openssl-{current_versions['openssl']}.tar.gz"
-        # Custom version comparison for openssl, handling letter suffixes
-        def openssl_version_key(v):
-            parts = re.split(r'(\d+)', v) # Split by digits and non-digits to handle 'w' suffix
-            version_parts = []
-            for part in parts:
-                if part.isdigit():
-                    version_parts.append(int(part))
-                elif part: # Handle non-digit suffixes like 'w'
-                    version_parts.append(part)
-            return tuple(version_parts)
-
-        latest_version = max(matches, key=openssl_version_key) # Use custom key for max
-        download_url = f"https://www.openssl.org/source/old/1.1.1/openssl-{latest_version}.tar.gz" # Hardcoded 1.1.1, improve later if needed
+    
+    elif program == "nghttp2":
+        url = "https://api.github.com/repos/nghttp2/nghttp2/releases/latest"
+        response = retry(requests.get, url, proxies=proxies)
+        data = response.json()
+        latest_version = data["tag_name"].lstrip("v")
+        for asset in data["assets"]:
+            if asset["name"].endswith(".tar.gz"):
+                download_url = asset["browser_download_url"]
+                return latest_version, download_url
+        download_url = data["assets"][0]["browser_download_url"] # Fallback
         return latest_version, download_url
+        
 
-
+    elif program == "libmicrohttpd":
+        url = "https://ftp.gnu.org/gnu/libmicrohttpd/"
+        response = retry(requests.get, url, proxies=proxies)
+        matches = re.findall(r'href="libmicrohttpd-([0-9.]+)\.tar\.(gz|xz)"', response.text)
+        latest_version = max(matches, key=lambda x: version.parse(x[0]))[0]
+        download_url = f"https://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-{latest_version}.tar.gz"
+        return latest_version, download_url
+        
     else:
         raise ValueError(f"Unsupported program: {program}")
 
@@ -280,7 +285,7 @@ for program, current_version in current_versions.items():
     try:
         latest_version, download_url = get_latest_version(program)
         if version.parse(latest_version) > version.parse(current_version):
-            print(f"- {program} 有最新版：{latest_version}  {download_url}")
+            print(f"- {program} {latest_version} ⭐⭐⭐⭐⭐⭐有最新版⭐⭐⭐⭐⭐⭐  {download_url}")
             update_found = True
         else:
             print(f"- {program} {current_version} 已是最新版 {download_url}")
@@ -289,4 +294,5 @@ for program, current_version in current_versions.items():
 
 # 如果没有发现更新
 if not update_found:
-    print("- 所有程序都没有更新的版本")
+    print("- 检测结束，所有程序都没有更新的版本")
+print("- 检测结束")
