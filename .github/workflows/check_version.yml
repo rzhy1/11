@@ -19,8 +19,8 @@ jobs:
       with:
         python-version: '3.x'
         cache: 'pip'
-    - name: Install requests
-      run: pip install requests
+    - name: Install dependencies
+      run: pip install -r requirements.txt
     - name: Check Version
       run: |
         python check_version.py >> README.md
