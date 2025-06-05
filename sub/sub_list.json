@@ -45,7 +45,7 @@
     "site": "https://github.com/Leon406/SubCrawler",
     "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 6,
@@ -121,11 +121,11 @@
   },
   {
     "id": 15,
-    "remarks": "Jsnzkpg/Jsnzkpg",
-    "site": "https://github.com/Jsnzkpg/Jsnzkpg",
-    "url": "https://raw.githubusercontent.com/Jsnzkpg/Jsnzkpg/Jsnzkpg/Jsnzkpg",
+    "remarks": "ripaojiedian/freenode",
+    "site": "https://github.com/ripaojiedian/freenode",
+    "url": "https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub",
     "update_method": "auto",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 16,
