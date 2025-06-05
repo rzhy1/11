@@ -84,8 +84,32 @@ class merge():
             f.write(content.encode('utf-8'))
         print(f'合并完成: {merge_dir}/sub_merge_base64.txt')
 
-    def readme_update(self):
-        # ...保持原有逻辑不变...
+    def readme_update(self): # 更新 README 节点信息
+        print('Updating README...')
+        with open(self.readme_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            f.close()
+
+        # 所有节点打印
+        for index in range(len(lines)):
+            if lines[index] == '### 所有节点\n': # 目标行内容
+                # 清除旧内容
+                lines.pop(index+1) # 删除节点数量
+
+                with open(f'{self.merge_dir}sub_merge_base64.txt', 'r', encoding='utf-8') as f:
+                    proxies_base64 = f.read()
+                    proxies = base64_decode(proxies_base64)
+                    proxies = proxies.split('\n')
+                    top_amount = len(proxies) - 1
+                    f.close()
+                lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
+                break
+        
+        # 写入 README 内容
+        with open(self.readme_file, 'w', encoding='utf-8') as f:
+             data = ''.join(lines)
+             print('完成!\n')
+             f.write(data)
 
 if __name__ == '__main__':
     # 示例配置
