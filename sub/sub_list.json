@@ -57,11 +57,11 @@
   },
   {
     "id": 7,
-    "remarks": "freenode.openrunner.net",
-    "site": "https://freenode.openrunner.net/",
-    "url": "https://freenode.openrunner.net/uploads/20240417-clash.yaml",
+    "remarks": "https://clashfreenode.com",
+    "site": "https://clashfreenode.com/feed",
+    "url": "https://clashfreenode.com/feed/v2ray-20250605.txt",
     "update_method": "change_date",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 8,
