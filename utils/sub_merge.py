@@ -28,61 +28,40 @@ class merge():
         if self.readme_file != '':
             self.readme_update()
 
-    def read_list(self):
+    def read_list(self): # 将 sub_list.json Url 内容读取为列表
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
-        
-        supported_protocols = ['vmess', 'vless', 'trojan', 'ss', 'ssr']
-        return [item for item in raw_list 
-                if item['enabled'] 
-                and any(p in item['url'].lower() for p in supported_protocols)]
+        return [item for item in raw_list if item['enabled']]
 
-    def sub_merge(self):
+    def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64, ，并输出文件，输入订阅列表。
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
 
-        # 清空目录
-        for f in os.listdir(list_dir):
-            os.remove(os.path.join(list_dir, f))
+        for dirpath, dirnames, filenames in os.walk(list_dir):
+            for filename in filenames:
+                os.remove(os.path.join(dirpath, filename))
 
         content_set = set()
         for url in url_list:
-            max_retries = 3
-            content = None
-            for attempt in range(max_retries):
-                try:
-                    content = convert(url['url'], 'url', {
-                        'keep_encode': True,
-                        'raw_format': True,
-                        'escape_special_chars': False,
-                        'strict_mode': False,
-                        'enable_advanced_conversion': True
-                    })
-                    if content:
-                        break
-                except Exception as e:
-                    print(f'转换失败({attempt+1}/{max_retries}): {url["remarks"]}, 错误: {str(e)}')
-                    time.sleep(2)
-
+            content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
             if content:
                 content_set.update(content.splitlines())
-                print(f'成功获取: {url["remarks"]}')
+                print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
             else:
-                print(f'无法获取: {url["remarks"]}')
-                
-            # 保存原始内容
-            with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as f:
-                f.write(content if content else 'No nodes were found')
+                content = 'No nodes were found in url.'
+                print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
+            if self.list_dir:
+                with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
+                    file.write(content)
 
-        # 合并处理
-        print('合并节点中...')
+        print('Merging nodes...')
         content = '\n'.join(content_set)
         content = convert(content, 'base64', self.format_config)
-        
-        with open(f'{merge_dir}/sub_merge_base64.txt', 'wb') as f:
-            f.write(content.encode('utf-8'))
-        print(f'合并完成: {merge_dir}/sub_merge_base64.txt')
+        merge_path = f'{merge_dir}/sub_merge_base64.txt'
+        with open(merge_path, 'wb') as file:
+            file.write(content.encode('utf-8'))
+        print(f'Done! Output merged nodes to {merge_path}.')
 
     def readme_update(self): # 更新 README 节点信息
         print('Updating README...')
@@ -112,7 +91,7 @@ class merge():
              f.write(data)
 
 if __name__ == '__main__':
-    # 示例配置
+    # 这里需要提供实际的 file_dir 和 format_config 参数
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
