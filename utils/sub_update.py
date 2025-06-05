@@ -65,7 +65,7 @@ class update():
             new_url = url_front + today + url_end
             
         if id == 7:
-            new_url = datetime.today().strftime('https://freenode.openrunner.net/uploads/%Y%m%d-clash.yaml')
+            new_url = datetime.today().strftime('https://clashfreenode.com/feed/v2ray-%Y%m%d.txt')
             if self.url_updated(new_url):
                 return new_url
             else:
