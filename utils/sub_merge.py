@@ -31,7 +31,7 @@ class merge():
     def read_list(self): # 将 sub_list.json Url 内容读取为列表
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
-        return [item for item in raw_list if item['enabled'] and not item['remarks'].startswith('trojan')]
+        return [item for item in raw_list if item['enabled']]
 
     def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64, ，并输出文件，输入订阅列表。
         url_list = self.url_list
@@ -63,7 +63,6 @@ class merge():
             file.write(content.encode('utf-8'))
         print(f'Done! Output merged nodes to {merge_path}.')
 
-        
     def readme_update(self): # 更新 README 节点信息
         print('Updating README...')
         with open(self.readme_file, 'r', encoding='utf-8') as f:
@@ -90,23 +89,24 @@ class merge():
              data = ''.join(lines)
              print('完成!\n')
              f.write(data)
-    # 读取并解码 Base64 编码的节点信息
-    with open(merge_path, 'rb') as file:
-        encoded_content = file.read().strip()
-        decoded_content = base64.b64decode(encoded_content).decode('utf-8')
 
-    # 进行 Trojan 节点过滤
-    filtered_content = ''
-    for line in decoded_content.splitlines():
-        if 'trojan' not in line.lower():
-            filtered_content += line + '\n'
-
-    # 将过滤后的节点信息保存到文件
-    filtered_path = './sub/sub_merge_filtered.txt'
-    with open(filtered_path, 'w', encoding='utf-8') as file:
-        file.write(filtered_content)
-
-    print(f'Trojan nodes filtered. Filtered nodes saved to {filtered_path}.')
-        
 if __name__ == '__main__':
-    merge()
+    # 这里需要提供实际的 file_dir 和 format_config 参数
+    file_dir = {
+        'list_dir': './sub/list/',
+        'list_file': './sub/sub_list.json',
+        'merge_dir': './sub/',
+        'update_dir': './sub/update/',
+        'readme_file': './README.md',
+        'share_file': './sub/share.txt'
+    }
+    
+    format_config = {
+        'deduplicate': True,
+        'rename': '',
+        'include_remarks': '',
+        'exclude_remarks': '',
+        'config': ''
+    }
+    
+    merge(file_dir, format_config)
