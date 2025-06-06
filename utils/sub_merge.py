@@ -93,6 +93,7 @@ class merge():
 				nodes = [line for line in content.splitlines() if line.strip()]
 				content_set.update(nodes)
 				print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(nodes)} nodes found)\n')
+				print()
 				# 将干净的节点内容写入缓存，而不是原始下载内容
 				content_for_file = '\n'.join(nodes)
 			else:
