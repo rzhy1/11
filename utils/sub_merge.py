@@ -44,7 +44,7 @@ class merge():
 		# 它会匹配类似 `server: ::ffff:1.2.3.4` 这样的模式
 		# Positive lookbehind (?<=...) 确保前面是 'server:' 或 'server :'
 		# The value part ([^,'"\s{}[\]]+:[^,'"\s{}[\]]+) 匹配包含至少一个冒号且不含引号、逗号、空格或括号的字符串
-		pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'"\s{}[\]]+)")
+		pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
 
 		def add_quotes(match):
 			# match.group(1) 是 "server: "
