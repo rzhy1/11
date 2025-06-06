@@ -38,7 +38,6 @@ class merge():
 		list_dir = self.list_dir
 		merge_dir = self.merge_dir
 
-		# 清理旧的单个订阅缓存文件
 		if os.path.exists(list_dir):
 			for dirpath, dirnames, filenames in os.walk(list_dir):
 				for filename in filenames:
@@ -48,72 +47,47 @@ class merge():
 
 		content_set = set()
 		for item in url_list:
-			content = ''
 			item_url = item.get('url')
 			item_id = item.get('id')
 			item_remarks = item.get('remarks')
 			
-			# 如果 URL 为空或无效，则跳过
+			# 如果 URL 为空，直接跳过并打印信息
 			if not item_url:
-				print(f'Skipping {item_remarks} (ID: {item_id}) due to empty URL.')
+				print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.\n")
 				continue
 
-			# 根据 'type' 字段决定处理方式，默认为 'subscription'
-			item_type = item.get('type', 'subscription')
-			print(f'Processing [ID: {item_id}] {item_remarks} with type [{item_type}]...')
+			# 这是核心改动：我们先执行 convert，让它打印自己的日志
+			content = convert(item_url, 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
 
-			try:
-				# 策略1：处理标准 Base64 订阅链接
-				if item_type == 'subscription':
-					content = convert(item_url, 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
-				
-				# 策略2：处理纯文本节点列表链接
-				elif item_type == 'raw_text_url':
-					# 我们自己下载内容，然后直接使用
-					response = requests.get(item_url, timeout=10)
-					response.raise_for_status() # 如果下载失败 (如 404), 会抛出异常
-					content = response.text
-				
-				# 如果有更多类型，可以在这里添加 elif
-				
-				else:
-					content = f"Error: Unknown subscription type '{item_type}'"
-					print(content)
-
-			except requests.exceptions.RequestException as e:
-				content = f'Error downloading URL: {e}'
-				print(f'Failed for {item_remarks}: {content}')
-			except Exception as e:
-				# 捕获 convert 函数可能抛出的其他错误
-				content = f'Error processing subscription: {e}'
-				print(f'Failed for {item_remarks}: {content}')
-
-			if content and not content.startswith('Error:'):
-				# splitlines() 可以很好地处理不同操作系统的换行符
+			# 然后，我们再根据 convert 的结果，构建并打印我们自己的最终信息
+			if content:
+				# 清理并统计有效节点
 				nodes = [line for line in content.splitlines() if line.strip()]
-				content_set.update(nodes)
-				print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(nodes)} nodes found)')
-				# 将干净的节点内容写入缓存，而不是原始下载内容
-				content_for_file = '\n'.join(nodes)
-			else:
-				# 如果 content 为空或者包含错误信息
-				if not content:
-					content_for_file = 'No nodes were found in url.'
+				if nodes:
+					content_set.update(nodes)
+					# 在我们自己的 print 语句末尾加上 '\n' 来主动换行
+					print(f"Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(nodes)} nodes found)\n")
+					# 准备写入文件的内容
+					file_content = '\n'.join(nodes)
 				else:
-					content_for_file = content
-				print(f'Writing error of {item_remarks} to {item_id:0>2d}.txt')
+					print(f"Writing error of {item_remarks} to {item_id:0>2d}.txt (Source is empty)\n")
+					file_content = 'No nodes were found in url.'
+			else:
+				print(f"Writing error of {item_remarks} to {item_id:0>2d}.txt (Failed to convert)\n")
+				file_content = 'No nodes were found in url.'
 
+			# 最后，写入文件
 			if self.list_dir:
 				with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as file:
-					file.write(content_for_file)
+					file.write(file_content)
 
+		# --- 后续的合并逻辑保持不变 ---
 		if not content_set:
 			print('Merging failed: No nodes collected from any source.')
 			return
 
-		print(f'\nMerging {len(content_set)} unique nodes...')
+		print(f'Merging {len(content_set)} unique nodes...')
 		content = '\n'.join(content_set)
-		# 最终合并转换
 		final_content = convert(content, 'base64', self.format_config)
 		merge_path_final = f'{merge_dir}sub_merge_base64.txt'
 		with open(merge_path_final, 'wb') as file:
