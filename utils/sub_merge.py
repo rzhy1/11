@@ -1,231 +1,226 @@
 #!/usr/bin/env python3
 
-import json, os, base64, time, requests, re
+import json
+import os
+import base64
+import requests
+import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from subconverter import base64_decode
 
-# 辅助函数 is_base64 保持不变
-def is_base64(s):
+def robust_b64decode(s: str) -> str:
+    """
+    一个更健壮的 Base64 解码函数，能处理各种填充问题。
+    如果解码失败，假定输入是纯文本并直接返回。
+    """
+    s = s.strip()
     try:
-        if len(s.strip()) % 4 != 0: return False
-        base64.b64decode(s, validate=True)
-        return True
-    except Exception:
-        return False
+        # 尝试标准解码
+        return base64.b64decode(s).decode('utf-8', errors='ignore')
+    except (ValueError, TypeError):
+        # 如果失败，尝试补全 '='
+        padding = len(s) % 4
+        if padding != 0:
+            s += '=' * (4 - padding)
+        try:
+            return base64.b64decode(s).decode('utf-8', errors='ignore')
+        except Exception:
+            # 如果还是失败，我们假定它就是纯文本
+            return s
 
 class merge():
-    def __init__(self,file_dir,format_config):
-        self.list_dir = file_dir['list_dir']
+    def __init__(self, file_dir, format_config):
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
-
-        self.format_config = {
-            'deduplicate': bool(format_config.get('deduplicate', True)), 
-            'rename': format_config.get('rename', ''),
-            'include': format_config.get('include_remarks', ''), 
-            'exclude': format_config.get('exclude_remarks', ''), 
-            'config': format_config.get('config', '')
-        }
-
+        self.format_config = format_config
         self.url_list = self.read_list()
-        self.sub_merge()
-        if self.readme_file:
-            self.readme_update()
+        
+        # 直接在构造函数中执行核心逻辑
+        self.run()
 
     def read_list(self):
         with open(self.list_file, 'r', encoding='utf-8') as f:
-            raw_list = json.load(f)
-        return [item for item in raw_list if item.get('enabled')]
-    
-    def cleanup_node_list(self, nodes):
-        cleaned_nodes = []
-        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
-        def add_quotes(match):
-            return f"{match.group(1)}'{match.group(2)}'"
-        for node in nodes:
-            cleaned_node = pattern.sub(add_quotes, node)
-            cleaned_nodes.append(cleaned_node)
-        return cleaned_nodes
+            return [item for item in json.load(f) if item.get('enabled')]
 
-    def fetch_and_process_item(self, item):
-        """处理单个订阅项目，用于并发调用"""
-        item_id = item.get('id')
-        item_remarks = item.get('remarks')
-        item_type = item.get('type', 'subscription')
-        urls = item.get('url', '').split('|')
-        
-        item_nodes = set()
-
-        for url in urls:
-            if not url: continue
-            try:
-                response = requests.get(url, timeout=15)
-                response.raise_for_status()
-                raw_content = response.text.strip()
-                plain_text_nodes = ''
-                
-                if item_type == 'subscription':
-                    if is_base64(raw_content):
-                        plain_text_nodes = base64_decode(raw_content)
-                    else:
-                        # 在工作线程中，我们只返回结果，不在其中打印警告
-                        plain_text_nodes = raw_content
-                else: # raw_text_url
-                    plain_text_nodes = raw_content
-
-                if plain_text_nodes:
-                    nodes = [line for line in plain_text_nodes.splitlines() if line.strip()]
-                    cleaned_nodes = self.cleanup_node_list(nodes)
-                    item_nodes.update(cleaned_nodes)
-
-            except Exception as e:
-                # 线程出错时，返回错误信息
-                return item, None, str(e)
-        
-        # 线程成功时，返回节点集合
-        return item, item_nodes, None
-
-    def sub_merge(self):
-        url_list = self.url_list
-        list_dir = self.list_dir
-        merge_dir = self.merge_dir
-
-        if os.path.exists(list_dir):
-            for dirpath, dirnames, filenames in os.walk(list_dir):
-                for filename in filenames:
-                    os.remove(os.path.join(dirpath, filename))
-        else:
-            os.makedirs(list_dir)
-
-        content_set = set()
-        
-        # 【性能优化】使用线程池并发处理所有订阅
-        print("Starting to fetch all subscriptions concurrently...")
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_item = {executor.submit(self.fetch_and_process_item, item): item for item in url_list}
+    def fetch_single_url(self, url, item_type):
+        """下载并解码单个 URL 的内容"""
+        try:
+            response = requests.get(url, timeout=20)
+            response.raise_for_status()
+            raw_content = response.text.strip()
             
-            for future in as_completed(future_to_item):
-                item, nodes, error = future.result()
-                item_id = item.get('id')
-                item_remarks = item.get('remarks')
-                
-                if error:
-                    print(f"Failed to process [ID: {item_id}] {item_remarks}. Reason: {error}")
-                    file_content = f"Error: {error}"
-                elif nodes:
-                    content_set.update(nodes)
-                    print(f"Success for [ID: {item_id}] {item_remarks}. Found and added {len(nodes)} unique nodes.")
-                    file_content = '\n'.join(sorted(list(nodes)))
-                else:
-                    print(f"Finished for [ID: {item_id}] {item_remarks}, but no nodes were found.")
-                    file_content = "No nodes found."
-                
-                # 写入缓存文件
-                if self.list_dir:
-                    with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
-                        f.write(file_content)
+            if item_type == 'subscription':
+                # 如果标记为 subscription, 尝试解码，否则视为纯文本
+                return robust_b64decode(raw_content)
+            else: # raw_text_url
+                return raw_content
+        except Exception as e:
+            # 在工作线程中，我们不打印，只返回错误
+            return {'error': str(e), 'url': url}
 
-        if not content_set:
-            print('\nMerging failed: No nodes collected from any source.')
+    def run(self):
+        all_nodes = set()
+        
+        # --- 步骤 1: 并发获取所有节点 ---
+        print("--- Step 1: Fetching all node data concurrently ---")
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_url = {}
+            for item in self.url_list:
+                urls = item.get('url', '').split('|')
+                item_type = item.get('type', 'subscription')
+                for url in urls:
+                    if url:
+                        future = executor.submit(self.fetch_single_url, url, item_type)
+                        future_to_url[future] = item.get('remarks')
+
+            for future in as_completed(future_to_url):
+                remarks = future_to_url[future]
+                content = future.result()
+                if isinstance(content, dict) and 'error' in content:
+                    print(f"  -> Failed to fetch from [{remarks}]. Reason: {content['error']}")
+                elif content:
+                    nodes_in_sub = {line for line in content.splitlines() if line.strip()}
+                    all_nodes.update(nodes_in_sub)
+                    print(f"  -> Success: Fetched {len(nodes_in_sub)} nodes from [{remarks}]")
+
+        if not all_nodes:
+            print("\nFATAL: No nodes were collected from any source. Aborting.")
             return
 
-        print(f'\nMerging {len(content_set)} unique nodes...')
+        # 对所有收集到的节点进行一次性的清洗
+        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
+        def add_quotes(match): return f"{match.group(1)}'{match.group(2)}'"
+        cleaned_nodes = {pattern.sub(add_quotes, node) for node in all_nodes}
         
-        temp_merge_file = os.path.abspath(f'{merge_dir}/temp_merge.txt')
-        final_output_file = os.path.abspath(f'{merge_dir}/sub_merge_base64.txt')
+        node_count = len(cleaned_nodes)
+        print(f"\n--- Step 2: Collected {node_count} unique raw nodes. Starting batch processing. ---")
+
+        # --- 步骤 2: 分批处理 ---
+        BATCH_SIZE = 500  # 每批处理 500 个节点
+        final_processed_nodes_text = []
+        node_list = list(cleaned_nodes)
+
         subconverter_executable = os.path.abspath('./utils/subconverter/subconverter-linux-amd64')
-        config_file_path = self.format_config.get('config')
-        
         if not os.access(subconverter_executable, os.X_OK):
             os.chmod(subconverter_executable, 0o755)
 
-        with open(temp_merge_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(sorted(list(content_set))))
+        for i in range(0, len(node_list), BATCH_SIZE):
+            batch = node_list[i:i + BATCH_SIZE]
+            batch_num = (i // BATCH_SIZE) + 1
+            print(f"  -> Processing batch {batch_num} ({len(batch)} nodes)...")
 
-        try:
-            command = [
-                subconverter_executable,
-                '-i', temp_merge_file, '-o', final_output_file, '-t', 'base64'
-            ]
-            if self.format_config.get('deduplicate'): command.extend(['--deduplicate'])
-            if self.format_config.get('rename'): command.extend(['-r', self.format_config['rename']])
-            if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
-            if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
-            if config_file_path: command.extend(['-c', os.path.abspath(config_file_path)])
+            temp_input_file = os.path.abspath(os.path.join(self.merge_dir, f'temp_batch_{batch_num}.txt'))
             
-            print("Executing final merge command...")
-            result = subprocess.run(command, capture_output=True, text=True, timeout=60) # 增加60秒超时
+            with open(temp_input_file, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(batch))
 
-            if result.returncode != 0:
-                raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+            try:
+                # 我们让 subconverter 处理（去重、应用规则等），并输出为明文节点列表
+                command = [
+                    subconverter_executable,
+                    '-i', temp_input_file,
+                    '-g' # generate, 表示生成节点列表, 而不是完整的配置文件
+                ]
+                if self.format_config.get('deduplicate'): command.append('--deduplicate')
+                if self.format_config.get('config'): command.extend(['-c', os.path.abspath(self.format_config['config'])])
 
-            print(f'Done! Output merged nodes to {final_output_file}.')
+                result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=True, encoding='utf-8')
+                
+                # 读取处理后的结果（标准输出）
+                processed_nodes = result.stdout.strip()
+                if processed_nodes:
+                    final_processed_nodes_text.append(processed_nodes)
 
-        except subprocess.TimeoutExpired:
-            print("FATAL: Final merge failed! Subconverter process timed out after 60 seconds.")
-        except subprocess.CalledProcessError as e:
-            print(f"FATAL: Final merge failed! Subconverter process exited with error.")
-            print("Subconverter STDERR:\n", e.stderr)
-        except Exception as e:
-            print(f"FATAL: An unexpected error occurred during final merge! Reason: {e}")
-        finally:
-            if os.path.exists(temp_merge_file):
-                os.remove(temp_merge_file)
-    
-    # readme_update 保持不变
-    def readme_update(self):
+            except subprocess.TimeoutExpired:
+                print(f"    -!> Batch {batch_num} timed out and was skipped.")
+            except subprocess.CalledProcessError as e:
+                print(f"    -!> Batch {batch_num} failed and was skipped. Error: {e.stderr}")
+            finally:
+                if os.path.exists(temp_input_file): os.remove(temp_input_file)
+
+        if not final_processed_nodes_text:
+            print("\nFATAL: No nodes survived the batch processing. Aborting.")
+            return
+
+        print(f"\n--- Step 3: All batches processed. Aggregating and encoding final result. ---")
+        
+        # --- 步骤 3: 聚合结果并编码 ---
+        final_plain_text = "\n".join(final_processed_nodes_text)
+        
+        # 直接对最终的明文节点列表进行 Base64 编码
+        final_base64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
+
+        final_output_file = os.path.abspath(os.path.join(self.merge_dir, 'sub_merge_base64.txt'))
+        with open(final_output_file, 'w', encoding='utf-8') as f:
+            f.write(final_base64_content)
+            
+        print(f"\nSuccessfully merged nodes to {final_output_file}")
+        
+        if self.readme_file:
+            self.readme_update(final_output_file)
+
+    def readme_update(self, merge_file_path):
         print('Updating README...')
-        merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
-        if not os.path.exists(merge_file_path):
-            print(f"Warning: Merged file not found. Skipping README update.")
+        if not os.path.exists(merge_file_path) or not os.path.exists(self.readme_file):
+            print("Warning: Merged file or README file not found. Skipping update.")
             return
 
         with open(self.readme_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
+        top_amount = 0
         try:
-            for index, line in enumerate(lines):
-                if '### 所有节点' in line:
-                    if index + 1 < len(lines) and '合并节点总数' in lines[index+1]:
-                        lines.pop(index+1) 
-
-                    with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
-                        proxies_base64 = f_merge.read()
-                        if proxies_base64:
-                            proxies = base64_decode(proxies_base64)
-                            top_amount = len([p for p in proxies.split('\n') if p.strip()])
-                        else:
-                            top_amount = 0
-                    
-                    lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
-                    break
+            with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
+                proxies_base64 = f_merge.read()
+                if proxies_base64:
+                    decoded = base64.b64decode(proxies_base64).decode('utf-8', errors='ignore')
+                    top_amount = len([p for p in decoded.split('\n') if p.strip()])
         except Exception as e:
-            print(f"Error updating README: {e}")
-            return
+            print(f"Could not calculate node amount from merged file: {e}")
+            top_amount = "Error"
+
+        updated = False
+        for i, line in enumerate(lines):
+            if '### 所有节点' in line:
+                if i + 1 < len(lines) and '合并节点总数' in lines[i+1]:
+                    lines[i+1] = f'合并节点总数: `{top_amount}`\n'
+                else:
+                    lines.insert(i + 1, f'合并节点总数: `{top_amount}`\n')
+                updated = True
+                break
         
-        with open(self.readme_file, 'w', encoding='utf-8') as f:
-             data = ''.join(lines)
-             print('完成!\n')
-             f.write(data)
+        if updated:
+            with open(self.readme_file, 'w', encoding='utf-8') as f:
+                f.write("".join(lines))
+                print('完成!\n')
+        else:
+            print("Could not find the target line '### 所有节点' in README.md to update.")
 
 
 if __name__ == '__main__':
-    # __main__ 保持不变
+    # 确保路径在 Actions 环境中是相对于项目根目录的
+    project_root = os.getcwd()
+    
     file_dir = {
-        'list_dir': './sub/list/',
-        'list_file': './sub/sub_list.json',
-        'merge_dir': './sub/',
-        'readme_file': './README.md'
+        'list_file': os.path.join(project_root, 'sub/sub_list.json'),
+        'merge_dir': os.path.join(project_root, 'sub/'),
+        'readme_file': os.path.join(project_root, 'README.md')
     }
     
+    # 确保 config 路径也正确
+    config_path = os.path.join(project_root, 'utils/sub_config/clean_pref.ini')
+    if not os.path.exists(config_path):
+        # 如果干净的配置文件不存在，就不要传递 config 参数
+        print(f"Warning: Clean config file not found at {config_path}. Proceeding without it.")
+        config_path = ''
+
     format_config = {
         'deduplicate': True,
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
-        'config': '' 
+        'config': config_path
     }
     
     merge(file_dir, format_config)
