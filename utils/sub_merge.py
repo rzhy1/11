@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import json, os, base64, time
+import json, os, base64, time, requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from subconverter import convert, base64_decode
 
