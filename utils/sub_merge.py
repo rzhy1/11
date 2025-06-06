@@ -9,23 +9,15 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def robust_b64decode(s: str) -> str:
-    """
-    一个更健壮的 Base64 解码函数，能处理各种填充问题。
-    如果解码失败，假定输入是纯文本并直接返回。
-    """
     s = s.strip()
     try:
-        # 尝试标准解码
         return base64.b64decode(s).decode('utf-8', errors='ignore')
     except (ValueError, TypeError):
-        # 如果失败，尝试补全 '='
         padding = len(s) % 4
-        if padding != 0:
-            s += '=' * (4 - padding)
+        if padding != 0: s += '=' * (4 - padding)
         try:
             return base64.b64decode(s).decode('utf-8', errors='ignore')
         except Exception:
-            # 如果还是失败，我们假定它就是纯文本
             return s
 
 class merge():
@@ -35,8 +27,6 @@ class merge():
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
         self.url_list = self.read_list()
-        
-        # 直接在构造函数中执行核心逻辑
         self.run()
 
     def read_list(self):
@@ -44,25 +34,21 @@ class merge():
             return [item for item in json.load(f) if item.get('enabled')]
 
     def fetch_single_url(self, url, item_type):
-        """下载并解码单个 URL 的内容"""
         try:
             response = requests.get(url, timeout=20)
             response.raise_for_status()
             raw_content = response.text.strip()
             
             if item_type == 'subscription':
-                # 如果标记为 subscription, 尝试解码，否则视为纯文本
                 return robust_b64decode(raw_content)
             else: # raw_text_url
                 return raw_content
         except Exception as e:
-            # 在工作线程中，我们不打印，只返回错误
             return {'error': str(e), 'url': url}
 
     def run(self):
         all_nodes = set()
         
-        # --- 步骤 1: 并发获取所有节点 ---
         print("--- Step 1: Fetching all node data concurrently ---")
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_url = {}
@@ -88,7 +74,6 @@ class merge():
             print("\nFATAL: No nodes were collected from any source. Aborting.")
             return
 
-        # 对所有收集到的节点进行一次性的清洗
         pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
         def add_quotes(match): return f"{match.group(1)}'{match.group(2)}'"
         cleaned_nodes = {pattern.sub(add_quotes, node) for node in all_nodes}
@@ -96,8 +81,7 @@ class merge():
         node_count = len(cleaned_nodes)
         print(f"\n--- Step 2: Collected {node_count} unique raw nodes. Starting batch processing. ---")
 
-        # --- 步骤 2: 分批处理 ---
-        BATCH_SIZE = 500  # 每批处理 500 个节点
+        BATCH_SIZE = 500
         final_processed_nodes_text = []
         node_list = list(cleaned_nodes)
 
@@ -116,18 +100,21 @@ class merge():
                 f.write('\n'.join(batch))
 
             try:
-                # 我们让 subconverter 处理（去重、应用规则等），并输出为明文节点列表
                 command = [
                     subconverter_executable,
                     '-i', temp_input_file,
-                    '-g' # generate, 表示生成节点列表, 而不是完整的配置文件
+                    '-g',
+                    '--no-health-check'  # 禁用健康检查
                 ]
                 if self.format_config.get('deduplicate'): command.append('--deduplicate')
+                # 注意：其他过滤/重命名规则我们暂时不加，以保证最大数量
+                # if self.format_config.get('rename'): command.extend(['-r', self.format_config['rename']])
+                # if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
+                # if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
                 if self.format_config.get('config'): command.extend(['-c', os.path.abspath(self.format_config['config'])])
 
                 result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=True, encoding='utf-8')
                 
-                # 读取处理后的结果（标准输出）
                 processed_nodes = result.stdout.strip()
                 if processed_nodes:
                     final_processed_nodes_text.append(processed_nodes)
@@ -145,10 +132,7 @@ class merge():
 
         print(f"\n--- Step 3: All batches processed. Aggregating and encoding final result. ---")
         
-        # --- 步骤 3: 聚合结果并编码 ---
         final_plain_text = "\n".join(final_processed_nodes_text)
-        
-        # 直接对最终的明文节点列表进行 Base64 编码
         final_base64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
 
         final_output_file = os.path.abspath(os.path.join(self.merge_dir, 'sub_merge_base64.txt'))
@@ -179,6 +163,8 @@ class merge():
         except Exception as e:
             print(f"Could not calculate node amount from merged file: {e}")
             top_amount = "Error"
+        
+        print(f"Final node count for README: {top_amount}")
 
         updated = False
         for i, line in enumerate(lines):
@@ -199,7 +185,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # 确保路径在 Actions 环境中是相对于项目根目录的
     project_root = os.getcwd()
     
     file_dir = {
@@ -208,11 +193,8 @@ if __name__ == '__main__':
         'readme_file': os.path.join(project_root, 'README.md')
     }
     
-    # 确保 config 路径也正确
     config_path = os.path.join(project_root, 'utils/sub_config/clean_pref.ini')
     if not os.path.exists(config_path):
-        # 如果干净的配置文件不存在，就不要传递 config 参数
-        print(f"Warning: Clean config file not found at {config_path}. Proceeding without it.")
         config_path = ''
 
     format_config = {
