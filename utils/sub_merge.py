@@ -49,11 +49,13 @@ class merge():
 				content_set.update(content.splitlines())
 				print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
 			else:
-				content = 'No nodes were found in url.'
-				print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
-			if self.list_dir:
-				with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
-					file.write(content)
+            			print(f'[ERROR] {url["remarks"]} 返回空内容')
+   			 except Exception as e:
+        			print(f'[EXCEPTION] {url["remarks"]} 处理失败: {e}')
+       			 traceback.print_exc()  # 打印完整错误堆栈
+   			 finally:
+      			  with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as f:
+         			   f.write(content or f'Error: {e}')
 
 		print('Merging nodes...')
 		content = '\n'.join(content_set)
