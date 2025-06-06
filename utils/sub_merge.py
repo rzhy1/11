@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-# 【核心修改】引入 subprocess 来直接调用外部命令
 import subprocess
+from subconverter import base64_decode
 
-# 辅助函数 is_base64 保持不变
 def is_base64(s):
     try:
         if len(s.strip()) % 4 != 0: return False
@@ -12,12 +11,9 @@ def is_base64(s):
         return True
     except Exception:
         return False
-# subconverter.convert 和 subconverter.base64_decode 依然需要，因为我们在前面用到了
-from subconverter import base64_decode
 
 class merge():
     def __init__(self,file_dir,format_config):
-        # __init__ 保持不变
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
@@ -36,7 +32,6 @@ class merge():
         if self.readme_file:
             self.readme_update()
 
-    # read_list 和 cleanup_node_list 保持不变
     def read_list(self):
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
@@ -44,7 +39,8 @@ class merge():
     
     def cleanup_node_list(self, nodes):
         cleaned_nodes = []
-        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'"\s{}[\]]+)")
+        # 这是之前出错的第 47 行，现在是干净的版本
+        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
         def add_quotes(match):
             return f"{match.group(1)}'{match.group(2)}'"
         for node in nodes:
@@ -53,7 +49,6 @@ class merge():
         return cleaned_nodes
 
     def sub_merge(self):
-        # 前半部分的节点获取和处理逻辑完全正确，保持不变
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
@@ -115,14 +110,11 @@ class merge():
 
         print(f'\nMerging {len(content_set)} unique nodes...')
         
-        # --- 【核心修改】 ---
-        # 1. 准备要传递给命令行工具的参数和文件
         temp_merge_file = os.path.abspath(f'{merge_dir}/temp_merge.txt')
         final_output_file = os.path.abspath(f'{merge_dir}/sub_merge_base64.txt')
         subconverter_executable = os.path.abspath('./utils/subconverter/subconverter-linux-amd64')
         config_file_path = self.format_config.get('config')
         
-        # 确保 subconverter 可执行
         if not os.access(subconverter_executable, os.X_OK):
             os.chmod(subconverter_executable, 0o755)
 
@@ -130,15 +122,13 @@ class merge():
             f.write('\n'.join(sorted(list(content_set))))
 
         try:
-            # 2. 构建命令行参数列表
             command = [
                 subconverter_executable,
-                '-i', temp_merge_file,   # 输入文件
-                '-o', final_output_file,  # 输出文件
-                '-t', 'base64'            # 目标格式
+                '-i', temp_merge_file,
+                '-o', final_output_file,
+                '-t', 'base64'
             ]
             
-            # 动态添加其他配置参数
             if self.format_config.get('deduplicate'):
                 command.extend(['--deduplicate'])
             if self.format_config.get('rename'):
@@ -148,16 +138,13 @@ class merge():
             if self.format_config.get('exclude'):
                 command.extend(['--exclude', self.format_config['exclude']])
             if config_file_path:
-                # 使用绝对路径以避免歧义
                 abs_config_path = os.path.abspath(config_file_path)
                 command.extend(['-c', abs_config_path])
             
             print("Executing command:", ' '.join(command))
             
-            # 3. 使用 subprocess 直接调用可执行文件
             result = subprocess.run(command, capture_output=True, text=True, check=True)
 
-            # 打印 subconverter 的标准输出和错误（如果有的话）
             if result.stdout:
                 print("Subconverter STDOUT:\n", result.stdout)
             if result.stderr:
@@ -166,17 +153,14 @@ class merge():
             print(f'Done! Output merged nodes to {final_output_file}.')
 
         except subprocess.CalledProcessError as e:
-            # 如果命令执行失败（返回非零退出码）
             print(f"FATAL: Final merge failed! Subconverter process exited with error.")
             print("Subconverter STDERR:\n", e.stderr)
         except Exception as e:
             print(f"FATAL: An unexpected error occurred during final merge! Reason: {e}")
         finally:
-            # 4. 清理临时文件
             if os.path.exists(temp_merge_file):
                 os.remove(temp_merge_file)
     
-    # readme_update 保持不变
     def readme_update(self):
         print('Updating README...')
         merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
@@ -214,7 +198,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # __main__ 保持不变
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
@@ -227,7 +210,6 @@ if __name__ == '__main__':
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
-        # 我们在这里也清空 config，让命令行调用更纯粹
         'config': '' 
     }
     
