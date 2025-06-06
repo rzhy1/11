@@ -39,8 +39,9 @@ class merge():
 		merge_dir = self.merge_dir
 
 		if os.path.exists(list_dir):
-			for dirpath, dirnames, filenames in os.walk(list_dir):
-				os.remove(os.path.join(dirpath, filename))
+    			for dirpath, dirnames, filenames in os.walk(list_dir):
+       				for filename in filenames:
+	        			os.remove(os.path.join(dirpath, filename))
 		else:
 			os.makedirs(list_dir)
 
