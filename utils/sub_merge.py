@@ -33,35 +33,44 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item['enabled']]
 
-    def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64, ，并输出文件，输入订阅列表。
-        url_list = self.url_list
-        list_dir = self.list_dir
-        merge_dir = self.merge_dir
+    def sub_merge(self):
+		content_set = set()
+		for url in self.url_list:
+			url_content = url['url']
+			# 区分 Base64 和明文协议
+			if any(
+				url_content.startswith(proto) and '=' in url_content
+				for proto in ('vmess://', 'ss://', 'ssr://')
+			):
+				content = convert(url_content, 'url', {'keep_encode': True, 'raw_format': True})
+			else:
+				content = url_content  # 直接保留明文协议
+        
+			if content:
+				content_set.update(content.splitlines())
+				print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
+			else:
+				content = 'No nodes were found in url.'
+				print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
+        
+			if self.list_dir:
+				with open(f'{self.list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
+					file.write(content)
 
-        for dirpath, dirnames, filenames in os.walk(list_dir):
-            for filename in filenames:
-                os.remove(os.path.join(dirpath, filename))
-
-        content_set = set()
-        for url in url_list:
-            content = convert(url['url'], 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
-            if content:
-                content_set.update(content.splitlines())
-                print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
-            else:
-                content = 'No nodes were found in url.'
-                print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
-            if self.list_dir:
-                with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
-                    file.write(content)
-
-        print('Merging nodes...')
-        content = '\n'.join(content_set)
-        content = convert(content, 'base64', self.format_config)
-        merge_path = f'{merge_dir}/sub_merge_base64.txt'
-        with open(merge_path, 'wb') as file:
-            file.write(content.encode('utf-8'))
-        print(f'Done! Output merged nodes to {merge_path}.')
+		# 合并所有节点
+		merged_content = '\n'.join(content_set)
+		merge_path = f'{self.merge_dir}/sub_merge_base64.txt'
+    
+		# 根据配置决定是否输出 Base64
+		if self.format_config.get('output_base64', True):
+			try:
+				merged_content = base64.b64encode(merged_content.encode('utf-8')).decode('utf-8')
+			except:
+				print("Warning: Output kept as plaintext due to Base64 encode error.")
+    
+		with open(merge_path, 'w', encoding='utf-8') as file:
+			file.write(merged_content)
+		print(f'Done! Output merged nodes to {merge_path}.')
 
     def readme_update(self): # 更新 README 节点信息
         print('Updating README...')
