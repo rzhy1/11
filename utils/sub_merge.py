@@ -1,195 +1,169 @@
 #!/usr/bin/env python3
 
-import json
-import os
-import base64
-import requests
-import re
-import subprocess
+import json, os, base64, time, requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from subconverter import convert, base64_decode
 
-def robust_b64decode(s: str) -> str:
-    s = s.strip()
-    try:
-        return base64.b64decode(s).decode('utf-8', errors='ignore')
-    except (ValueError, TypeError):
-        padding = len(s) % 4
-        if padding != 0: s += '=' * (4 - padding)
-        try:
-            return base64.b64decode(s).decode('utf-8', errors='ignore')
-        except Exception:
-            return s
+merge_path = './sub/sub_merge_base64.txt'
 
 class merge():
-    def __init__(self, file_dir, format_config):
-        self.list_file = file_dir['list_file']
-        self.merge_dir = file_dir['merge_dir']
-        self.readme_file = file_dir.get('readme_file')
-        self.format_config = format_config
-        self.url_list = self.read_list()
-        self.run()
+	def __init__(self,file_dir,format_config):
+		self.list_dir = file_dir['list_dir']
+		self.list_file = file_dir['list_file']
+		self.merge_dir = file_dir['merge_dir']
+		self.update_dir = file_dir['update_dir']
+		self.readme_file = file_dir['readme_file']
+		self.share_file = file_dir['share_file']
 
-    def read_list(self):
-        with open(self.list_file, 'r', encoding='utf-8') as f:
-            return [item for item in json.load(f) if item.get('enabled')]
+		self.format_config = {
+			'deduplicate': bool(format_config['deduplicate']), 
+			'rename': format_config['rename'],
+			'include': format_config['include_remarks'], 
+			'exclude': format_config['exclude_remarks'], 
+			'config': format_config['config']
+			}
 
-    def fetch_single_url(self, url, item_type):
-        try:
-            response = requests.get(url, timeout=20)
-            response.raise_for_status()
-            raw_content = response.text.strip()
-            if item_type == 'subscription':
-                return robust_b64decode(raw_content)
-            else: # raw_text_url
-                return raw_content
-        except Exception as e:
-            return {'error': str(e), 'url': url}
+		self.url_list = self.read_list()
+		self.sub_merge()
+		if self.readme_file != '':
+			self.readme_update()
 
-    def run(self):
-        all_nodes = set()
-        
-        print("--- Step 1: Fetching all node data concurrently ---")
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_url = {}
-            for item in self.url_list:
-                urls = item.get('url', '').split('|')
-                item_type = item.get('type', 'subscription')
-                for url in urls:
-                    if url:
-                        future = executor.submit(self.fetch_single_url, url, item_type)
-                        future_to_url[future] = item.get('remarks')
+	def read_list(self): # 将 sub_list.json Url 内容读取为列表
+		with open(self.list_file, 'r', encoding='utf-8') as f:
+			raw_list = json.load(f)
+		return [item for item in raw_list if item['enabled']]
 
-            for future in as_completed(future_to_url):
-                remarks = future_to_url[future]
-                content = future.result()
-                if isinstance(content, dict) and 'error' in content:
-                    print(f"  -> Failed to fetch from [{remarks}]. Reason: {content['error']}")
-                elif content:
-                    nodes_in_sub = {line for line in content.splitlines() if line.strip()}
-                    all_nodes.update(nodes_in_sub)
-                    print(f"  -> Success: Fetched {len(nodes_in_sub)} nodes from [{remarks}]")
+	def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64, ，并输出文件，输入订阅列表。
+		url_list = self.url_list
+		list_dir = self.list_dir
+		merge_dir = self.merge_dir
 
-        if not all_nodes:
-            print("\nFATAL: No nodes were collected from any source. Aborting.")
-            return
+		# 清理旧的单个订阅缓存文件
+		if os.path.exists(list_dir):
+			for dirpath, dirnames, filenames in os.walk(list_dir):
+				for filename in filenames:
+					os.remove(os.path.join(dirpath, filename))
+		else:
+			os.makedirs(list_dir)
 
-        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
-        def add_quotes(match): return f"{match.group(1)}'{match.group(2)}'"
-        cleaned_nodes = {pattern.sub(add_quotes, node) for node in all_nodes}
-        
-        node_count = len(cleaned_nodes)
-        print(f"\n--- Step 2: Collected {node_count} unique raw nodes. Preparing for final merge. ---")
+		content_set = set()
+		for item in url_list:
+			content = ''
+			item_url = item.get('url')
+			item_id = item.get('id')
+			item_remarks = item.get('remarks')
+			
+			# 如果 URL 为空或无效，则跳过
+			if not item_url:
+				print(f'Skipping {item_remarks} (ID: {item_id}) due to empty URL.')
+				continue
 
-        # --- 【核心修改】我们不再分批，因为 subconverter 的问题不在于性能，而在于规则 ---
-        # --- 我们将所有节点一次性写入文件，并用最简单的命令来处理 ---
-        
-        temp_input_file = os.path.abspath(os.path.join(self.merge_dir, 'temp_input.txt'))
-        final_output_file = os.path.abspath(os.path.join(self.merge_dir, 'sub_merge_base64.txt'))
-        subconverter_executable = os.path.abspath('./utils/subconverter/subconverter-linux-amd64')
-        if not os.access(subconverter_executable, os.X_OK):
-            os.chmod(subconverter_executable, 0o755)
+			# 根据 'type' 字段决定处理方式，默认为 'subscription'
+			item_type = item.get('type', 'subscription')
+			print(f'Processing [ID: {item_id}] {item_remarks} with type [{item_type}]...')
 
-        with open(temp_input_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(sorted(list(cleaned_nodes))))
+			try:
+				# 策略1：处理标准 Base64 订阅链接
+				if item_type == 'subscription':
+					content = convert(item_url, 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
+				
+				# 策略2：处理纯文本节点列表链接
+				elif item_type == 'raw_text_url':
+					# 我们自己下载内容，然后直接使用
+					response = requests.get(item_url, timeout=10)
+					response.raise_for_status() # 如果下载失败 (如 404), 会抛出异常
+					content = response.text
+				
+				# 如果有更多类型，可以在这里添加 elif
+				
+				else:
+					content = f"Error: Unknown subscription type '{item_type}'"
+					print(content)
 
-        try:
-            # --- 【核心修改】构建一个“最愚蠢”的命令 ---
-            command = [
-                subconverter_executable,
-                '-i', temp_input_file,
-                '-g', # generate, 只输出节点列表
-                '--no-health-check' # 禁用所有网络检查
-            ]
-            
-            # 只添加去重参数，这是唯一我们确定需要的功能
-            if self.format_config.get('deduplicate'):
-                command.append('--deduplicate')
+			except requests.exceptions.RequestException as e:
+				content = f'Error downloading URL: {e}'
+				print(f'Failed for {item_remarks}: {content}')
+			except Exception as e:
+				# 捕获 convert 函数可能抛出的其他错误
+				content = f'Error processing subscription: {e}'
+				print(f'Failed for {item_remarks}: {content}')
 
-            # 【重要】我们不再添加 -c 或其他任何可能引入过滤规则的参数
-            
-            print("Executing a minimal subconverter command...")
-            print("Command:", ' '.join(command))
-            
-            result = subprocess.run(command, capture_output=True, text=True, timeout=120, check=True, encoding='utf-8')
+			if content and not content.startswith('Error:'):
+				# splitlines() 可以很好地处理不同操作系统的换行符
+				nodes = [line for line in content.splitlines() if line.strip()]
+				content_set.update(nodes)
+				print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(nodes)} nodes found)')
+				# 将干净的节点内容写入缓存，而不是原始下载内容
+				content_for_file = '\n'.join(nodes)
+			else:
+				# 如果 content 为空或者包含错误信息
+				if not content:
+					content_for_file = 'No nodes were found in url.'
+				else:
+					content_for_file = content
+				print(f'Writing error of {item_remarks} to {item_id:0>2d}.txt')
 
-            # 读取处理后的纯文本节点列表
-            processed_nodes_text = result.stdout.strip()
-            
-            if not processed_nodes_text:
-                raise RuntimeError("Subconverter returned an empty result after processing.")
+			if self.list_dir:
+				with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as file:
+					file.write(content_for_file)
 
-            # 直接对结果进行 Base64 编码
-            final_base64_content = base64.b64encode(processed_nodes_text.encode('utf-8')).decode('utf-8')
-            
-            with open(final_output_file, 'w', encoding='utf-8') as f:
-                f.write(final_base64_content)
+		if not content_set:
+			print('Merging failed: No nodes collected from any source.')
+			return
 
-            print(f"\nSuccessfully merged nodes to {final_output_file}")
-            
-            if self.readme_file:
-                self.readme_update(final_output_file)
+		print(f'\nMerging {len(content_set)} unique nodes...')
+		content = '\n'.join(content_set)
+		# 最终合并转换
+		final_content = convert(content, 'base64', self.format_config)
+		merge_path_final = f'{merge_dir}sub_merge_base64.txt'
+		with open(merge_path_final, 'wb') as file:
+			file.write(final_content.encode('utf-8'))
+		print(f'Done! Output merged nodes to {merge_path_final}.')
 
-        except subprocess.TimeoutExpired:
-            print("\nFATAL: subconverter process timed out. Even with minimal rules, it got stuck.")
-        except Exception as e:
-            print(f"\nFATAL: An error occurred during the final merge step: {e}")
-            # 如果 subprocess 失败，打印详细错误
-            if isinstance(e, subprocess.CalledProcessError):
-                print("Subconverter STDERR:\n", e.stderr)
-        finally:
-            if os.path.exists(temp_input_file):
-                os.remove(temp_input_file)
+	def readme_update(self): # 更新 README 节点信息
+		print('Updating README...')
+		with open(self.readme_file, 'r', encoding='utf-8') as f:
+			lines = f.readlines()
+			f.close()
 
-    def readme_update(self, merge_file_path):
-        print('Updating README...')
-        if not os.path.exists(merge_file_path) or not os.path.exists(self.readme_file):
-            return
+		# 所有节点打印
+		for index in range(len(lines)):
+			if lines[index] == '### 所有节点\n': # 目标行内容
+				# 清除旧内容
+				lines.pop(index+1) # 删除节点数量
 
-        with open(self.readme_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-
-        top_amount = 0
-        try:
-            with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
-                proxies_base64 = f_merge.read()
-                if proxies_base64:
-                    decoded = base64.b64decode(proxies_base64).decode('utf-8', errors='ignore')
-                    top_amount = len([p for p in decoded.split('\n') if p.strip()])
-        except Exception:
-            top_amount = "Error"
-        
-        print(f"Final node count for README: {top_amount}")
-
-        updated = False
-        for i, line in enumerate(lines):
-            if '### 所有节点' in line:
-                if i + 1 < len(lines) and '合并节点总数' in lines[i+1]:
-                    lines[i+1] = f'合并节点总数: `{top_amount}`\n'
-                else:
-                    lines.insert(i + 1, f'合并节点总数: `{top_amount}`\n')
-                updated = True
-                break
-        
-        if updated:
-            with open(self.readme_file, 'w', encoding='utf-8') as f:
-                f.write("".join(lines))
-                print('完成!\n')
+				with open(f'{self.merge_dir}sub_merge_base64.txt', 'r', encoding='utf-8') as f:
+					proxies_base64 = f.read()
+					proxies = base64_decode(proxies_base64)
+					proxies = proxies.split('\n')
+					top_amount = len(proxies) - 1
+					f.close()
+				lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
+				break
+		
+		# 写入 README 内容
+		with open(self.readme_file, 'w', encoding='utf-8') as f:
+			 data = ''.join(lines)
+			 print('完成!\n')
+			 f.write(data)
 
 if __name__ == '__main__':
-    project_root = os.getcwd()
-    file_dir = {
-        'list_file': os.path.join(project_root, 'sub/sub_list.json'),
-        'merge_dir': os.path.join(project_root, 'sub/'),
-        'readme_file': os.path.join(project_root, 'README.md')
-    }
-    
-    # 【重要】确保 format_config 绝对干净
-    format_config = {
-        'deduplicate': True,
-        'rename': '',
-        'include_remarks': '',
-        'exclude_remarks': '',
-        'config': ''  # 确保这里是空的！
-    }
-    
-    merge(file_dir, format_config)
+	# 这里需要提供实际的 file_dir 和 format_config 参数
+	file_dir = {
+		'list_dir': './sub/list/',
+		'list_file': './sub/sub_list.json',
+		'merge_dir': './sub/',
+		'update_dir': './sub/update/',
+		'readme_file': './README.md',
+		'share_file': './sub/share.txt'
+	}
+	
+	format_config = {
+		'deduplicate': True,
+		'rename': '',
+		'include_remarks': '',
+		'exclude_remarks': '',
+		'config': ''
+	}
+	
+	merge(file_dir, format_config)
