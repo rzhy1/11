@@ -2,8 +2,10 @@
 
 import json, os, base64, time, requests, re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from subconverter import base64_decode
 
+# 辅助函数 is_base64 保持不变
 def is_base64(s):
     try:
         if len(s.strip()) % 4 != 0: return False
@@ -39,7 +41,6 @@ class merge():
     
     def cleanup_node_list(self, nodes):
         cleaned_nodes = []
-        # 这是之前出错的第 47 行，现在是干净的版本
         pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
         def add_quotes(match):
             return f"{match.group(1)}'{match.group(2)}'"
@@ -47,6 +48,44 @@ class merge():
             cleaned_node = pattern.sub(add_quotes, node)
             cleaned_nodes.append(cleaned_node)
         return cleaned_nodes
+
+    def fetch_and_process_item(self, item):
+        """处理单个订阅项目，用于并发调用"""
+        item_id = item.get('id')
+        item_remarks = item.get('remarks')
+        item_type = item.get('type', 'subscription')
+        urls = item.get('url', '').split('|')
+        
+        item_nodes = set()
+
+        for url in urls:
+            if not url: continue
+            try:
+                response = requests.get(url, timeout=15)
+                response.raise_for_status()
+                raw_content = response.text.strip()
+                plain_text_nodes = ''
+                
+                if item_type == 'subscription':
+                    if is_base64(raw_content):
+                        plain_text_nodes = base64_decode(raw_content)
+                    else:
+                        # 在工作线程中，我们只返回结果，不在其中打印警告
+                        plain_text_nodes = raw_content
+                else: # raw_text_url
+                    plain_text_nodes = raw_content
+
+                if plain_text_nodes:
+                    nodes = [line for line in plain_text_nodes.splitlines() if line.strip()]
+                    cleaned_nodes = self.cleanup_node_list(nodes)
+                    item_nodes.update(cleaned_nodes)
+
+            except Exception as e:
+                # 线程出错时，返回错误信息
+                return item, None, str(e)
+        
+        # 线程成功时，返回节点集合
+        return item, item_nodes, None
 
     def sub_merge(self):
         url_list = self.url_list
@@ -61,51 +100,35 @@ class merge():
             os.makedirs(list_dir)
 
         content_set = set()
-        for item in url_list:
-            item_id = item.get('id')
-            item_remarks = item.get('remarks')
-            item_type = item.get('type', 'subscription')
-            urls = item.get('url', '').split('|')
-            item_nodes = set()
-            has_error = False
-
-            for url in urls:
-                if not url: continue
-                print(f"Processing [ID: {item_id}] {item_remarks} - URL: {url[:50]}...")
-                try:
-                    response = requests.get(url, timeout=15)
-                    response.raise_for_status()
-                    raw_content = response.text.strip()
-                    plain_text_nodes = ''
-                    if item_type == 'subscription':
-                        if is_base64(raw_content):
-                            plain_text_nodes = base64_decode(raw_content)
-                        else:
-                            print(f"  -> Warning: type is 'subscription' but content is not Base64. Treating as plain text.")
-                            plain_text_nodes = raw_content
-                    else: # raw_text_url
-                        plain_text_nodes = raw_content
-                    if plain_text_nodes:
-                        nodes = [line for line in plain_text_nodes.splitlines() if line.strip()]
-                        cleaned_nodes = self.cleanup_node_list(nodes)
-                        item_nodes.update(cleaned_nodes)
-                    else:
-                        raise ValueError("No valid nodes found after processing.")
-                except Exception as e:
-                    print(f"  -> Failed for URL {url[:50]}... Reason: {e}")
-                    has_error = True
+        
+        # 【性能优化】使用线程池并发处理所有订阅
+        print("Starting to fetch all subscriptions concurrently...")
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_item = {executor.submit(self.fetch_and_process_item, item): item for item in url_list}
             
-            if item_nodes:
-                content_set.update(item_nodes)
-                print(f"  => Success for [ID: {item_id}]! Found and added {len(item_nodes)} unique nodes.\n")
-                with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(sorted(list(item_nodes))))
-            elif not has_error:
-                print(f"  => Finished for [ID: {item_id}], but no nodes were found.\n")
-
+            for future in as_completed(future_to_item):
+                item, nodes, error = future.result()
+                item_id = item.get('id')
+                item_remarks = item.get('remarks')
+                
+                if error:
+                    print(f"Failed to process [ID: {item_id}] {item_remarks}. Reason: {error}")
+                    file_content = f"Error: {error}"
+                elif nodes:
+                    content_set.update(nodes)
+                    print(f"Success for [ID: {item_id}] {item_remarks}. Found and added {len(nodes)} unique nodes.")
+                    file_content = '\n'.join(sorted(list(nodes)))
+                else:
+                    print(f"Finished for [ID: {item_id}] {item_remarks}, but no nodes were found.")
+                    file_content = "No nodes found."
+                
+                # 写入缓存文件
+                if self.list_dir:
+                    with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
+                        f.write(file_content)
 
         if not content_set:
-            print('Merging failed: No nodes collected from any source.')
+            print('\nMerging failed: No nodes collected from any source.')
             return
 
         print(f'\nMerging {len(content_set)} unique nodes...')
@@ -124,34 +147,24 @@ class merge():
         try:
             command = [
                 subconverter_executable,
-                '-i', temp_merge_file,
-                '-o', final_output_file,
-                '-t', 'base64'
+                '-i', temp_merge_file, '-o', final_output_file, '-t', 'base64'
             ]
+            if self.format_config.get('deduplicate'): command.extend(['--deduplicate'])
+            if self.format_config.get('rename'): command.extend(['-r', self.format_config['rename']])
+            if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
+            if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
+            if config_file_path: command.extend(['-c', os.path.abspath(config_file_path)])
             
-            if self.format_config.get('deduplicate'):
-                command.extend(['--deduplicate'])
-            if self.format_config.get('rename'):
-                command.extend(['-r', self.format_config['rename']])
-            if self.format_config.get('include'):
-                command.extend(['--include', self.format_config['include']])
-            if self.format_config.get('exclude'):
-                command.extend(['--exclude', self.format_config['exclude']])
-            if config_file_path:
-                abs_config_path = os.path.abspath(config_file_path)
-                command.extend(['-c', abs_config_path])
-            
-            print("Executing command:", ' '.join(command))
-            
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            print("Executing final merge command...")
+            result = subprocess.run(command, capture_output=True, text=True, timeout=60) # 增加60秒超时
 
-            if result.stdout:
-                print("Subconverter STDOUT:\n", result.stdout)
-            if result.stderr:
-                print("Subconverter STDERR:\n", result.stderr)
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
 
             print(f'Done! Output merged nodes to {final_output_file}.')
 
+        except subprocess.TimeoutExpired:
+            print("FATAL: Final merge failed! Subconverter process timed out after 60 seconds.")
         except subprocess.CalledProcessError as e:
             print(f"FATAL: Final merge failed! Subconverter process exited with error.")
             print("Subconverter STDERR:\n", e.stderr)
@@ -161,6 +174,7 @@ class merge():
             if os.path.exists(temp_merge_file):
                 os.remove(temp_merge_file)
     
+    # readme_update 保持不变
     def readme_update(self):
         print('Updating README...')
         merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
@@ -198,6 +212,7 @@ class merge():
 
 
 if __name__ == '__main__':
+    # __main__ 保持不变
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
