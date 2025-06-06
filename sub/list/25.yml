@@ -1,7 +1,0 @@
-proxies:
-- cipher: aes-256-gcm
-  name: 付费节点购买：https//a0a.xyz
-  password: 88888888
-  port: 8888
-  server: 8.8.8.8
-  type: ss
