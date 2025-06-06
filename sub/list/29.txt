@@ -1,1 +1,1 @@
-No nodes were found in url.
+https://cdn.jsdelivr.net/gh/xiaoji235/airport-free/v2ray.txt
