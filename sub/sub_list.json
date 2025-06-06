@@ -301,7 +301,7 @@
     "site": "https://github.com/mai19950/free_nodes",
     "url": "https://raw.githubusercontent.com/mai19950/free_nodes/refs/heads/main/sub/v2ray/base64",
     "update_method": "auto",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 38,
@@ -309,7 +309,7 @@
     "site": "https://github.com/mianfeifq/share",
     "url": "https://raw.githubusercontent.com/mianfeifq/share/main/data2024071.txt",
     "update_method": "page_release",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 39,
@@ -325,6 +325,6 @@
     "site": "https://clashgithub.com",
     "url": "https://clashgithub.com/wp-content/uploads/rss/20250217.txt",
     "update_method": "change_date",
-    "enabled": true
+    "enabled": false
   }
 ]
