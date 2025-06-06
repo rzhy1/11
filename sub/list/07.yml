@@ -1,0 +1,212 @@
+proxies:
+- name: 🇩🇪 _CN_中国->🇩🇪_DE_德国
+  password: 2b1ed981-6547-4094-998b-06a3323d6f6c
+  port: 21102
+  server: 120.233.44.201
+  skip-cert-verify: true
+  sni: 120.233.44.201
+  type: trojan
+- name: 🇺🇸 _US_美国_1
+  network: ws
+  password: 895552fa-6284-4c1d-ba00-3944e0c7c626
+  port: 443
+  server: 104.21.71.112
+  sni: CFR56ty7890.288288.sHOP
+  type: trojan
+  ws-opts:
+    headers:
+      Host: CFR56ty7890.288288.sHOP
+    path: /By7cEmOrNRS58yeduy9AOG
+- name: 🇺🇸 _GB_英国->🇺🇸_US_美国
+  network: ws
+  port: 777
+  server: 5.178.96.177
+  tls: false
+  type: vless
+  uuid: bb03cf22-5e68-4e21-cb14-deaac7143593
+  ws-opts:
+    path: /
+- alterId: 0
+  cipher: auto
+  name: 🇸🇪 _SE_瑞典
+  network: ws
+  port: 80
+  server: 185.146.173.25
+  servername: google.whatsapp.snapp.torob.basalam.sarzamiiinahang.ir.
+  tls: false
+  type: vmess
+  uuid: 46181c32-8c82-413a-b836-8375e5e513eb
+  ws-opts:
+    headers:
+      Host: google.whatsapp.snapp.torob.basalam.sarzamiiinahang.ir.
+    path: /
+- name: 🇺🇸 _US_美国_2
+  network: ws
+  port: 8080
+  server: 104.26.14.85
+  servername: 4j.QBAo1g5z6k.ZulaIR.org.
+  tls: false
+  type: vless
+  uuid: 56652249-2e67-4429-b86c-3df8b838ad85
+  ws-opts:
+    headers:
+      Host: 4j.QBAo1g5z6k.ZulaIR.org.
+    path: /
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 _US_美国_3
+  password: ojcP36n1SouDcnBg9EOZP8
+  port: 1490
+  server: 9.163.232.180
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 _US_美国_4
+  password: 360e21d21977dc11
+  port: 57456
+  server: 104.167.197.25
+  type: ss
+- cipher: aes-256-cfb
+  name: 🇰🇷 _KR_韩国->🇺🇸_US_美国
+  password: qwerREWQ@@
+  port: 15098
+  server: 125.141.31.72
+  type: ss
+- name: 🇺🇸 _US_美国_5
+  network: ws
+  password: 15153c1d-fc81-4b2a-9689-7b4e4a72dce5
+  port: 443
+  server: 172.67.188.77
+  sni: edfr4.890604.dpdns.org
+  type: trojan
+  ws-opts:
+    headers:
+      Host: edfr4.890604.dpdns.org
+    path: /l6lvY4hFZriQDBimbKYmPIggy
+- name: 🇺🇸 _US_美国_6
+  network: ws
+  password: 895552fa-6284-4c1d-ba00-3944e0c7c626
+  port: 443
+  server: 172.67.144.126
+  sni: CFR56ty7890.288288.sHOP
+  type: trojan
+  ws-opts:
+    headers:
+      Host: CFR56ty7890.288288.sHOP
+    path: /By7cEmOrNRS58yeduy9AOG
+- name: 🇺🇸 _US_美国->🇫🇷_FR_法国_1
+  network: ws
+  password: f0f6e76e-e5fe-4e2c-9faf-34832e021eae
+  port: 443
+  server: 172.67.133.248
+  sni: DDd.890604.FIlEGear-sG.Me
+  type: trojan
+  ws-opts:
+    headers:
+      Host: DDd.890604.FIlEGear-sG.Me
+    path: /mZr1mA5hub7QHHkQBzYO
+- name: _CN_中国
+  password: 607d365e-7ea1-11ee-95e9-f23c913c8d2b
+  port: 15229
+  server: c5d812aa-sx4v40-sx7hbg-1mmbp.cu.plebai.net
+  sni: c5d812aa-sx4v40-sx7hbg-1mmbp.cu.plebai.net
+  type: trojan
+- name: 🇺🇸 _US_美国->🇫🇷_FR_法国_2
+  network: ws
+  password: 4a3ee276-f50f-46f6-ba4d-13571732ab70
+  port: 443
+  server: 172.67.204.120
+  sni: ddcDe.890603.XYz
+  type: trojan
+  ws-opts:
+    headers:
+      Host: ddcDe.890603.XYz
+    path: /COp52Dbu3dvwvDWUxOqxq
+- name: 🇺🇸 _US_美国_7
+  network: ws
+  port: 8080
+  server: 104.26.15.85
+  servername: 4j.QBAo1g5z6k.ZulaIR.org.
+  tls: false
+  type: vless
+  uuid: 56652249-2e67-4429-b86c-3df8b838ad85
+  ws-opts:
+    headers:
+      Host: 4j.QBAo1g5z6k.ZulaIR.org.
+    path: /
+- name: 🇺🇸 _US_美国->🇫🇷_FR_法国_3
+  network: ws
+  password: 4a3ee276-f50f-46f6-ba4d-13571732ab70
+  port: 443
+  server: 104.21.83.113
+  sni: SxcDe3.859886.XYz
+  type: trojan
+  ws-opts:
+    headers:
+      Host: SxcDe3.859886.XYz
+    path: /COp52Dbu3dvwvDWUxOqxq
+- name: 🇺🇸 _CN_中国->🇺🇸_US_美国_1
+  password: RlzoEILU
+  port: 13542
+  server: 36.151.251.62
+  skip-cert-verify: true
+  sni: cdn.egvra.cn
+  type: trojan
+- name: 🇺🇸 _CN_中国->🇺🇸_US_美国_2
+  password: RlzoEILU
+  port: 3330
+  server: 36.151.251.62
+  skip-cert-verify: true
+  sni: cdn.egvra.cn
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 🇯🇵 _CN_中国->🇯🇵_JP_日本
+  port: 17232
+  server: b79d3418-sux8g0-swe4j1-1rfon.cm5.p5pv.com
+  tls: false
+  type: vmess
+  uuid: aed1cc24-351d-11ef-ba52-f23c9164ca5d
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 _RO_罗马尼亚->🇺🇸_US_美国
+  port: 2010
+  server: 188.213.128.64
+  tls: false
+  type: vmess
+  uuid: b117bd27-0e16-4342-852a-59f0c0aa61f4
+- name: 🇺🇸 _CN_中国->🇺🇸_US_美国_3
+  password: RlzoEILU
+  port: 33097
+  server: 36.151.251.61
+  skip-cert-verify: true
+  sni: 36.151.251.61
+  type: trojan
+- name: 🇺🇸 _US_美国_8
+  network: ws
+  port: 8080
+  server: 172.67.73.163
+  servername: 18.6na7PY43IT.zuLaiR.Org.
+  tls: false
+  type: vless
+  uuid: 51fda508-20aa-419e-b4c3-3a6202411412
+  ws-opts:
+    headers:
+      Host: 18.6na7PY43IT.zuLaiR.Org.
+    path: /
+- name: 🇺🇸 _US_美国->🇫🇷_FR_法国_4
+  network: ws
+  password: f0f6e76e-e5fe-4e2c-9faf-34832e021eae
+  port: 443
+  server: 104.21.25.95
+  skip-cert-verify: true
+  sni: DDd.890604.FIlEGear-sG.Me
+  type: trojan
+  ws-opts:
+    headers:
+      Host: DDd.890604.FIlEGear-sG.Me
+    path: /mZr1mA5hub7QHHkQBzYO
+- cipher: aes-256-cfb
+  name: 🇺🇸 _US_美国->🇷🇴_RO_罗马尼亚
+  password: awsps0501
+  port: 443
+  server: 35.91.246.41
+  type: ss

@@ -1,0 +1,239 @@
+proxies:
+- name: 🇺🇸 美国1
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10819
+  server: 183.236.51.2
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国2
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10821
+  server: 183.236.51.8
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国3
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.7
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国4
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10820
+  server: 183.236.51.6
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国5
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10822
+  server: 183.236.51.7
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国6
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10825
+  server: 183.236.51.8
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国7
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10824
+  server: 183.236.51.6
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国8
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10822
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国9
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10820
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国10
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10824
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国11
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10825
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国12
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10819
+  server: 183.236.51.3
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国13
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10826
+  server: 183.236.51.7
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国14
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10822
+  server: 183.236.51.6
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国15
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.8
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国16
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10825
+  server: 183.236.51.4
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国17
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10820
+  server: 183.236.51.2
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国18
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10824
+  server: 183.236.51.8
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国19
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10826
+  server: 183.236.51.2
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国20
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10826
+  server: 183.236.51.5
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国21
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10819
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国22
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10821
+  server: 183.236.51.7
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国23
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10819
+  server: 183.236.51.7
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国24
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10826
+  server: 183.236.51.4
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国25
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.6
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国26
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.5
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国27
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10822
+  server: 183.236.51.5
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国28
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10819
+  server: 183.236.51.8
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国29
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10826
+  server: 183.236.51.9
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国30
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.2
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国31
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10823
+  server: 183.236.51.3
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国32
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10824
+  server: 183.236.51.4
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国33
+  password: 7d223bae-e183-4bf6-89c3-e327b15df490
+  port: 10824
+  server: 183.236.51.2
+  skip-cert-verify: true
+  type: trojan
+- name: 🇦🇺 Australia-澳大利亚
+  password: cc05b267-2e17-4e73-92f0-2cf603aa5997
+  port: 40005
+  server: 146.56.179.67
+  skip-cert-verify: true
+  type: trojan
+- name: 🇦🇺 Australia-澳大利亚 2
+  password: 57edfecf-5694-4a34-8072-54a4f0636a62
+  port: 40005
+  server: 146.56.179.67
+  skip-cert-verify: true
+  type: trojan
+- name: 🇺🇸 美国 3
+  password: 414dff55-922a-4dc8-b5d3-b6517942b25a
+  port: 15003
+  server: east.eeeeeef998.buzz
+  skip-cert-verify: true
+  sni: data.steamdownload.top
+  type: trojan
+- name: 🇺🇸 美国 5
+  password: 414dff55-922a-4dc8-b5d3-b6517942b25a
+  port: 15005
+  server: east.eeeeeef998.buzz
+  skip-cert-verify: true
+  sni: data.steamdownload.top
+  type: trojan
+- name: 🇺🇸 美国 6
+  password: 414dff55-922a-4dc8-b5d3-b6517942b25a
+  port: 15006
+  server: east.eeeeeef998.buzz
+  skip-cert-verify: true
+  sni: data.steamdownload.top
+  type: trojan
+- name: 🇺🇸 美国 2
+  password: 414dff55-922a-4dc8-b5d3-b6517942b25a
+  port: 15002
+  server: east.eeeeeef998.buzz
+  skip-cert-verify: true
+  sni: data.steamdownload.top
+  type: trojan

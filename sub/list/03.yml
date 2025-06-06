@@ -1,0 +1,148 @@
+proxies:
+- cipher: chacha20-ietf-poly1305
+  name: 🇷🇺 github.com/freefq - 俄罗斯  1
+  password: 36ZCHeabUSfKjfQEvJ4HDV
+  port: 54170
+  server: 185.242.86.156
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇮🇳 github.com/freefq - 印度  2
+  network: ws
+  port: 443
+  server: 202.78.162.5
+  tls: true
+  type: vmess
+  uuid: 2ff97c6d-8557-42a4-b43f-19c77c5959ea
+  ws-opts:
+    headers:
+      Host: irsoft.sytes.net
+    path: /
+- alterId: 0
+  cipher: auto
+  name: 🇮🇳 github.com/freefq - 印度  3
+  network: ws
+  port: 443
+  server: 202.78.162.5
+  tls: true
+  type: vmess
+  uuid: 118287d2-e968-42e1-80d0-12fa2f5d38d6
+  ws-opts:
+    headers:
+      Host: sahand.serveminecraft.net
+    path: /
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 github.com/freefq - 美国CloudFlare公司CDN节点 4
+  network: ws
+  port: 8080
+  server: www.darkroom.lol
+  tls: false
+  type: vmess
+  uuid: 22826b44-5c1a-4b4b-dbaa-83a2e8bd95f0
+  ws-opts:
+    headers:
+      Host: www.darkroom.lol
+    path: /
+- cipher: aes-256-gcm
+  name: 🇵🇱 github.com/freefq - 波兰  5
+  password: 7BcLdsO1WweoGD0X
+  port: 40368
+  server: 193.243.147.128
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 github.com/freefq - 美国CloudFlare公司CDN节点 6
+  network: ws
+  port: 8880
+  server: server31.beheshtbaneh.com
+  tls: false
+  type: vmess
+  uuid: 4154143c-bbba-47a4-9f79-c2ed087cbcc9
+  ws-opts:
+    headers:
+      Host: server31.beheshtbaneh.com
+    path: /
+- alterId: 0
+  cipher: auto
+  name: github.com/freefq - 广东省移动 7
+  network: ws
+  port: 20401
+  server: data-us-v1.shwjfkw.cn
+  tls: false
+  type: vmess
+  uuid: b1478e24-4916-3abe-8f17-15931012ecbe
+  ws-opts:
+    headers:
+      Host: data-us-v1.shwjfkw.cn
+    path: /debian
+- cipher: chacha20-ietf-poly1305
+  name: github.com/freefq - 广东省江门市移动 8
+  password: d6105bbd-be0d-45b2-82ad-31fd1071c1d2
+  port: 20003
+  server: service.ouluyun9803.com
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 github.com/freefq - 美国CloudFlare公司CDN节点 9
+  network: ws
+  port: 8880
+  server: 104.21.82.183
+  tls: false
+  type: vmess
+  uuid: 5a7021e0-26b4-45d6-b175-fe551601ca97
+  ws-opts:
+    headers:
+      Host: server26.beheshtbaneh.com
+    path: /
+- alterId: 0
+  cipher: auto
+  name: 🇮🇳 github.com/freefq - 印度  10
+  network: ws
+  port: 443
+  server: 202.78.162.5
+  tls: true
+  type: vmess
+  uuid: 716eded6-2201-4dbd-9d63-1638c9e8e677
+  ws-opts:
+    headers:
+      Host: pendar.onthewifi.com
+    path: /
+- cipher: chacha20-ietf-poly1305
+  name: github.com/freefq - 广东省江门市移动 11
+  password: d6105bbd-be0d-45b2-82ad-31fd1071c1d2
+  port: 26667
+  server: service.ouluyun9803.com
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: github.com/freefq - 广东省江门市移动 12
+  password: d6105bbd-be0d-45b2-82ad-31fd1071c1d2
+  port: 20005
+  server: service.ouluyun9803.com
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 github.com/freefq - 美国Fastly全球Anycast节点 13
+  network: ws
+  port: 443
+  server: gov.uk
+  tls: true
+  type: vmess
+  uuid: 77848824-93b7-4b89-ffd0-e91afff406ce
+  ws-opts:
+    headers:
+      Host: zheshiscp.com
+    path: /77848824
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 github.com/freefq - 美国CloudFlare节点 14
+  network: ws
+  port: 8880
+  server: server32.beheshtbaneh.com
+  tls: false
+  type: vmess
+  uuid: 044ba8ed-7285-472a-bc14-fb91dc6be4c9
+  ws-opts:
+    headers:
+      Host: server32.beheshtbaneh.com
+    path: /

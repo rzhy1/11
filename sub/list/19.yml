@@ -1,0 +1,1956 @@
+proxies:
+- alterId: 0
+  cipher: auto
+  name: 🇨🇦 VMESS-加拿大-NF解锁加拿大地区非自制剧-ChatGPT-TikTok-YouTube-51.79.102.25380
+  network: ws
+  port: 80
+  server: 51.79.102.253
+  tls: false
+  type: vmess
+  uuid: 58fe1542-5290-40ad-815a-77707a81afe5
+  ws-opts:
+    headers:
+      Host: 51.79.102.253
+    path: /IOebhLMhl1CTbFHbL95myfRX2
+- alterId: 0
+  cipher: auto
+  name: 🇫🇷 VMESS-未知>法国-NF解锁法国自制剧-ChatGPT-TikTok-YouTube-162.159.45.2362086
+  network: ws
+  port: 2086
+  server: 162.159.45.236
+  tls: false
+  type: vmess
+  uuid: 7d92ffc9-02e1-4087-8a46-cc4d76560917
+  ws-opts:
+    headers:
+      Host: m6919.164748.xyz
+    path: github.com/Alvin9999
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 SS-美国-NF解锁自制剧-ChatGPT-TikTok-YouTube-204.136.10.1151866
+  password: oXGp1+ihlfKg826H
+  port: 1866
+  server: 204.136.10.115
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇬🇧 SS-英国-NF解锁英国地区非自制剧-ChatGPT-TikTok-YouTube-57.128.190.17111259
+  password: f9d73c84e32a10f3
+  port: 11259
+  server: 57.128.190.171
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇱🇹 SS-立陶宛>荷兰-NF解锁荷兰自制剧-ChatGPT-TikTok-YouTube-45.87.175.288080
+  password: oZIoA69Q8yhcQV8ka3Pa3A
+  port: 8080
+  server: 45.87.175.28
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇬🇧 VMESS-未知>英国-NF解锁波兰自制剧-ChatGPT-TikTok-YouTube-b62a948c-faa2-4e8a-bf8a-3ff3121c875a.asoul-ava.top443
+  network: ws
+  port: 443
+  server: b62a948c-faa2-4e8a-bf8a-3ff3121c875a.asoul-ava.top
+  tls: false
+  type: vmess
+  uuid: 5f726fe3-d82e-4da5-a711-8af0cbb2b682
+  ws-opts:
+    headers:
+      Host: b62a948c-faa2-4e8a-bf8a-3ff3121c875a.asoul-ava.top
+    path: /azumase.ren
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 SS-美国-NF解锁自制剧-ChatGPT-TikTok-YouTube-172.233.128.1261866
+  password: oXGp1+ihlfKg826H
+  port: 1866
+  server: 172.233.128.126
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇳🇱 SS-荷兰-NF解锁荷兰自制剧-ChatGPT-TikTok-YouTube-213.109.147.24262685
+  password: VpKABcOpNNA0l5G2AVOmw8
+  port: 62685
+  server: 213.109.147.242
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 VMESS-未知>美国-NF解锁自制剧-ChatGPT-TikTok-YouTube-172.67.214.332082
+  network: ws
+  port: 2082
+  server: 172.67.214.33
+  tls: false
+  type: vmess
+  uuid: 2f821152-c3e9-4074-9185-2790e7425f42
+  ws-opts:
+    headers:
+      Host: cs.flha.ru
+    path: /
+- alterId: 2
+  cipher: auto
+  name: 吉林省 移动(全省通用)
+  network: ws
+  port: 30828
+  server: 111.26.109.79
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- name: 广东省汕头市 移动
+  password: d076280a-0d5f-11f0-8a7b-f23c913c8d2b
+  port: 27231
+  server: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 🇨🇳 广东省广州市 移动
+  port: 33919
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 广东省 移动
+  password: 2b1ed981-6547-4094-998b-06a3323d6f6c
+  port: 21102
+  server: 120.233.44.201
+  skip-cert-verify: true
+  sni: 120.233.44.201
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 广东省湛江市 移动
+  port: 51095
+  server: 120.198.71.219
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 广东省汕头市 移动 2
+  password: 9e1ddc04-073b-11ed-bd7c-f23c913c8d2b
+  port: 27231
+  server: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 美国 CloudFlare节点
+  network: ws
+  port: 8443
+  server: us01.sh-cloudflare.sbs
+  tls: true
+  type: vmess
+  uuid: 337edede-50e3-4a26-97e7-7a1013e2f1d5
+  ws-opts:
+    headers:
+      Host: us01.sh-cloudflare.sbs
+    path: /
+- alterId: 2
+  cipher: auto
+  name: 吉林省 移动(全省通用) 2
+  network: ws
+  port: 30829
+  server: v29.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- name: 广东省汕头市 移动 3
+  password: 1469e09e-027c-11ec-a0fc-f23c913c8d2b
+  port: 27231
+  server: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  type: trojan
+- cipher: chacha20-ietf-poly1305
+  name: 🇨🇳 台湾省彰化县 中华电信
+  password: d484b050-d99f-4c39-bebc-08280e4d34ab
+  port: 26900
+  server: hinetiw0k.yooddns.stream
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 广东省湛江市 移动 2
+  port: 46159
+  server: 120.198.71.216
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 🇺🇸 美国 Amazon数据中心
+  password: telegram-id-directvpn
+  port: 22223
+  server: 13.39.3.20
+  skip-cert-verify: false
+  sni: trojan.burgerip.co.uk
+  type: trojan
+- alterId: 64
+  cipher: auto
+  name: 🇨🇳 广东省广州市 移动 2
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 0
+  cipher: auto
+  name: 广东省中山市 移动
+  port: 39076
+  server: 183.238.90.8
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: aes-256-cfb
+  name: 1|🌀3-SK |  5.0MB/s|0%|Youtube|Op...
+  password: f8f7aCzcPKbsF8p3
+  port: 989
+  server: 156.146.40.194
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 1|🇸🇬1 |  1.0MB/s|0%|Netflix|Disn...
+  port: 49291
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 1|🇺🇸45 |  2.5MB/s|46%|Openai|Gem...
+  password: 60f6b4c4-9d70-11ed-a4d2-f23c9164ca5d
+  port: 15229
+  server: 391907cc-swgsg0-t1bnjq-1krtb.cu.plebai.net
+  skip-cert-verify: false
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 1|🌀4-TH |  2.6MB/s|55%|Netflix|O...
+  network: ws
+  port: 443
+  server: 38.47.96.30
+  tls: true
+  type: vmess
+  uuid: 164a6ad0-476a-4bae-b78f-a3d37cf0f414
+  ws-opts:
+    headers:
+      Host: th.lzj520hxw.dpdns.org
+    path: /lzjjj
+- cipher: aes-256-cfb
+  name: 1|🇰🇷2 |  1.5MB/s|44%|Openai
+  password: qwerREWQ@@
+  port: 15098
+  server: 125.141.31.72
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 1|🇺🇸62 |  3.3MB/s|Openai|Gemini
+  network: ws
+  port: 30829
+  server: v29.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- alterId: 0
+  cipher: auto
+  grpc-opts:
+    grpc-service-name: vmess-grpc
+  name: 1|🇩🇪5 |  1.4MB/s|0%|Youtube|Open...
+  network: grpc
+  port: 443
+  server: de.vmess.comnpmjs.com
+  servername: de.vmess.comnpmjs.com
+  tls: true
+  type: vmess
+  uuid: ceaaf653-9874-58c6-b100-092c01a1f73d
+- alterId: 0
+  cipher: auto
+  name: 1|🇭🇰1 |  1.8MB/s|15%|Disney|Yout...
+  network: ws
+  port: 8080
+  server: bc842b49-swexs0-t1rt5e-1s09x.hgc1.tcpbbr.net
+  tls: false
+  type: vmess
+  uuid: 62b7824e-47dc-11ef-9f2d-f23c9164ca5d
+  ws-opts:
+    headers:
+      Host: broadcastlv.chat.bilibili.com
+    path: /
+- name: 1|🇺🇸63 |  2.1MB/s|46%|Openai|Gem...
+  password: 5e2f888c-68ef-11ef-96ca-f23c9164ca5d
+  port: 15229
+  server: 13c2c931-swin40-swy6li-tni2.cu.plebai.net
+  skip-cert-verify: false
+  sni: 13c2c931-swin40-swy6li-tni2.cu.plebai.net
+  type: trojan
+- name: 1|🇺🇸64 |  1.3MB/s|46%|Openai|Gem...
+  password: def14a51-e0d9-11ec-8429-f23c91cfbbc9
+  port: 15229
+  server: 4560c642-swin40-tjuq6l-wf62.cu.plebai.net
+  skip-cert-verify: true
+  sni: 4560c642-swin40-tjuq6l-wf62.cu.plebai.net
+  type: trojan
+- cipher: aes-256-cfb
+  name: 12|tg频道@ripaojiedian
+  password: awsps0501
+  port: 443
+  server: 57.180.28.64
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港|@ripaojiedian
+  port: 49554
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: chacha20-ietf-poly1305
+  name: 🇭🇰 12|🇭🇰 香港2|@ripaojiedian
+  password: 1450cecfb93f
+  port: 11400
+  server: 121.127.231.217
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港3|@ripaojiedian
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 🇭🇰 12,13|香港4|@ripaojiedian
+  password: e4af2638-bb12-4e4a-84f1-a032e23ca63f
+  port: 443
+  server: usla.mjt000.com
+  skip-cert-verify: false
+  sni: usla.mjt000.com
+  type: trojan
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港5|@ripaojiedian
+  port: 31209
+  server: 120.232.153.40
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 2
+  cipher: auto
+  name: 🇭🇰 12,13|香港6|@ripaojiedian
+  network: ws
+  port: 30809
+  server: v9.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- name: 🇨🇳 12,13|台湾|@ripaojiedian
+  password: b483bf41-79d4-48df-bec6-30a756a3bd6b
+  port: 42765
+  server: js-12f83a8c.kaiqsz.com
+  skip-cert-verify: true
+  sni: mmbiz1.redapricotcloud.com
+  type: trojan
+- cipher: rc4-md5
+  name: 🇯🇵 12|🇯🇵 日本|@ripaojiedian
+  password: efanccyun
+  port: 8766
+  server: cn01.efan8867801.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 12|🇯🇵 日本2|@ripaojiedian
+  password: 60a930c17ff0
+  port: 59333
+  server: 43.226.17.11
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 12|🇯🇵 日本3|@ripaojiedian
+  password: feafc2ef-d5fd-4f6d-803b-fad4a5cc1f0e
+  port: 19832
+  server: h.cm2.xiaomi-api.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇸🇬 12,13|新加坡|@ripaojiedian
+  network: ws
+  port: 30812
+  server: v12.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- name: 🇸🇬 12|🇸🇬 新加坡3|@ripaojiedian
+  password: bf109e1a-2b99-11ed-bb74-f23c9164ca5d
+  port: 27231
+  server: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  type: trojan
+- name: 🇸🇬 12,13|新加坡5|@ripaojiedian
+  password: 905fcd78-866c-81e1-3cb8-1beb59d661ab
+  port: 27231
+  server: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  type: trojan
+- name: 🇸🇬 12,13|新加坡6|@ripaojiedian
+  password: 1469e09e-027c-11ec-a0fc-f23c913c8d2b
+  port: 27231
+  server: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  type: trojan
+- cipher: aes-256-cfb
+  name: 🇰🇷 12|🇰🇷 韩国2|@ripaojiedian
+  password: qwerREWQ@@
+  port: 36379
+  server: p080.panda001.net
+  type: ss
+- cipher: rc4-md5
+  name: 🇺🇸 12|🇺🇸 美国2|@ripaojiedian
+  password: efanccyun
+  port: 8774
+  server: cn01.efan8867801.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国|@ripaojiedian
+  network: ws
+  port: 30832
+  server: v32.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国5|@ripaojiedian
+  network: ws
+  port: 30828
+  server: 111.26.109.79
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国4|@ripaojiedian
+  network: ws
+  port: 22643
+  server: tk.hzlt.tkddns.xyz
+  tls: true
+  type: vmess
+  uuid: 98e96c9f-4bb3-39d4-9a2c-fac04257f7c7
+  ws-opts:
+    headers:
+      Host: zxjp-c.tkong.cc
+    path: /
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 12|🇺🇸 美国6|@ripaojiedian
+  password: 1a17b19d-4896-4531-af79-6e91d8ef8228
+  port: 9898
+  server: 35.89.114.253
+  type: ss
+- cipher: aes-256-cfb
+  name: 🇻🇳 12|🇻🇳 越南|@ripaojiedian
+  password: Xn8jKdmDM00IeO%#$#fJAMtsEAEUOpH/YWYtYqDFnT0SV
+  port: 38388
+  server: 103.186.154.25
+  type: ss
+- cipher: ss
+  name: '13|tg频道@ripaojiedian #1'
+  password: //YWVzLTI1Ni1jZmI6YXdzcHMwNTAx
+  port: 443
+  server: 57.180.28.64
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港|@ripaojiedian
+  port: 49554
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港3|@ripaojiedian
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港5|@ripaojiedian
+  port: 31209
+  server: 120.232.153.40
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: ss
+  name: 🇯🇵 13|日本3|@ripaojiedian
+  password: //Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpmZWFmYzJlZi1kNWZkLTRmNmQtODAzYi1mYWQ0YTVjYzFmMGU
+  port: 19832
+  server: h.cm2.xiaomi-api.xyz
+  type: ss
+- name: 🇸🇬 13|新加坡3|@ripaojiedian
+  password: bf109e1a-2b99-11ed-bb74-f23c9164ca5d
+  port: 27231
+  server: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  type: trojan
+- cipher: ss
+  name: 🇰🇷 13|韩国2|@ripaojiedian
+  password: //YWVzLTI1Ni1jZmI6cXdlclJFV1FAQA
+  port: 36379
+  server: p080.panda001.net
+  type: ss
+- cipher: ss
+  name: 🇺🇸 13|美国6|@ripaojiedian
+  password: //Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNToxYTE3YjE5ZC00ODk2LTQ1MzEtYWY3OS02ZTkxZDhlZjgyMjg
+  port: 9898
+  server: 35.89.114.253
+  type: ss
+- cipher: ss
+  name: 🇻🇳 13|越南|@ripaojiedian
+  password: //YWVzLTI1Ni1jZmI6WG44aktkbURNMDBJZU8lIyQjZkpBTXRzRUFFVU9wSC9ZV1l0WXFERm5UMFNW
+  port: 38388
+  server: 103.186.154.25
+  type: ss
+- name: 14|CN_speednode_0003
+  password: 9e1ddc04-073b-11ed-bd7c-f23c913c8d2b
+  port: 27231
+  server: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  type: trojan
+- name: 14|CN_speednode_0005
+  password: d076280a-0d5f-11f0-8a7b-f23c913c8d2b
+  port: 27231
+  server: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  type: trojan
+- name: 14|CN_speednode_0006
+  password: 659990ba-650f-11ea-a7af-f23c9164ca5d
+  port: 27231
+  server: 7fd1be71-sxc9s0-tcselz-oua4.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 7fd1be71-sxc9s0-tcselz-oua4.cm5.cnkuaishou.com
+  type: trojan
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 日本2|@ripaojiedian
+  password: 60a930c17ff0
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kr6v1.xpmc.cc
+    mode: websocket
+    mux: false
+    path: /matwnpkhug
+    tls: true
+  port: 59333
+  server: 43.226.17.11
+  type: ss
+- cipher: rc4-md5
+  name: 🇺🇸 美国2|@ripaojiedian
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8774
+  server: cn01.efan8867801.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇭🇰 香港2|@ripaojiedian
+  password: 1450cecfb93f
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kh36v1.pmxiaonan.xyz
+    mode: websocket
+    mux: true
+    path: /simieepvt
+    tls: true
+  port: 11400
+  server: 121.127.231.217
+  type: ss
+- cipher: rc4-md5
+  name: 🇯🇵 日本|@ripaojiedian
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8766
+  server: cn01.efan8867801.xyz
+  type: ss
+- alterId: 0
+  cipher: auto
+  name: 🇺🇸 _美国
+  network: ws
+  port: 80
+  server: tci2.tiamoci.us.kg
+  tls: false
+  type: vmess
+  uuid: edb02ed6-e6a1-4309-8076-981094bda7de
+  ws-opts:
+    headers:
+      Host: tci2.tiamoci.us.kg
+    path: /
+- name: 🇺🇸 _美国 2
+  password: Aimer
+  port: 443
+  server: pranab.ns.cloudflare.com
+  skip-cert-verify: false
+  sni: epms.ambercc.filegear-sg.me
+  type: trojan
+- name: _中国
+  password: ba7a37e3-033a-e1ab-06f6-9027aa4630f5
+  port: 15229
+  server: e0fc3fd6-sxc9s0-t5cryd-4w8.cu.plebai.net
+  skip-cert-verify: false
+  sni: e0fc3fd6-sxc9s0-t5cryd-4w8.cu.plebai.net
+  type: trojan
+- name: 🇨🇳 _中国 2
+  password: 607d365e-7ea1-11ee-95e9-f23c913c8d2b
+  port: 15229
+  server: c5d812aa-sx4v40-sx7hbg-1mmbp.cu.plebai.net
+  skip-cert-verify: false
+  sni: c5d812aa-sx4v40-sx7hbg-1mmbp.cu.plebai.net
+  type: trojan
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 3
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30001
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 4
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30002
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 5
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30003
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 6
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30004
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 7
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40001
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 8
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40002
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 9
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40003
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 10
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40004
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 11
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 50005
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 12
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 50006
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 13
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 50007
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 14
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 50008
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 15
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30005
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 16
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30006
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 17
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30007
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 18
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30008
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 19
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40007
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 20
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40008
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 21
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30009
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 22
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30010
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 23
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40009
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 24
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40010
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 25
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30011
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 26
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 30012
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 27
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40011
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 28
+  password: 865a23f3-4481-454a-915c-7d5279fa7c07
+  port: 40012
+  server: secret.i-lu.cc
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 29
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 57591
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 30
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 57591
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 31
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 57591
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 32
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41709
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 33
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41709
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 34
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41709
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 35
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43274
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 36
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43274
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 37
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43274
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 38
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42203
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 39
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42203
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 40
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42203
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 41
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30402
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 42
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30402
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 43
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30402
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 44
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 20251
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 45
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 20251
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 46
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 20251
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 47
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 31452
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 48
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 31452
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 49
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 31452
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 50
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59662
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 51
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59662
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 52
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59662
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 53
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 45683
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 54
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 45683
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 55
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 45683
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 56
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30725
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 57
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30725
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 58
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30725
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 59
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61934
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 60
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61934
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 61
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61934
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 62
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49823
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 63
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49823
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 64
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49823
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 65
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43910
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 66
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43910
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 67
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 43910
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 68
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42439
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 69
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42439
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 70
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42439
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 71
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59345
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 72
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59345
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 73
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 59345
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 74
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49213
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 75
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49213
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 76
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 49213
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 77
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42765
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 78
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42765
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 79
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 42765
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 80
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41904
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 81
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41904
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 82
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 41904
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 83
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 54831
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 84
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 54831
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 85
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 54831
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 86
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61129
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 87
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61129
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 88
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61129
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 89
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 37188
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 90
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 37188
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 91
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 37188
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 92
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61315
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 93
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61315
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 94
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 61315
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 95
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30359
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 96
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30359
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 97
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30359
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 98
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 35844
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 99
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 35844
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 100
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 35844
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 101
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 64931
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 102
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 64931
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 103
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 64931
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 104
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 36705
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 105
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 36705
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 106
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 36705
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 107
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30524
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 108
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30524
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 109
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 30524
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 110
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 53771
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 111
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 53771
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 112
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 53771
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 113
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 60572
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 114
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 60572
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 115
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 60572
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 116
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 46924
+  server: zf1.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 117
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 46924
+  server: zf2.10101251.xyz
+  type: ss
+- cipher: aes-256-gcm
+  name: 🇨🇳 _中国 118
+  password: 449ddcc8-28b6-4dda-bbbc-d473dc243b0b
+  port: 46924
+  server: zf3.10101251.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 _美国 3
+  password: ojcP36n1SouDcnBg9EOZP8
+  port: 1490
+  server: 9.163.232.180
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 _美国 4
+  password: 360e21d21977dc11
+  port: 57456
+  server: 104.167.197.25
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 香港|@ripaojiedian
+  port: 49554
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: chacha20-ietf-poly1305
+  name: 🇭🇰 香港2|@ripaojiedian 2
+  password: 1450cecfb93f
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kh36v1.pmxiaonan.xyz
+    mode: websocket
+    mux: true
+    path: /simieepvt
+    tls: true
+  port: 11400
+  server: 121.127.231.217
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 香港3|@ripaojiedian
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 🇭🇰 香港4|@ripaojiedian
+  password: e4af2638-bb12-4e4a-84f1-a032e23ca63f
+  port: 443
+  server: usla.mjt000.com
+  skip-cert-verify: false
+  sni: usla.mjt000.com
+  type: trojan
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 香港5|@ripaojiedian
+  port: 31209
+  server: 120.232.153.40
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 2
+  cipher: auto
+  name: 🇭🇰 香港6|@ripaojiedian
+  network: ws
+  port: 30809
+  server: v9.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- name: 🇨🇳 台湾|@ripaojiedian
+  password: b483bf41-79d4-48df-bec6-30a756a3bd6b
+  port: 42765
+  server: js-12f83a8c.kaiqsz.com
+  skip-cert-verify: true
+  sni: mmbiz1.redapricotcloud.com
+  type: trojan
+- cipher: rc4-md5
+  name: 🇯🇵 日本|@ripaojiedian 2
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8766
+  server: cn01.efan8867801.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 日本2|@ripaojiedian 2
+  password: 60a930c17ff0
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kr6v1.xpmc.cc
+    mode: websocket
+    mux: false
+    path: /matwnpkhug
+    tls: true
+  port: 59333
+  server: 43.226.17.11
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 日本3|@ripaojiedian
+  password: feafc2ef-d5fd-4f6d-803b-fad4a5cc1f0e
+  port: 19832
+  server: h.cm2.xiaomi-api.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇸🇬 新加坡|@ripaojiedian
+  network: ws
+  port: 30812
+  server: v12.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- name: 🇸🇬 新加坡3|@ripaojiedian
+  password: bf109e1a-2b99-11ed-bb74-f23c9164ca5d
+  port: 27231
+  server: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  type: trojan
+- name: 🇸🇬 新加坡5|@ripaojiedian
+  password: 905fcd78-866c-81e1-3cb8-1beb59d661ab
+  port: 27231
+  server: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  type: trojan
+- name: 🇸🇬 新加坡6|@ripaojiedian
+  password: 1469e09e-027c-11ec-a0fc-f23c913c8d2b
+  port: 27231
+  server: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  type: trojan
+- cipher: aes-256-cfb
+  name: 🇰🇷 韩国2|@ripaojiedian
+  password: qwerREWQ@@
+  port: 36379
+  server: p080.panda001.net
+  type: ss
+- cipher: rc4-md5
+  name: 🇺🇸 美国2|@ripaojiedian 2
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8774
+  server: cn01.efan8867801.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 美国|@ripaojiedian
+  network: ws
+  port: 30832
+  server: v32.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 美国3|@ripaojiedian
+  network: ws
+  port: 30828
+  server: 111.26.109.79
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 美国4|@ripaojiedian
+  network: ws
+  port: 22643
+  server: tk.hzlt.tkddns.xyz
+  tls: true
+  type: vmess
+  uuid: 98e96c9f-4bb3-39d4-9a2c-fac04257f7c7
+  ws-opts:
+    headers:
+      Host: zxjp-c.tkong.cc
+    path: /
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 美国5|@ripaojiedian
+  network: ws
+  port: 30828
+  server: 111.26.109.79
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 美国6|@ripaojiedian
+  password: 1a17b19d-4896-4531-af79-6e91d8ef8228
+  port: 9898
+  server: 35.89.114.253
+  type: ss
+- cipher: aes-256-cfb
+  name: 🇻🇳 越南|@ripaojiedian
+  password: Xn8jKdmDM00IeO%#$#fJAMtsEAEUOpH/YWYtYqDFnT0SV
+  port: 38388
+  server: 103.186.154.25
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 1|🇯🇵1 |  1.8MB/s|54%|Youtube|Ope...
+  network: ws
+  port: 1443
+  server: sslvpn.51job.com
+  tls: true
+  type: vmess
+  uuid: a6a0d901-67e9-460a-90b5-634c5c4f9782
+  ws-opts:
+    headers:
+      Host: centos7
+    path: /634c5c4f9782
+- cipher: aes-256-cfb
+  name: 1|🌀3-SK |  5.0MB/s|0%|Youtube|Op... 2
+  password: f8f7aCzcPKbsF8p3
+  port: 989
+  server: 156.146.40.194
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 1|🇸🇬1 |  1.0MB/s|0%|Netflix|Disn... 2
+  port: 49291
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 1|🇺🇸45 |  2.5MB/s|46%|Openai|Gem... 2
+  password: 60f6b4c4-9d70-11ed-a4d2-f23c9164ca5d
+  port: 15229
+  server: 391907cc-swgsg0-t1bnjq-1krtb.cu.plebai.net
+  skip-cert-verify: false
+  type: trojan
+- alterId: 0
+  cipher: auto
+  name: 1|🌀4-TH |  2.6MB/s|55%|Netflix|O... 2
+  network: ws
+  port: 443
+  server: 38.47.96.30
+  tls: true
+  type: vmess
+  uuid: 164a6ad0-476a-4bae-b78f-a3d37cf0f414
+  ws-opts:
+    headers:
+      Host: th.lzj520hxw.dpdns.org
+    path: /lzjjj
+- cipher: aes-256-cfb
+  name: 1|🇰🇷2 |  1.5MB/s|44%|Openai 2
+  password: qwerREWQ@@
+  port: 15098
+  server: 125.141.31.72
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 1|🇺🇸62 |  3.3MB/s|Openai|Gemini 2
+  network: ws
+  port: 30829
+  server: v29.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- alterId: 0
+  cipher: auto
+  grpc-opts:
+    grpc-service-name: vmess-grpc
+  name: 1|🇩🇪5 |  1.4MB/s|0%|Youtube|Open... 2
+  network: grpc
+  port: 443
+  server: de.vmess.comnpmjs.com
+  servername: de.vmess.comnpmjs.com
+  tls: true
+  type: vmess
+  uuid: ceaaf653-9874-58c6-b100-092c01a1f73d
+- alterId: 0
+  cipher: auto
+  name: 1|🇭🇰1 |  1.8MB/s|15%|Disney|Yout... 2
+  network: ws
+  port: 8080
+  server: bc842b49-swexs0-t1rt5e-1s09x.hgc1.tcpbbr.net
+  tls: false
+  type: vmess
+  uuid: 62b7824e-47dc-11ef-9f2d-f23c9164ca5d
+  ws-opts:
+    headers:
+      Host: broadcastlv.chat.bilibili.com
+    path: /
+- name: 1|🇺🇸63 |  2.1MB/s|46%|Openai|Gem... 2
+  password: 5e2f888c-68ef-11ef-96ca-f23c9164ca5d
+  port: 15229
+  server: 13c2c931-swin40-swy6li-tni2.cu.plebai.net
+  skip-cert-verify: false
+  sni: 13c2c931-swin40-swy6li-tni2.cu.plebai.net
+  type: trojan
+- name: 1|🇺🇸64 |  1.3MB/s|46%|Openai|Gem... 2
+  password: def14a51-e0d9-11ec-8429-f23c91cfbbc9
+  port: 15229
+  server: 4560c642-swin40-tjuq6l-wf62.cu.plebai.net
+  skip-cert-verify: true
+  sni: 4560c642-swin40-tjuq6l-wf62.cu.plebai.net
+  type: trojan
+- cipher: aes-256-cfb
+  name: 12|tg频道@ripaojiedian 2
+  password: awsps0501
+  port: 443
+  server: 57.180.28.64
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港|@ripaojiedian 2
+  port: 49554
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: chacha20-ietf-poly1305
+  name: 🇭🇰 12|🇭🇰 香港2|@ripaojiedian 2
+  password: 1450cecfb93f
+  port: 11400
+  server: 121.127.231.217
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港3|@ripaojiedian 2
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- name: 🇭🇰 12,13|香港4|@ripaojiedian 2
+  password: e4af2638-bb12-4e4a-84f1-a032e23ca63f
+  port: 443
+  server: usla.mjt000.com
+  skip-cert-verify: false
+  sni: usla.mjt000.com
+  type: trojan
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 12|🇭🇰 香港5|@ripaojiedian 2
+  port: 31209
+  server: 120.232.153.40
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 2
+  cipher: auto
+  name: 🇭🇰 12,13|香港6|@ripaojiedian 2
+  network: ws
+  port: 30809
+  server: v9.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- name: 🇨🇳 12,13|台湾|@ripaojiedian 2
+  password: b483bf41-79d4-48df-bec6-30a756a3bd6b
+  port: 42765
+  server: js-12f83a8c.kaiqsz.com
+  skip-cert-verify: true
+  sni: mmbiz1.redapricotcloud.com
+  type: trojan
+- cipher: rc4-md5
+  name: 🇯🇵 12|🇯🇵 日本|@ripaojiedian 2
+  password: efanccyun
+  port: 8766
+  server: cn01.efan8867801.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 12|🇯🇵 日本2|@ripaojiedian 2
+  password: 60a930c17ff0
+  port: 59333
+  server: 43.226.17.11
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 12|🇯🇵 日本3|@ripaojiedian 2
+  password: feafc2ef-d5fd-4f6d-803b-fad4a5cc1f0e
+  port: 19832
+  server: h.cm2.xiaomi-api.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇸🇬 12,13|新加坡|@ripaojiedian 2
+  network: ws
+  port: 30812
+  server: v12.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- name: 🇸🇬 12|🇸🇬 新加坡3|@ripaojiedian 2
+  password: bf109e1a-2b99-11ed-bb74-f23c9164ca5d
+  port: 27231
+  server: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  type: trojan
+- name: 🇸🇬 12,13|新加坡5|@ripaojiedian 2
+  password: 905fcd78-866c-81e1-3cb8-1beb59d661ab
+  port: 27231
+  server: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 3050cfd7-sx6ps0-sydxa9-fa3p.cm5.cnkuaishou.com
+  type: trojan
+- name: 🇸🇬 12,13|新加坡6|@ripaojiedian 2
+  password: 1469e09e-027c-11ec-a0fc-f23c913c8d2b
+  port: 27231
+  server: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 204bdce4-sxaf40-t5bgb3-l4nv.cm5.cnkuaishou.com
+  type: trojan
+- cipher: aes-256-cfb
+  name: 🇰🇷 12|🇰🇷 韩国2|@ripaojiedian 2
+  password: qwerREWQ@@
+  port: 36379
+  server: p080.panda001.net
+  type: ss
+- cipher: rc4-md5
+  name: 🇺🇸 12|🇺🇸 美国2|@ripaojiedian 2
+  password: efanccyun
+  port: 8774
+  server: cn01.efan8867801.xyz
+  type: ss
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国|@ripaojiedian 2
+  network: ws
+  port: 30832
+  server: v32.heduian.link
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: baidu.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国5|@ripaojiedian 2
+  network: ws
+  port: 30828
+  server: 111.26.109.79
+  tls: false
+  type: vmess
+  uuid: cbb3f877-d1fb-344c-87a9-d153bffd5484
+  ws-opts:
+    headers:
+      Host: ocbc.com
+    path: /oooo
+- alterId: 2
+  cipher: auto
+  name: 🇺🇸 12,13|美国4|@ripaojiedian 2
+  network: ws
+  port: 22643
+  server: tk.hzlt.tkddns.xyz
+  tls: true
+  type: vmess
+  uuid: 98e96c9f-4bb3-39d4-9a2c-fac04257f7c7
+  ws-opts:
+    headers:
+      Host: zxjp-c.tkong.cc
+    path: /
+- cipher: chacha20-ietf-poly1305
+  name: 🇺🇸 12|🇺🇸 美国6|@ripaojiedian 2
+  password: 1a17b19d-4896-4531-af79-6e91d8ef8228
+  port: 9898
+  server: 35.89.114.253
+  type: ss
+- cipher: aes-256-cfb
+  name: 🇻🇳 12|🇻🇳 越南|@ripaojiedian 2
+  password: Xn8jKdmDM00IeO%#$#fJAMtsEAEUOpH/YWYtYqDFnT0SV
+  port: 38388
+  server: 103.186.154.25
+  type: ss
+- cipher: ss
+  name: '13|tg频道@ripaojiedian #1 2'
+  password: //YWVzLTI1Ni1jZmI6YXdzcHMwNTAx
+  port: 443
+  server: 57.180.28.64
+  type: ss
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港|@ripaojiedian 2
+  port: 49554
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港3|@ripaojiedian 2
+  port: 49302
+  server: 183.236.51.38
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- alterId: 64
+  cipher: auto
+  name: 🇭🇰 13|香港5|@ripaojiedian 2
+  port: 31209
+  server: 120.232.153.40
+  tls: false
+  type: vmess
+  uuid: 418048af-a293-4b99-9b0c-98ca3580dd24
+- cipher: ss
+  name: 🇯🇵 13|日本3|@ripaojiedian 2
+  password: //Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpmZWFmYzJlZi1kNWZkLTRmNmQtODAzYi1mYWQ0YTVjYzFmMGU
+  port: 19832
+  server: h.cm2.xiaomi-api.xyz
+  type: ss
+- name: 🇸🇬 13|新加坡3|@ripaojiedian 2
+  password: bf109e1a-2b99-11ed-bb74-f23c9164ca5d
+  port: 27231
+  server: ddd0977f-sxaf40-t3b4w3-ywms.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  type: trojan
+- cipher: ss
+  name: 🇰🇷 13|韩国2|@ripaojiedian 2
+  password: //YWVzLTI1Ni1jZmI6cXdlclJFV1FAQA
+  port: 36379
+  server: p080.panda001.net
+  type: ss
+- cipher: ss
+  name: 🇺🇸 13|美国6|@ripaojiedian 2
+  password: //Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNToxYTE3YjE5ZC00ODk2LTQ1MzEtYWY3OS02ZTkxZDhlZjgyMjg
+  port: 9898
+  server: 35.89.114.253
+  type: ss
+- cipher: ss
+  name: 🇻🇳 13|越南|@ripaojiedian 2
+  password: //YWVzLTI1Ni1jZmI6WG44aktkbURNMDBJZU8lIyQjZkpBTXRzRUFFVU9wSC9ZV1l0WXFERm5UMFNW
+  port: 38388
+  server: 103.186.154.25
+  type: ss
+- name: 14|CN_speednode_0003 2
+  password: 9e1ddc04-073b-11ed-bd7c-f23c913c8d2b
+  port: 27231
+  server: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 4aaff985-sxfz40-t1jamc-1fvdh.cm5.cnkuaishou.com
+  type: trojan
+- name: 14|CN_speednode_0005 2
+  password: d076280a-0d5f-11f0-8a7b-f23c913c8d2b
+  port: 27231
+  server: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 6a98e275-sx8kg0-tcum62-se45.cm5.cnkuaishou.com
+  type: trojan
+- name: 14|CN_speednode_0006 2
+  password: 659990ba-650f-11ea-a7af-f23c9164ca5d
+  port: 27231
+  server: 7fd1be71-sxc9s0-tcselz-oua4.cm5.cnkuaishou.com
+  skip-cert-verify: false
+  sni: 7fd1be71-sxc9s0-tcselz-oua4.cm5.cnkuaishou.com
+  type: trojan
+- cipher: chacha20-ietf-poly1305
+  name: 🇯🇵 日本2|@ripaojiedian 3
+  password: 60a930c17ff0
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kr6v1.xpmc.cc
+    mode: websocket
+    mux: false
+    path: /matwnpkhug
+    tls: true
+  port: 59333
+  server: 43.226.17.11
+  type: ss
+- cipher: rc4-md5
+  name: 🇺🇸 美国2|@ripaojiedian 3
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8774
+  server: cn01.efan8867801.xyz
+  type: ss
+- cipher: chacha20-ietf-poly1305
+  name: 🇭🇰 香港2|@ripaojiedian 3
+  password: 1450cecfb93f
+  plugin: v2ray-plugin
+  plugin-opts:
+    host: kh36v1.pmxiaonan.xyz
+    mode: websocket
+    mux: true
+    path: /simieepvt
+    tls: true
+  port: 11400
+  server: 121.127.231.217
+  type: ss
+- cipher: rc4-md5
+  name: 🇯🇵 日本|@ripaojiedian 3
+  password: efanccyun
+  plugin: obfs
+  plugin-opts:
+    host: 202505282364048-Tbm8fXQu06.download.microsoft.com
+    mode: http
+  port: 8766
+  server: cn01.efan8867801.xyz
+  type: ss
