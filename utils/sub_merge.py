@@ -4,8 +4,6 @@ import json, os, base64, time, requests, re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from subconverter import convert, base64_decode
 
-# 不再需要静音工具，所以相关的 import 和函数都已移除
-
 class merge():
     def __init__(self,file_dir,format_config):
         self.list_dir = file_dir['list_dir']
@@ -33,20 +31,27 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item['enabled']]
     
-    def cleanup_yaml_content(self, content):
-        """使用正则表达式清洗可能导致 YAML 解析错误的行。"""
+    def cleanup_node_list(self, nodes):
+        """
+        接收一个节点列表，对每一行进行清洗，修复YAML语法问题。
+        """
+        cleaned_nodes = []
         pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
         def add_quotes(match):
             return f"{match.group(1)}'{match.group(2)}'"
-        cleaned_content = pattern.sub(add_quotes, content)
-        return cleaned_content
+        
+        for node in nodes:
+            # 对每一行应用正则表达式替换
+            cleaned_node = pattern.sub(add_quotes, node)
+            cleaned_nodes.append(cleaned_node)
+            
+        return cleaned_nodes
 
     def sub_merge(self): # 将转换后的所有 Url 链接内容合并转换 YAML or Base64
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
 
-        # 【已修复】正确清理旧的单个订阅缓存文件
         if os.path.exists(list_dir):
             for dirpath, dirnames, filenames in os.walk(list_dir):
                 for filename in filenames:
@@ -61,27 +66,20 @@ class merge():
             item_remarks = item.get('remarks')
             item_type = item.get('type', 'subscription')
             
-            # 如果 URL 为空，打印信息并跳过
             if not item_url:
                 print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.\n")
                 continue
 
-            # 打印处理信息
             print(f'Processing [ID: {item_id}] {item_remarks} with type [{item_type}]...')
             content = ''
             
             try:
-                # 【关键逻辑】根据 type 执行不同策略
                 if item_type == 'subscription':
-                    # 直接调用 convert，让它打印自己的日志
                     content = convert(item_url, 'url', {'keep_encode': True, 'raw_format': True, 'escape_special_chars': False})
-                
                 elif item_type == 'raw_text_url':
-                    # 对于明文节点，我们自己下载，不会有 subconverter 日志
                     response = requests.get(item_url, timeout=15)
                     response.raise_for_status()
                     content = response.text
-                
                 else:
                     content = f"Error: Unknown subscription type '{item_type}'"
             
@@ -90,15 +88,20 @@ class merge():
             except Exception as e:
                 content = f"Error processing subscription: {e}"
             
-            # 在拿到 content 后，进行后续处理和打印总结信息
             if content and not content.startswith('Error:'):
-                cleaned_content = self.cleanup_yaml_content(content)
-                nodes = [line for line in cleaned_content.splitlines() if line.strip()]
+                # 1. 先获取原始节点列表
+                nodes = [line for line in content.splitlines() if line.strip()]
                 
                 if nodes:
-                    content_set.update(nodes)
-                    print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(nodes)} nodes found)\n')
-                    file_content = '\n'.join(nodes)
+                    # 2. 【核心修复】对节点列表进行清洗
+                    cleaned_nodes = self.cleanup_node_list(nodes)
+                    
+                    # 3. 将清洗后的结果存入集合
+                    content_set.update(cleaned_nodes)
+                    
+                    print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(cleaned_nodes)} nodes found)\n')
+                    # 将清洗后的内容写入缓存文件，便于调试
+                    file_content = '\n'.join(cleaned_nodes)
                 else:
                     print(f'Writing error of {item_remarks} to {item_id:0>2d}.txt (Source is empty)\n')
                     file_content = "No nodes were found in the content."
@@ -115,9 +118,11 @@ class merge():
             return
 
         print(f'\nMerging {len(content_set)} unique nodes...')
+        
+        # 这里的 content_set 已经包含了清洗过的数据
         content = '\n'.join(content_set)
         
-        # 最终合并时，不静音，让 subconverter 打印可能的信息
+        # 现在将干净的数据交给 subconverter 做最终合并
         final_content = convert(content, 'base64', self.format_config)
 
         merge_path_final = f'{merge_dir}/sub_merge_base64.txt'
