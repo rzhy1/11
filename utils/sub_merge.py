@@ -6,6 +6,7 @@ from subconverter import convert, base64_decode
 # 辅助函数：判断字符串是否可能是 Base64
 def is_base64(s):
     try:
+        # 增加长度和填充检查，提高准确性
         if len(s.strip()) % 4 != 0: return False
         base64.b64decode(s, validate=True)
         return True
@@ -61,57 +62,57 @@ class merge():
 
         content_set = set()
         for item in url_list:
-            item_url = item.get('url')
             item_id = item.get('id')
             item_remarks = item.get('remarks')
-            # type 字段现在只用于区分 Base64 和纯文本
-            item_type = item.get('type', 'subscription') 
-
-            if not item_url:
-                print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.\n")
-                continue
-
-            print(f"Processing [ID: {item_id}] {item_remarks} with type [{item_type}]...")
+            item_type = item.get('type', 'subscription')
             
-            try:
-                # 步骤 1: 永远由我们自己下载内容
-                response = requests.get(item_url, timeout=15)
-                response.raise_for_status()
-                raw_content = response.text.strip()
+            # 【修复多URL】分割用 '|' 连接的 URL
+            urls = item.get('url', '').split('|')
 
-                plain_text_nodes = ''
+            item_nodes = set()
+            has_error = False
+
+            for url in urls:
+                if not url: continue
                 
-                # 步骤 2: 根据类型预处理
-                if item_type == 'subscription':
-                    # 如果标记为 subscription，我们期望它是 Base64
-                    if is_base64(raw_content):
-                        plain_text_nodes = base64_decode(raw_content)
-                    else:
-                        # 如果不是 Base64，我们假定它也是一种纯文本，并给出警告
-                        print(f"  -> Warning: type is 'subscription' but content is not Base64. Treating as plain text.")
-                        plain_text_nodes = raw_content
-                elif item_type == 'raw_text_url':
-                    plain_text_nodes = raw_content
-                else:
-                    raise ValueError(f"Unknown type: '{item_type}'")
+                print(f"Processing [ID: {item_id}] {item_remarks} - URL: {url[:50]}...")
+                
+                try:
+                    response = requests.get(url, timeout=15)
+                    response.raise_for_status()
+                    raw_content = response.text.strip()
 
-                # 步骤 3: 清洗和添加
-                if plain_text_nodes:
-                    nodes = [line for line in plain_text_nodes.splitlines() if line.strip()]
-                    # 对所有解析出的明文节点进行统一清洗
-                    cleaned_nodes = self.cleanup_node_list(nodes)
-                    content_set.update(cleaned_nodes)
+                    plain_text_nodes = ''
                     
-                    print(f'Writing content of {item_remarks} to {item_id:0>2d}.txt ({len(cleaned_nodes)} nodes found)\n')
-                    with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
-                        f.write('\n'.join(cleaned_nodes))
-                else:
-                    raise ValueError("No valid nodes found after processing.")
+                    if item_type == 'subscription':
+                        if is_base64(raw_content):
+                            plain_text_nodes = base64_decode(raw_content)
+                        else:
+                            print(f"  -> Warning: type is 'subscription' but content is not Base64. Treating as plain text.")
+                            plain_text_nodes = raw_content
+                    else: # raw_text_url
+                        plain_text_nodes = raw_content
 
-            except Exception as e:
-                print(f"Writing error of {item_remarks} to {item_id:0>2d}.txt ({e})\n")
+                    if plain_text_nodes:
+                        nodes = [line for line in plain_text_nodes.splitlines() if line.strip()]
+                        cleaned_nodes = self.cleanup_node_list(nodes)
+                        item_nodes.update(cleaned_nodes)
+                    else:
+                        raise ValueError("No valid nodes found after processing.")
+
+                except Exception as e:
+                    print(f"  -> Failed for URL {url[:50]}... Reason: {e}")
+                    has_error = True
+            
+            # 在处理完一个订阅源的所有URL后，再进行总结
+            if item_nodes:
+                content_set.update(item_nodes)
+                print(f"  => Success for [ID: {item_id}]! Found and added {len(item_nodes)} unique nodes.\n")
                 with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
-                    f.write(f"Error processing subscription: {e}")
+                    f.write('\n'.join(sorted(list(item_nodes))))
+            elif not has_error:
+                print(f"  => Finished for [ID: {item_id}], but no nodes were found.\n")
+
 
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
@@ -119,18 +120,29 @@ class merge():
 
         print(f'\nMerging {len(content_set)} unique nodes...')
         
-        final_input_content = '\n'.join(content_set)
-        
-        # 步骤 4: 最终合并 - 所有数据都是干净的
-        final_b64_content = convert(final_input_content, 'base64', self.format_config)
+        # 【核心修复】将合并内容写入临时文件
+        temp_merge_file = f'{merge_dir}/temp_merge.txt'
+        with open(temp_merge_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(sorted(list(content_set))))
 
-        merge_path_final = f'{merge_dir}/sub_merge_base64.txt'
-        with open(merge_path_final, 'wb') as file:
-            file.write(final_b64_content.encode('utf-8'))
-        print(f'Done! Output merged nodes to {merge_path_final}.')
+        try:
+            # 将临时文件的【路径】传给 convert 函数
+            final_b64_content = convert(temp_merge_file, 'base64', self.format_config)
+            
+            merge_path_final = f'{merge_dir}/sub_merge_base64.txt'
+            with open(merge_path_final, 'wb') as file:
+                file.write(final_b64_content.encode('utf-8'))
+            print(f'Done! Output merged nodes to {merge_path_final}.')
+
+        except Exception as e:
+            print(f"FATAL: Final merge failed! Reason: {e}")
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_merge_file):
+                os.remove(temp_merge_file)
+
 
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_file_path):
@@ -167,14 +179,11 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
         'merge_dir': './sub/',
-        'update_dir': './sub/update/',
-        'readme_file': './README.md',
-        'share_file': './sub/share.txt'
+        'readme_file': './README.md'
     }
     
     format_config = {
