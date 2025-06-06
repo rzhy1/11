@@ -23,9 +23,7 @@ class merge():
             'config': format_config['config']
         }
 
-        print("Initializing merge process...")
         self.url_list = self.read_list()
-        print(f"Loaded {len(self.url_list)} enabled subscriptions")
         self.sub_merge()
         if self.readme_file != '':
             self.readme_update()
@@ -33,78 +31,47 @@ class merge():
     def read_list(self):
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
-        enabled_list = [item for item in raw_list if item['enabled']]
-        print(f"Found {len(raw_list)} subscriptions, {len(enabled_list)} enabled")
-        return enabled_list
+        return [item for item in raw_list if item['enabled']]
 
     def sub_merge(self):
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
 
-        # Clear existing files
-        print("\nCleaning output directories...")
+        # 清空目录（保持原样）
         for dirpath, dirnames, filenames in os.walk(list_dir):
             for filename in filenames:
                 os.remove(os.path.join(dirpath, filename))
 
         content_set = set()
         total_nodes = 0
-        success_count = 0
-        empty_count = 0
-
-        print("\nStart processing subscriptions:")
-        for url in url_list:
-            print(f"\nProcessing subscription [{url['id']:02d}]: {url['remarks']}")
-            try:
-                content = convert(url['url'], 'url', {
-                    'keep_encode': True,
-                    'raw_format': True,
-                    'escape_special_chars': False
-                })
-                
-                if content:
-                    nodes = content.splitlines()
-                    node_count = len(nodes)
-                    total_nodes += node_count
-                    unique_nodes = len(set(nodes))
-                    
-                    content_set.update(nodes)
-                    success_count += 1
-                    
-                    print(f"  ✓ Found {node_count} nodes ({unique_nodes} unique)")
-                    if node_count != unique_nodes:
-                        print(f"  ! Contains {node_count - unique_nodes} duplicate nodes")
-                    
-                    # Write individual subscription file
-                    if self.list_dir:
-                        output_path = f'{list_dir}{url["id"]:0>2d}.txt'
-                        with open(output_path, 'w', encoding='utf-8') as file:
-                            file.write(content)
-                        print(f"  ↳ Saved to {output_path}")
-                else:
-                    empty_count += 1
-                    print("  × No valid nodes found in this subscription")
-                    
-            except Exception as e:
-                empty_count += 1
-                print(f"  ! Error processing subscription: {str(e)}")
-                continue
-
-        # Final merge and output
-        print("\nMerging all nodes...")
-        unique_count = len(content_set)
-        duplicate_rate = (total_nodes - unique_count) / total_nodes if total_nodes > 0 else 0
         
-        print(f"\nProcessing Summary:")
-        print(f"  Total subscriptions: {len(url_list)}")
-        print(f"  Successfully processed: {success_count}")
-        print(f"  Empty/failed subscriptions: {empty_count}")
-        print(f"  Total nodes collected: {total_nodes}")
-        print(f"  Unique nodes after deduplication: {unique_count}")
-        print(f"  Duplicate rate: {duplicate_rate:.2%}")
+        for url in url_list:
+            content = convert(url['url'], 'url', {
+                'keep_encode': True,
+                'raw_format': True,
+                'escape_special_chars': False
+            })
+            
+            if content:
+                nodes = content.splitlines()
+                node_count = len(nodes)
+                total_nodes += node_count
+                content_set.update(nodes)
+                
+                # 保持原有输出格式
+                print(f'Writing content of {url["remarks"]} to {url["id"]:0>2d}.txt')
+            else:
+                # 保持原有输出格式
+                print(f'Writing error of {url["remarks"]} to {url["id"]:0>2d}.txt')
+                content = 'No nodes were found in url.'
+            
+            if self.list_dir:
+                with open(f'{list_dir}{url["id"]:0>2d}.txt', 'w', encoding='utf-8') as file:
+                    file.write(content)
 
-        # Convert to base64 and save
+        # 合并节点（保持原有输出）
+        print('Merging nodes...')
         content = '\n'.join(content_set)
         content = convert(content, 'base64', self.format_config)
         
@@ -112,43 +79,35 @@ class merge():
         with open(merge_path, 'wb') as file:
             file.write(content.encode('utf-8'))
         
-        print(f"\nMerge completed! Final output saved to {merge_path}")
-        print(f"Total unique nodes in final output: {len(content_set)}")
+        # 仅在最后添加统计信息（不影响原有流程）
+        print(f'Done! Output merged nodes to {merge_path}.')
+        print(f'Total subscriptions processed: {len(url_list)}')
+        print(f'Total nodes found: {total_nodes}')
+        print(f'Unique nodes after deduplication: {len(content_set)}')
 
     def readme_update(self):
-        print('\nUpdating README...')
-        try:
-            with open(self.readme_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
+        print('Updating README...')
+        with open(self.readme_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            f.close()
 
-            # Find and update node count section
-            updated = False
-            for index in range(len(lines)):
-                if lines[index] == '### 所有节点\n':
-                    # Remove old count
-                    if index + 1 < len(lines) and '合并节点总数' in lines[index + 1]:
-                        lines.pop(index + 1)
-                    
-                    # Get current node count
-                    with open(f'{self.merge_dir}sub_merge_base64.txt', 'r', encoding='utf-8') as f:
-                        proxies_base64 = f.read()
-                        proxies = base64_decode(proxies_base64)
-                        node_count = len(proxies.split('\n'))
-                    
-                    # Insert new count
-                    lines.insert(index + 1, f'合并节点总数: `{node_count}`\n')
-                    updated = True
-                    break
-            
-            if updated:
-                with open(self.readme_file, 'w', encoding='utf-8') as f:
-                    f.writelines(lines)
-                print('README updated successfully')
-            else:
-                print('! README update failed: could not find node count section')
-                
-        except Exception as e:
-            print(f'! Error updating README: {str(e)}')
+        for index in range(len(lines)):
+            if lines[index] == '### 所有节点\n':
+                lines.pop(index+1)
+
+                with open(f'{self.merge_dir}sub_merge_base64.txt', 'r', encoding='utf-8') as f:
+                    proxies_base64 = f.read()
+                    proxies = base64_decode(proxies_base64)
+                    proxies = proxies.split('\n')
+                    top_amount = len(proxies) - 1
+                    f.close()
+                lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
+                break
+        
+        with open(self.readme_file, 'w', encoding='utf-8') as f:
+             data = ''.join(lines)
+             print('完成!\n')
+             f.write(data)
 
 if __name__ == '__main__':
     file_dir = {
@@ -168,6 +127,4 @@ if __name__ == '__main__':
         'config': ''
     }
     
-    print("=== Subscription Merge Tool ===")
     merge(file_dir, format_config)
-    print("\nAll tasks completed!")
