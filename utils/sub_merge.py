@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, base64, time, requests, yaml, re
+import json, os, base64, time, requests, re
 # 重新引入 subconverter，它是我们强大的后盾
 from subconverter import convert, base64_decode
 
