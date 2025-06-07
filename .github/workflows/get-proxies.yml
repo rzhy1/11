@@ -24,11 +24,6 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install -r  ./utils/requirements.txt
-    - name: 验证文件
-      run: |
-        ls -la utils/subconverter/
-        chmod +x ./utils/subconverter/subconverter-linux-amd64 
-        ./utils/subconverter/subconverter-linux-amd64 --version
     - name: Merge & speedtest
       working-directory: ./utils
       run: |
