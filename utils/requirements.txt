@@ -3,4 +3,3 @@ PyYAML
 requests
 beautifulsoup4
 aiohttp==3.7.4
-setuptools
