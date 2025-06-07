@@ -1,2 +1,3 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+/utils/subconverter/subconverter-linux-amd64 binary
