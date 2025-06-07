@@ -1,12 +1,12 @@
 [
   {
     "id": 0,
-    "remarks": "pojiezhiyuanjun/freev2",
-    "site": "https://github.com/pojiezhiyuanjun/freev2",
-    "url": "https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/0406.txt",
-    "update_method": "change_date",
+    "remarks": "Leon406/SubCrawler_vless",
+    "site": "https://github.com/Leon406/SubCrawler",
+    "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/refs/heads/main/sub/share/hysteria2",
+    "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 1,
