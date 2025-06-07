@@ -4,6 +4,7 @@ import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
+import v2ray_util
 
 # 导入 V2Ray 链接解析库
 try:
