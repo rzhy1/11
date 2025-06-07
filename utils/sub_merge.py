@@ -48,7 +48,9 @@ class merge():
             if not protocol: return None
             remarks = proxy.get('name', '')
             remarks_encoded = urllib.parse.quote(remarks)
+
             if protocol == 'vmess':
+                # ... (vmess 逻辑保持不变) ...
                 vmess_config = {"v": "2", "ps": remarks, "add": proxy.get('server', ''), "port": proxy.get('port', ''), "id": proxy.get('uuid', ''), "aid": proxy.get('alterId', 0), "scy": proxy.get('cipher', 'auto'), "net": proxy.get('network', 'tcp'), "type": "none", "host": "", "path": "", "tls": "", "sni": ""}
                 if vmess_config['net'] == 'ws':
                     ws_opts = proxy.get('ws-opts', {})
@@ -59,7 +61,9 @@ class merge():
                     vmess_config['sni'] = proxy.get('sni', vmess_config['host'])
                 json_str = json.dumps(vmess_config, separators=(',', ':'))
                 return f"vmess://{base64_encode(json_str)}"
+            
             elif protocol == 'vless':
+                # ... (vless 逻辑保持不变) ...
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
                 if not all([server, port, uuid]): return None
                 params = {'type': proxy.get('network', 'tcp'), 'security': 'tls' if proxy.get('tls') else 'none'}
@@ -75,17 +79,45 @@ class merge():
                     params['path'] = urllib.parse.quote(ws_opts.get('path', '/'))
                 query_string = urllib.parse.urlencode(params)
                 return f"vless://{uuid}@{server}:{port}?{query_string}#{remarks_encoded}"
+            
             elif protocol == 'trojan':
+                # ... (trojan 逻辑保持不变) ...
                 server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
                 if not all([server, port, password]): return None
                 params = {'sni': proxy.get('sni', server)}
                 query_string = urllib.parse.urlencode(params)
                 return f"trojan://{password}@{server}:{port}?{query_string}#{remarks_encoded}"
+
             elif protocol == 'ss':
+                # ... (ss 逻辑保持不变) ...
                 server, port, password, cipher = proxy.get('server'), proxy.get('port'), proxy.get('password'), proxy.get('cipher')
                 if not all([server, port, password, cipher]): return None
                 creds = f"{cipher}:{password}"
                 return f"ss://{base64_encode(creds)}@{server}:{port}#{remarks_encoded}"
+
+            # 【核心新增】增加对 Hysteria2 的支持
+            elif protocol == 'hysteria2' or protocol == 'hy2':
+                server = proxy.get('server')
+                port = proxy.get('port')
+                # Hysteria2 的密码字段可能是 'password' 或 'auth-str'
+                password = proxy.get('password') or proxy.get('auth-str')
+                if not all([server, port, password]): return None
+                
+                # 构建查询参数
+                params = {}
+                if proxy.get('sni'):
+                    params['sni'] = proxy.get('sni')
+                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                    params['insecure'] = 1
+                if proxy.get('obfs'):
+                    params['obfs'] = proxy.get('obfs')
+                if proxy.get('obfs-password'):
+                    params['obfs-password'] = proxy.get('obfs-password')
+                
+                query_string = urllib.parse.urlencode(params)
+                # hy2://password@server:port?query#remarks
+                return f"hy2://{password}@{server}:{port}?{query_string}#{remarks_encoded}"
+
             return None
         except Exception as e:
             print(f"  -> Error building share link for node {proxy.get('name')}: {e}")
@@ -116,26 +148,34 @@ class merge():
                 raw_content = response.text.strip()
                 if not raw_content: raise ValueError("Downloaded content is empty.")
                 found_nodes = []
+                # 智能格式判断
                 if is_base64(raw_content):
                     print("  -> Detected Base64 format, decoding...")
                     plain_text = base64_decode(raw_content)
-                    found_nodes = [line.strip() for line in plain_text.splitlines() if line.strip().lower().startswith(VALID_PROTOCOLS)]
+                    # 解码后，再次判断是 YAML 还是纯文本列表
+                    if 'proxies:' in plain_text or 'proxy-groups:' in plain_text:
+                         print("  -> Decoded content is YAML, parsing...")
+                         data = yaml.safe_load(plain_text)
+                         proxies_in_yaml = data.get('proxies', [])
+                         if proxies_in_yaml:
+                             for proxy_dict in proxies_in_yaml:
+                                 share_link = self.clash_to_share_link(proxy_dict)
+                                 if share_link: found_nodes.append(share_link)
+                    else:
+                        found_nodes = [line.strip() for line in plain_text.splitlines() if line.strip().lower().startswith(VALID_PROTOCOLS)]
+                
                 elif 'proxies:' in raw_content or 'proxy-groups:' in raw_content:
                     print("  -> Detected YAML format, parsing...")
-                    try:
-                        data = yaml.safe_load(raw_content)
-                        proxies_in_yaml = data.get('proxies', [])
-                        if proxies_in_yaml and isinstance(proxies_in_yaml, list):
-                            for proxy_dict in proxies_in_yaml:
-                                share_link = self.clash_to_share_link(proxy_dict)
-                                if share_link:
-                                    found_nodes.append(share_link)
-                    except yaml.YAMLError as e:
-                        print(f"  -> ⭐⭐ YAML parsing error: {e}")
+                    data = yaml.safe_load(raw_content)
+                    proxies_in_yaml = data.get('proxies', [])
+                    if proxies_in_yaml:
+                        for proxy_dict in proxies_in_yaml:
+                            share_link = self.clash_to_share_link(proxy_dict)
+                            if share_link: found_nodes.append(share_link)
+
                 else:
                     print("  -> Detected Plain Text node list format.")
-                    plain_text = raw_content
-                    found_nodes = [line.strip() for line in plain_text.splitlines() if line.strip().lower().startswith(VALID_PROTOCOLS)]
+                    found_nodes = [line.strip() for line in raw_content.splitlines() if line.strip().lower().startswith(VALID_PROTOCOLS)]
                 
                 if found_nodes:
                     content_set.update(found_nodes)
@@ -163,6 +203,7 @@ class merge():
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
     def readme_update(self):
+        # ... (readme_update 保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
