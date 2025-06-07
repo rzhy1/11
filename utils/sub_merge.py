@@ -3,7 +3,6 @@
 import json, os, base64, time, requests, re, subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-# 辅助函数
 def base64_decode(s):
     try:
         s = s.strip()
@@ -11,6 +10,9 @@ def base64_decode(s):
         if missing_padding: s += '=' * (4 - missing_padding)
         return base64.b64decode(s).decode('utf-8', 'ignore')
     except: return ""
+
+def base64_encode(s):
+    return base64.b64encode(s.encode('utf-8')).decode('ascii')
 
 def is_likely_base64(s):
     s = s.strip()
@@ -34,23 +36,14 @@ class merge():
             return [item for item in json.load(f) if item.get('enabled')]
 
     def fetch_and_process_url(self, item):
-        """【新】用于并发处理单个订阅源的函数"""
         item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
         if not item_url: return []
-        
-        print(f"  -> Fetching [ID: {item_id:0>2d}] {item_remarks}")
         try:
             response = requests.get(item_url, timeout=20)
             response.raise_for_status()
             raw_content = response.text.strip()
             if not raw_content: return []
-
-            plain_text_nodes = ""
-            if is_likely_base64(raw_content):
-                plain_text_nodes = base64_decode(raw_content)
-            else:
-                plain_text_nodes = raw_content
-            
+            plain_text_nodes = base64_decode(raw_content) if is_likely_base64(raw_content) else raw_content
             return [line.strip() for line in plain_text_nodes.splitlines() if line.strip()]
         except Exception as e:
             print(f"  -> Failed to fetch [ID: {item_id:0>2d}] {item_remarks}. Reason: {e}")
@@ -77,79 +70,89 @@ class merge():
                 if fingerprint and fingerprint not in unique_proxies:
                     unique_proxies[fingerprint] = node
             except: continue
-        
         final_nodes = list(unique_proxies.values())
         removed_count = len(nodes) - len(final_nodes)
         print(f"Deduplication complete. Removed {removed_count} duplicate nodes.")
         return final_nodes
 
+    def run_subconverter_chunk(self, chunk):
+        """处理一小块节点"""
+        input_content = '\n'.join(chunk)
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.subconverter_dir)
+            command = [f'./{self.subconverter_exec}', '--no-color', '--target', 'base64']
+            
+            # 将过滤和重命名规则应用到每一块
+            if self.format_config.get('rename'): command.extend(['--rename', self.format_config['rename']])
+            if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
+            if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
+            command.append('--no-deduplicate') # 我们已经去重
+
+            process = subprocess.run(
+                command, input=input_content.encode('utf-8'),
+                capture_output=True, check=True, timeout=60 # 60秒处理一小块，绰绰有余
+            )
+            return process.stdout
+        except Exception as e:
+            print(f"  -> A chunk failed to process: {e}")
+            return None
+        finally:
+            os.chdir(original_cwd)
+
     def sub_merge(self):
         print("--- Step 1: Concurrently fetching all subscriptions ---")
         all_nodes_raw = []
-        # 使用线程池并发下载
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_url = {executor.submit(self.fetch_and_process_url, item): item for item in self.url_list}
             for future in future_to_url:
                 try:
                     nodes = future.result()
-                    if nodes:
-                        all_nodes_raw.extend(nodes)
-                except Exception as e:
-                    print(f"An error occurred in a thread: {e}")
+                    if nodes: all_nodes_raw.extend(nodes)
+                except Exception as e: print(f"An error in a thread: {e}")
         
         print(f"\nTotal lines collected (before deduplication): {len(all_nodes_raw)}")
-        if not all_nodes_raw:
-            print('Merging failed: No nodes collected.')
-            return
+        if not all_nodes_raw: return
 
         unique_nodes = self.deduplicate_nodes(all_nodes_raw)
         print(f'Total unique nodes after deduplication: {len(unique_nodes)}')
 
-        print("\n--- Step 3: Final packaging with subconverter ---")
-        final_input_content = '\n'.join(sorted(unique_nodes))
-
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(self.subconverter_dir)
+        # 【核心改变】分块处理
+        print("\n--- Step 3: Processing nodes in chunks to avoid timeout ---")
+        chunk_size = 500 # 定义块的大小
+        final_processed_nodes = []
+        
+        # 将 unique_nodes 列表切片
+        for i in range(0, len(unique_nodes), chunk_size):
+            chunk = unique_nodes[i:i + chunk_size]
+            print(f"Processing chunk {i//chunk_size + 1} ({len(chunk)} nodes)...")
             
-            command = [
-                f'./{self.subconverter_exec}', '--no-color', '--target', 'base64'
-            ]
-            if self.format_config.get('rename'): command.extend(['--rename', self.format_config['rename']])
-            if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
-            if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
-            if self.format_config.get('deduplicate') is False: command.append('--no-deduplicate')
-
-            print(f"Executing subconverter with {len(unique_nodes)} nodes... (timeout: 180s)")
+            # 调用 subconverter 处理这一小块
+            result_b64_bytes = self.run_subconverter_chunk(chunk)
             
-            process = subprocess.run(
-                command, input=final_input_content.encode('utf-8'),
-                capture_output=True, check=True, timeout=180
-            )
-            
-            final_b64_content = process.stdout
-            if not final_b64_content:
-                print("Conversion failed: Subconverter returned empty content.")
-                if process.stderr: print(f"Stderr: {process.stderr.decode('utf-8')}")
-                return
+            if result_b64_bytes:
+                # 解码返回的 Base64，得到处理过的明文节点
+                processed_chunk_str = result_b64_bytes.decode('utf-8')
+                processed_nodes_in_chunk = [line for line in base64_decode(processed_chunk_str).splitlines() if line.strip()]
+                final_processed_nodes.extend(processed_nodes_in_chunk)
+                print(f"  -> Chunk processed successfully. Got {len(processed_nodes_in_chunk)} nodes.")
+        
+        if not final_processed_nodes:
+            print("Merging failed: No nodes survived the final conversion process.")
+            return
 
-            print("Conversion successful.")
-            merge_path_final = os.path.join(original_cwd, self.merge_dir, 'sub_merge_base64.txt')
-            with open(merge_path_final, 'wb') as f:
-                f.write(final_b64_content)
-            print(f'\nDone! Output merged nodes to {merge_path_final}.')
+        print(f"\n--- Step 4: Final packaging ---")
+        print(f"Total nodes after all processing: {len(final_processed_nodes)}")
 
-        except subprocess.TimeoutExpired:
-            print("FATAL ERROR: Subconverter timed out even after deduplication.")
-        except subprocess.CalledProcessError as e:
-            print("FATAL ERROR: Subconverter exited with an error.")
-            print(f"Stderr: {e.stderr.decode('utf-8')}")
-        except FileNotFoundError:
-            print(f"FATAL ERROR: Executable not found in '{os.getcwd()}'")
-        except Exception as e:
-            print(f"FATAL ERROR: An unexpected error occurred: {e}")
-        finally:
-            os.chdir(original_cwd)
+        # 手动打包最终结果
+        final_plain_text = '\n'.join(sorted(final_processed_nodes))
+        final_b64_content = base64_encode(final_plain_text)
+
+        print("Packaging successful.")
+        merge_path_final = os.path.join(self.merge_dir, 'sub_merge_base64.txt')
+        with open(merge_path_final, 'w', encoding='utf-8') as f: # 最终是字符串，用 'w'
+            f.write(final_b64_content)
+        print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
     def readme_update(self):
         # ... (readme_update 保持不变) ...
