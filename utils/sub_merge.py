@@ -60,10 +60,10 @@ class merge():
             item_remarks = item.get('remarks')
             
             if not item_url:
-                print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.")
+                print(f"Skipping [ID: {item_id:0>2d}] {item_url} because URL is empty.")
                 continue
 
-            print(f"Processing [ID: {item_id}] {item_remarks}...")
+            print(f"Processing [ID: {item_id}] {item_url}...")
             
             try:
                 response = requests.get(item_url, timeout=15)
@@ -83,15 +83,15 @@ class merge():
                     content_set.update(found_nodes)
                     print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
                 else:
-                    print(f"  -> Warning: No valid node links found.")
+                    print(f"  ->⭐⭐ Warning: No valid node links found.")
 
             except Exception as e:
-                print(f"  -> Failed! Reason: {e}")
+                print(f"  ->⭐⭐ Failed! Reason: {e}")
             
             print()
 
         if not content_set:
-            print('Merging failed: No nodes collected from any source.')
+            print('⭐⭐ Merging failed: No nodes collected from any source.')
             return
         
         final_node_count = len(content_set)
