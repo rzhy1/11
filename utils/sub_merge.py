@@ -122,7 +122,7 @@ class merge():
                     content_set.update(found_nodes)
                     print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
                 else:
-                    print(f"  -> Warning: No valid node links found.")
+                    print(f"  -> ⭐⭐ Warning: No valid node links found.")
 
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
