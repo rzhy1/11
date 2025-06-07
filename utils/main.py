@@ -2,41 +2,68 @@
 
 import os, urllib
 import configparser
+import sys
 
-from sub_update import update
+# --- 核心修改：动态计算绝对路径 ---
+# 获取 main.py 所在的目录 (即 'utils' 目录)
+UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+# 获取项目根目录 (即 'utils' 的上一级目录)
+PROJECT_ROOT = os.path.dirname(UTILS_DIR)
+
+# 将 utils 目录和项目根目录都加入到模块搜索路径，以防万一
+sys.path.insert(0, UTILS_DIR)
+sys.path.insert(0, PROJECT_ROOT)
+# -----------------------------
+
+# 导入我们自己的模块
 from sub_merge import merge
-from subconverter import convert, base64_decode
+from sub_update import update
+from subconverter import base64_decode
 
-config_file = './utils/config.ini'
+# 使用绝对路径来读取配置文件
+config_file = os.path.join(UTILS_DIR, 'config.ini')
 
 def configparse(section):
     config = configparser.ConfigParser()
     config.read(config_file, encoding='utf-8')
-    if section == 'common':
-        return config['common']
-    elif section == 'subconverter':
-        return config['subconverter']
-    elif section == 'speedtest':
-        return config['speedtest']
+    # --- 核心修改：将所有相对路径转换为绝对路径 ---
+    parsed_config = dict(config[section])
+    for key, value in parsed_config.items():
+        # 检查是否是需要处理的路径字段
+        if isinstance(value, str) and ('dir' in key or 'file' in key):
+            # 将所有 ./sub/... 或 sub/... 形式的路径转换为基于项目根目录的绝对路径
+            if value.startswith('./'):
+                # 移除 './'
+                value = value[2:]
+            
+            # 使用 os.path.join 来安全地拼接路径
+            parsed_config[key] = os.path.join(PROJECT_ROOT, value)
+            
+    return parsed_config
 
 if __name__ == '__main__':
-
     try:
         print('Downloading Country.mmdb...')
-        urllib.request.urlretrieve('https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb', './utils/Country.mmdb')
+        country_mmdb_path = os.path.join(UTILS_DIR, 'Country.mmdb')
+        urllib.request.urlretrieve('https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb', country_mmdb_path)
         print('Success!\n')
-    except Exception:
-        print('Failed!\n')
+    except Exception as e:
+        print(f'Failed to download Country.mmdb: {e}\n')
         pass
 
-    if configparse('common').getboolean('update_enabled'):
-        config = configparse('common')
-        update(config)
+    common_config = configparse('common')
 
-    if configparse('common').getboolean('merge_enabled'):
-        file_dir = configparse('common')
+    # 从 config.ini 读取的配置可能是字符串 'true' 或 'false'
+    if common_config.get('update_enabled', 'false').lower() == 'true':
+        print('--- Running Subscription Update ---')
+        update(common_config)
+
+    if common_config.get('merge_enabled', 'false').lower() == 'true':
+        print('--- Running Subscription Merge ---')
         format_config = configparse('subconverter')
-        merge(file_dir, format_config)
+        # 将 common_config 和 format_config 合并，因为 merge 类需要它们
+        # file_dir 参数现在由 common_config 提供
+        merge(common_config, format_config)
 
     if configparse('common').getboolean('speedtest_enabled'):
         share_file = configparse('common')['share_file']
