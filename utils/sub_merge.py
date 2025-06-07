@@ -22,65 +22,76 @@ class merge():
 
     def deduplicate_nodes_by_fingerprint(self, node_links_set):
         """
-        通过提取“协议-地址-端口”作为核心指纹进行军用级精确去重。
+        通过提取“协议-地址-端口”作为核心指纹进行精确去重，
+        并记录下所有重复的节点信息。
         """
-        unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
-        
-        # 常见协议的默认端口
+        unique_nodes = {} # {fingerprint: link}
+        duplicates = {}   # {fingerprint: [original_link, duplicate_link1, duplicate_link2, ...]}
+
         DEFAULT_PORTS = {
             'vless': 443,
             'trojan': 443,
-            'ss': 8443 # SS 没有一个真正的标准默认端口，但 8443 比较常见
+            'ss': 8443
         }
 
         for link in node_links_set:
             try:
                 fingerprint = ''
                 protocol = link.split('://')[0].lower()
-                
-                host = ''
-                port = ''
+                host, port = '', ''
 
                 if protocol == 'vmess':
+                    # ... (vmess 解析逻辑保持不变)
                     try:
                         vmess_json_str = base64.b64decode(link[8:]).decode('utf-8')
                         node_dict = json.loads(vmess_json_str)
                         host = str(node_dict.get('add', '')).strip().lower()
                         port = str(node_dict.get('port', ''))
-                    except Exception:
-                        continue # 解码或解析失败则跳过
+                    except Exception: continue
                 elif protocol in ['vless', 'trojan', 'ss']:
+                    # ... (vless/trojan/ss 解析逻辑保持不变)
                     at_index = link.find('@')
                     if at_index == -1: continue
-
                     server_part = link[at_index + 1:].split('?')[0].split('#')[0]
-                    
-                    # 精确分割 host 和 port
-                    if server_part.rfind(':') > server_part.rfind(']'): # 处理 IPv6 地址 [::1]:443
+                    if server_part.rfind(':') > server_part.rfind(']'):
                         host_part, port_part = server_part.rsplit(':', 1)
                         host = host_part.strip().lower()
                         port = port_part.strip()
                     else:
                         host = server_part.strip().lower()
-                        port = str(DEFAULT_PORTS.get(protocol, '')) # 如果没端口，使用默认端口
-                else:
-                    # 对于 SSR 和其他未知协议，使用链接主体作为指纹
-                    fingerprint = link.split('#')[0]
-
-                # 如果成功提取了 host 和 port，则构建标准指纹
+                        port = str(DEFAULT_PORTS.get(protocol, ''))
+                
                 if host and port:
                     fingerprint = f"{protocol}-{host}:{port}"
+                else:
+                    fingerprint = link.split('#')[0]
                 
-                # 如果没有有效的指纹，则跳过
-                if not fingerprint:
-                    continue
-
-                # 如果指纹是新的，则保留该链接
                 if fingerprint not in unique_nodes:
+                    # 第一次遇到这个指纹，记录为唯一节点
                     unique_nodes[fingerprint] = link
+                    duplicates[fingerprint] = [link] # 同时在重复记录里初始化
+                else:
+                    # 发现重复节点
+                    duplicates[fingerprint].append(link)
 
             except Exception:
                 continue
+        
+        # --- 生成重复节点的报告 ---
+        report_path = os.path.join(self.merge_dir, 'debug_duplicates.txt')
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write("--- Duplicate Nodes Report ---\n\n")
+            total_duplicates = 0
+            for fingerprint, links in duplicates.items():
+                if len(links) > 1:
+                    f.write(f"Fingerprint: {fingerprint}\n")
+                    f.write(f"  - Original: {links[0]}\n")
+                    for i, dup_link in enumerate(links[1:], 1):
+                        f.write(f"  - Duplicate {i}: {dup_link}\n")
+                        total_duplicates += 1
+                    f.write("\n" + "="*40 + "\n\n")
+            f.write(f"Total duplicate links found: {total_duplicates}\n")
+        print(f"[DEBUG] Wrote duplicate nodes report to: {report_path}")
         
         return list(unique_nodes.values())
 
