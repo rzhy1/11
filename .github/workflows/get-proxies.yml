@@ -24,7 +24,6 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install -r  ./utils/requirements.txt
-        python3 -m pip install v2ray_util
 #    - name: Start Clash proxy environment
 #      run: |
 #        sudo sh ./utils/scripts/set_proxy.sh
