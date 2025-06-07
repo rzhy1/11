@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-from urllib.parse import unquote
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -21,68 +20,42 @@ class merge():
 
     def deduplicate_nodes(self, node_links_set):
         """
-        通过提取节点的“核心网络配置”作为指纹进行精确去重。
+        【最终版】只根据“地址:端口”进行去重，最大限度保留节点。
         """
-        unique_nodes = {} # {fingerprint: link}
+        unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
 
         for link in node_links_set:
             try:
                 fingerprint = ''
-                protocol = link.split('://')[0].lower()
                 
-                if protocol == 'vmess':
+                if link.startswith('vmess://'):
                     try:
                         vmess_json_str = base64.b64decode(link[8:]).decode('utf-8', errors='ignore')
                         node_dict = json.loads(vmess_json_str)
-                        # VMESS 指纹: 地址:端口:UUID:网络类型:路径
-                        fingerprint = "{}:{}:{}:{}:{}".format(
-                            node_dict.get('add', '').strip().lower(),
-                            node_dict.get('port', ''),
-                            node_dict.get('id', ''), # UUID
-                            node_dict.get('net', ''), # ws, tcp, ...
-                            node_dict.get('path', '')
-                        )
+                        host = str(node_dict.get('add', '')).strip().lower()
+                        port = str(node_dict.get('port', ''))
+                        fingerprint = f"{host}:{port}"
                     except Exception:
-                        continue
-                elif protocol in ['vless', 'trojan']:
-                    # VLESS/Trojan 指纹: 协议-地址:端口-UUID
+                        continue 
+                else: # vless, trojan, ss
                     at_index = link.find('@')
                     if at_index == -1: continue
-                    
-                    # 提取 UUID
-                    uuid = link[len(protocol) + 3 : at_index]
-                    
+
+                    # 提取 server:port 部分
                     server_part = link[at_index + 1:].split('?')[0].split('#')[0]
-                    host, port = '', ''
-                    if server_part.rfind(':') > server_part.rfind(']'):
-                        host, port = server_part.rsplit(':', 1)
-                    else:
-                        host = server_part
-                        port = '443' # 默认端口
                     
-                    fingerprint = f"{protocol}-{host.strip().lower()}:{port}-{uuid}"
-                
-                elif protocol == 'ss':
-                    # SS 指纹: 协议-地址:端口-密码
-                    at_index = link.find('@')
-                    if at_index == -1: continue
+                    # 统一转为小写
+                    fingerprint = server_part.strip().lower()
                     
-                    # 提取 密码
-                    user_info = link[len(protocol) + 3 : at_index]
-                    try:
-                        password = base64.b64decode(user_info.split(':')[1]).decode('utf-8')
-                    except:
-                        password = user_info.split(':')[1]
+                    # 对于没有端口的，特别是 trojan，补充默认443端口
+                    # 这能合并 a.com 和 a.com:443
+                    if ':' not in fingerprint:
+                         protocol = link.split('://')[0].lower()
+                         if protocol in ['trojan', 'vless']:
+                             fingerprint = f"{fingerprint}:443"
 
-
-                    server_part = link[at_index + 1:].split('?')[0].split('#')[0]
-                    host, port = server_part.rsplit(':', 1)
-
-                    fingerprint = f"{protocol}-{host.strip().lower()}:{port}-{password}"
-                
-                else:
-                    # 其他协议使用链接主体
-                    fingerprint = link.split('#')[0]
+                if not fingerprint:
+                    continue
 
                 if fingerprint not in unique_nodes:
                     unique_nodes[fingerprint] = link
@@ -151,7 +124,7 @@ class merge():
         initial_node_count = len(content_set)
         print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        print("Performing precise deduplication based on core proxy configuration...")
+        print("Performing deduplication based on address and port...")
         final_node_links = self.deduplicate_nodes(content_set)
         final_node_count = len(final_node_links)
         removed_count = initial_node_count - final_node_count
@@ -170,8 +143,8 @@ class merge():
             file.write(final_b64_content)
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
+
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
@@ -208,7 +181,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
