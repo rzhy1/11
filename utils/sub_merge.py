@@ -111,7 +111,7 @@ class merge():
                     all_nodes.extend(found_lines)
                     print(f'  -> Success! Added {len(found_lines)} lines to merge pool.')
                 else:
-                    print("  -> Warning: No content lines found.")
+                    print("  -> ⭐⭐ Warning: No content lines found.")
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
             finally:
