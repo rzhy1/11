@@ -22,46 +22,60 @@ class merge():
 
     def deduplicate_nodes_by_fingerprint(self, node_links_set):
         """
-        通过提取“地址:端口”作为核心指纹进行精确去重。
-        - 统一处理大小写和空格
-        - 为 Trojan 补充默认端口
-        - 为 VMESS 增加网络类型以提高精度
+        通过提取“协议-地址-端口”作为核心指纹进行军用级精确去重。
         """
         unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
+        
+        # 常见协议的默认端口
+        DEFAULT_PORTS = {
+            'vless': 443,
+            'trojan': 443,
+            'ss': 8443 # SS 没有一个真正的标准默认端口，但 8443 比较常见
+        }
 
         for link in node_links_set:
             try:
                 fingerprint = ''
-                protocol = link.split('://')[0]
+                protocol = link.split('://')[0].lower()
                 
+                host = ''
+                port = ''
+
                 if protocol == 'vmess':
-                    # 对 VMESS 链接解码，提取 add, port, net
                     try:
                         vmess_json_str = base64.b64decode(link[8:]).decode('utf-8')
                         node_dict = json.loads(vmess_json_str)
                         host = str(node_dict.get('add', '')).strip().lower()
                         port = str(node_dict.get('port', ''))
-                        net = str(node_dict.get('net', 'tcp')) # 默认为 tcp
-                        fingerprint = f"{host}:{port}:{net}"
                     except Exception:
-                        continue # 解码失败则跳过
-                else:
-                    # 对 VLESS, Trojan, SS 等格式处理
+                        continue # 解码或解析失败则跳过
+                elif protocol in ['vless', 'trojan', 'ss']:
                     at_index = link.find('@')
-                    if at_index == -1: continue # 格式不正确
+                    if at_index == -1: continue
 
-                    server_part = link[at_index + 1:].split('?')[0].split('#')[0].strip().lower()
+                    server_part = link[at_index + 1:].split('?')[0].split('#')[0]
                     
-                    # 检查是否包含端口，为 trojan 补充默认端口
-                    if ':' not in server_part:
-                        if protocol == 'trojan':
-                            server_part = f"{server_part}:443" # Trojan 默认 443
-                        # 对于其他没有端口的，就直接使用地址作为指纹
-                    
-                    fingerprint = f"{protocol}-{server_part}"
+                    # 精确分割 host 和 port
+                    if server_part.rfind(':') > server_part.rfind(']'): # 处理 IPv6 地址 [::1]:443
+                        host_part, port_part = server_part.rsplit(':', 1)
+                        host = host_part.strip().lower()
+                        port = port_part.strip()
+                    else:
+                        host = server_part.strip().lower()
+                        port = str(DEFAULT_PORTS.get(protocol, '')) # 如果没端口，使用默认端口
+                else:
+                    # 对于 SSR 和其他未知协议，使用链接主体作为指纹
+                    fingerprint = link.split('#')[0]
+
+                # 如果成功提取了 host 和 port，则构建标准指纹
+                if host and port:
+                    fingerprint = f"{protocol}-{host}:{port}"
+                
+                # 如果没有有效的指纹，则跳过
+                if not fingerprint:
+                    continue
 
                 # 如果指纹是新的，则保留该链接
-                # 注意：这里我们保留的是遇到的第一个节点，后续重复的会被丢弃
                 if fingerprint not in unique_nodes:
                     unique_nodes[fingerprint] = link
 
@@ -129,7 +143,7 @@ class merge():
         initial_node_count = len(content_set)
         print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        print("Performing precise deduplication...")
+        print("Performing precise deduplication based on protocol, address, and port...")
         final_node_links = self.deduplicate_nodes_by_fingerprint(content_set)
         final_node_count = len(final_node_links)
         removed_count = initial_node_count - final_node_count
