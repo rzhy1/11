@@ -51,7 +51,7 @@
     "url": "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 6,
