@@ -1,23 +1,7 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-# 我们不再需要 subconverter 的 convert 函数
 from subconverter import base64_decode
-
-def is_base64(s):
-    s = s.strip()
-    # Base64 字符串的长度必须是 4 的倍数
-    if len(s) % 4 != 0:
-        return False
-    # 检查是否只包含 Base64 字符
-    if not re.match(r'^[A-Za-z0-9+/]*=?=?$', s):
-        return False
-    try:
-        # 尝试解码，validate=True 会在有非 base64 字符时抛出异常
-        base64.b64decode(s, validate=True)
-        return True
-    except Exception:
-        return False
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -25,10 +9,6 @@ class merge():
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
-
-        # format_config 在这个版本中不再起主要作用，但保留以兼容接口
-        self.format_config = format_config
-
         self.url_list = self.read_list()
         self.sub_merge()
         if self.readme_file:
@@ -38,6 +18,70 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
+
+    # 【核心新增】精确去重函数
+    def deduplicate_nodes(self, node_links_set):
+        """
+        通过提取“协议-地址-端口”作为核心指纹进行精确去重。
+        不依赖任何外部解析库。
+        """
+        unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
+
+        for link in node_links_set:
+            try:
+                fingerprint = ''
+                protocol = link.split('://')[0].lower()
+                
+                host = ''
+                port = ''
+
+                if protocol == 'vmess':
+                    # VMESS 的核心是 Base64 编码的 JSON
+                    try:
+                        # 提取 Base64 部分
+                        base64_part = link.split('://')[1]
+                        # 解码并解析 JSON
+                        vmess_json_str = base64.b64decode(base64_part).decode('utf-8')
+                        node_dict = json.loads(vmess_json_str)
+                        host = str(node_dict.get('add', '')).strip().lower()
+                        port = str(node_dict.get('port', ''))
+                        # VMESS 的指纹也应该是 协议-地址-端口
+                        if host and port:
+                            fingerprint = f"{protocol}-{host}:{port}"
+                    except Exception:
+                        continue # 解码或解析失败则跳过
+                elif protocol in ['vless', 'trojan', 'ss']:
+                    # VLESS/Trojan/SS 的地址端口在 @ 之后
+                    at_index = link.find('@')
+                    if at_index == -1: continue
+
+                    # 提取 server:port 部分
+                    server_part = link[at_index + 1:].split('?')[0].split('#')[0]
+                    # 将地址统一为小写
+                    server_part = server_part.strip().lower()
+                    
+                    # 补充默认端口
+                    if ':' not in server_part and protocol == 'trojan':
+                        server_part += ':443'
+                    elif ':' not in server_part and protocol == 'vless':
+                        # VLESS 通常也是 443
+                        server_part += ':443'
+                    
+                    fingerprint = f"{protocol}-{server_part}"
+                
+                # 如果没有有效的指纹，则跳过
+                if not fingerprint:
+                    continue
+
+                # 如果指纹是新的，则保留该链接
+                if fingerprint not in unique_nodes:
+                    unique_nodes[fingerprint] = link
+
+            except Exception:
+                continue
+        
+        return list(unique_nodes.values())
+
 
     def sub_merge(self):
         url_list = self.url_list
@@ -72,9 +116,10 @@ class merge():
                 if not raw_content: raise ValueError("Downloaded content is empty.")
 
                 plain_text_nodes = ''
-                if is_base64(raw_content):
-                    plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
-                else:
+                try:
+                    decoded_content = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
+                    plain_text_nodes = decoded_content
+                except Exception:
                     plain_text_nodes = raw_content
                 
                 found_nodes = [line.strip() for line in plain_text_nodes.splitlines() if line.strip().startswith(VALID_PROTOCOLS)]
@@ -94,19 +139,22 @@ class merge():
             print('Merging failed: No nodes collected from any source.')
             return
         
-        final_node_count = len(content_set)
-        print(f'\nTotal unique node links collected: {final_node_count}')
+        initial_node_count = len(content_set)
+        print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        # 【终极核心】我们自己拼接和编码
-        print('Packaging all collected nodes into a Base64 subscription...')
+        # 【核心修改】调用新的精确去重函数
+        print("Performing precise deduplication based on protocol, address, and port...")
+        final_node_links = self.deduplicate_nodes(content_set)
+        final_node_count = len(final_node_links)
+        removed_count = initial_node_count - final_node_count
+        print(f"  -> Deduplication complete. Removed {removed_count} duplicate nodes.")
+        print(f"  -> Final unique node count: {final_node_count}")
 
-        # 将所有干净的节点链接用换行符拼接起来
-        final_plain_text = '\n'.join(sorted(list(content_set)))
-        
-        # 自己动手进行 Base64 编码
+
+        print('\nPackaging all unique nodes into a Base64 subscription...')
+        final_plain_text = '\n'.join(sorted(final_node_links))
         final_b64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
-
-        print(f"  -> Packaging successful. Final node count: {final_node_count}")
+        print(f"  -> Packaging successful.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'w', encoding='utf-8') as file:
@@ -134,7 +182,6 @@ class merge():
                     with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
-                            # 这里的 base64_decode 来自 subconverter，也可以用标准库的
                             proxies = base64.b64decode(proxies_base64.encode('utf-8')).decode('utf-8')
                             top_amount = len([p for p in proxies.split('\n') if p.strip()])
                         else:
