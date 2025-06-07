@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-from subconverter import base64_decode
+from urllib.parse import unquote
+
+# 导入新的、可靠的解析库
+try:
+    from proxy_tools.proxies import Vmess, Vless, Trojan, Shadowsocks
+except ImportError:
+    print("FATAL ERROR: proxy-tools library not found.")
+    print("Please add 'proxy-tools' to your requirements.txt and ensure it is installed.")
+    import sys
+    sys.exit(1)
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -9,6 +18,7 @@ class merge():
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
+
         self.url_list = self.read_list()
         self.sub_merge()
         if self.readme_file:
@@ -19,69 +29,43 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
 
-    # 【核心新增】精确去重函数
     def deduplicate_nodes(self, node_links_set):
         """
-        通过提取“协议-地址-端口”作为核心指纹进行精确去重。
-        不依赖任何外部解析库。
+        使用 proxy-tools 库进行专家级的解析和去重。
         """
-        unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
+        unique_nodes = {} # {fingerprint: link}
 
         for link in node_links_set:
             try:
-                fingerprint = ''
-                protocol = link.split('://')[0].lower()
-                
-                host = ''
-                port = ''
-
-                if protocol == 'vmess':
-                    # VMESS 的核心是 Base64 编码的 JSON
-                    try:
-                        # 提取 Base64 部分
-                        base64_part = link.split('://')[1]
-                        # 解码并解析 JSON
-                        vmess_json_str = base64.b64decode(base64_part).decode('utf-8')
-                        node_dict = json.loads(vmess_json_str)
-                        host = str(node_dict.get('add', '')).strip().lower()
-                        port = str(node_dict.get('port', ''))
-                        # VMESS 的指纹也应该是 协议-地址-端口
-                        if host and port:
-                            fingerprint = f"{protocol}-{host}:{port}"
-                    except Exception:
-                        continue # 解码或解析失败则跳过
-                elif protocol in ['vless', 'trojan', 'ss']:
-                    # VLESS/Trojan/SS 的地址端口在 @ 之后
-                    at_index = link.find('@')
-                    if at_index == -1: continue
-
-                    # 提取 server:port 部分
-                    server_part = link[at_index + 1:].split('?')[0].split('#')[0]
-                    # 将地址统一为小写
-                    server_part = server_part.strip().lower()
-                    
-                    # 补充默认端口
-                    if ':' not in server_part and protocol == 'trojan':
-                        server_part += ':443'
-                    elif ':' not in server_part and protocol == 'vless':
-                        # VLESS 通常也是 443
-                        server_part += ':443'
-                    
-                    fingerprint = f"{protocol}-{server_part}"
-                
-                # 如果没有有效的指纹，则跳过
-                if not fingerprint:
+                node = None
+                # 使用 proxy-tools 解析链接
+                if link.startswith('vless://'):
+                    node = Vless.from_str(link)
+                elif link.startswith('vmess://'):
+                    node = Vmess.from_str(link)
+                elif link.startswith('trojan://'):
+                    node = Trojan.from_str(link)
+                elif link.startswith('ss://'):
+                    node = Shadowsocks.from_str(link)
+                else:
+                    # 对于不支持的协议，使用链接主体作为指纹
+                    fingerprint = link.split('#')[0]
+                    if fingerprint not in unique_nodes:
+                        unique_nodes[fingerprint] = link
                     continue
 
-                # 如果指纹是新的，则保留该链接
+                # 构建一个极其精确的指纹
+                fingerprint = node.fingerprint
+
                 if fingerprint not in unique_nodes:
+                    # 我们保留第一个遇到的节点，以保留其原始的节点名
                     unique_nodes[fingerprint] = link
 
             except Exception:
+                # 忽略任何解析失败的链接
                 continue
         
         return list(unique_nodes.values())
-
 
     def sub_merge(self):
         url_list = self.url_list
@@ -142,18 +126,18 @@ class merge():
         initial_node_count = len(content_set)
         print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        # 【核心修改】调用新的精确去重函数
-        print("Performing precise deduplication based on protocol, address, and port...")
+        print("Performing expert-level deduplication...")
         final_node_links = self.deduplicate_nodes(content_set)
         final_node_count = len(final_node_links)
         removed_count = initial_node_count - final_node_count
         print(f"  -> Deduplication complete. Removed {removed_count} duplicate nodes.")
         print(f"  -> Final unique node count: {final_node_count}")
 
-
         print('\nPackaging all unique nodes into a Base64 subscription...')
+
         final_plain_text = '\n'.join(sorted(final_node_links))
         final_b64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
+
         print(f"  -> Packaging successful.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
