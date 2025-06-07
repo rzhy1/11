@@ -22,64 +22,43 @@ class merge():
 
     def deduplicate_nodes_by_fingerprint(self, node_links_set):
         """
-        通过提取“协议-地址-端口”作为核心指纹进行军用级精确去重。
+        通过提取核心部分作为“指纹”来进行精确去重。
+        不依赖任何外部解析库。
         """
         unique_nodes = {} # 使用字典 {fingerprint: link} 来存储
-        
-        # 常见协议的默认端口
-        DEFAULT_PORTS = {
-            'vless': 443,
-            'trojan': 443,
-            'ss': 8443 # SS 没有一个真正的标准默认端口，但 8443 比较常见
-        }
 
         for link in node_links_set:
             try:
                 fingerprint = ''
-                protocol = link.split('://')[0].lower()
-                
-                host = ''
-                port = ''
+                protocol_end_index = link.find('://')
+                if protocol_end_index == -1: continue # 无效链接
 
-                if protocol == 'vmess':
-                    try:
-                        vmess_json_str = base64.b64decode(link[8:]).decode('utf-8')
-                        node_dict = json.loads(vmess_json_str)
-                        host = str(node_dict.get('add', '')).strip().lower()
-                        port = str(node_dict.get('port', ''))
-                    except Exception:
-                        continue # 解码或解析失败则跳过
-                elif protocol in ['vless', 'trojan', 'ss']:
+                protocol = link[:protocol_end_index]
+                
+                if protocol in ['vless', 'trojan', 'ss']:
+                    # 指纹 = 协议 + 服务器 + 端口
+                    # vless://uuid@server:port?params#name -> server:port
                     at_index = link.find('@')
                     if at_index == -1: continue
-
-                    server_part = link[at_index + 1:].split('?')[0].split('#')[0]
                     
-                    # 精确分割 host 和 port
-                    if server_part.rfind(':') > server_part.rfind(']'): # 处理 IPv6 地址 [::1]:443
-                        host_part, port_part = server_part.rsplit(':', 1)
-                        host = host_part.strip().lower()
-                        port = port_part.strip()
-                    else:
-                        host = server_part.strip().lower()
-                        port = str(DEFAULT_PORTS.get(protocol, '')) # 如果没端口，使用默认端口
-                else:
-                    # 对于 SSR 和其他未知协议，使用链接主体作为指纹
-                    fingerprint = link.split('#')[0]
-
-                # 如果成功提取了 host 和 port，则构建标准指纹
-                if host and port:
-                    fingerprint = f"{protocol}-{host}:{port}"
+                    # 提取 server:port 部分
+                    server_part = link[at_index+1:].split('?')[0].split('#')[0]
+                    fingerprint = f"{protocol}-{server_part}"
                 
-                # 如果没有有效的指纹，则跳过
-                if not fingerprint:
-                    continue
+                elif protocol == 'vmess':
+                    # 指纹 = 协议 + base64内容
+                    # vmess://base64 -> base64
+                    fingerprint = f"vmess-{link[protocol_end_index+3:]}"
+
+                else: # ssr 和其他未知协议
+                    fingerprint = link.split('#')[0] # 使用链接主体作为指纹
 
                 # 如果指纹是新的，则保留该链接
                 if fingerprint not in unique_nodes:
                     unique_nodes[fingerprint] = link
 
             except Exception:
+                # 忽略处理失败的链接
                 continue
         
         return list(unique_nodes.values())
@@ -118,6 +97,7 @@ class merge():
 
                 plain_text_nodes = ''
                 try:
+                    # 尝试解码，如果失败，则认为是纯文本
                     decoded_content = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
                     plain_text_nodes = decoded_content
                 except Exception:
@@ -143,7 +123,7 @@ class merge():
         initial_node_count = len(content_set)
         print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        print("Performing precise deduplication based on protocol, address, and port...")
+        print("Performing precise deduplication by fingerprint...")
         final_node_links = self.deduplicate_nodes_by_fingerprint(content_set)
         final_node_count = len(final_node_links)
         removed_count = initial_node_count - final_node_count
@@ -164,7 +144,6 @@ class merge():
 
 
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
@@ -201,7 +180,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
