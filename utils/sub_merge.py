@@ -2,11 +2,16 @@
 
 import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
-import yaml # 确保已安装 pyyaml
 
 # 辅助函数：判断字符串是否可能是 Base64
 def is_base64(s):
-    if len(s.strip()) % 4 != 0: return False
+    # Base64 字符串的长度必须是 4 的倍数，且不含非法字符
+    s = s.strip()
+    if len(s) % 4 != 0:
+        return False
+    # 正则表达式检查是否只包含 Base64 字符
+    if not re.match(r'^[A-Za-z0-9+/]*=?=?$', s):
+        return False
     try:
         base64.b64decode(s, validate=True)
         return True
@@ -73,8 +78,10 @@ class merge():
 
                 plain_text_nodes = ''
                 if is_base64(raw_content):
+                    print("  -> Detected as Base64. Decoding...")
                     plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
                 else:
+                    print("  -> Detected as plain text.")
                     plain_text_nodes = raw_content
                 
                 found_nodes = []
@@ -86,67 +93,42 @@ class merge():
                 if found_nodes:
                     content_set.update(found_nodes)
                     print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
+                    with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(found_nodes))
                 else:
                     print(f"  -> Warning: No valid node links found.")
 
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
+                with open(f'{list_dir}{item_id:0>2d}.err', 'w', encoding='utf-8') as f:
+                    f.write(f"Error processing subscription: {e}")
             
-            print()
+            print() # 分隔条目
 
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
 
-        print(f'\nTotal unique node links collected: {len(content_set)}')
-        print('Step 1: Converting all links to a unified Clash format...')
+        # 此时的 content_set 只包含纯粹的、干净的节点分享链接
+        # 它的长度就是我们期望的节点总数（在应用 include/exclude 规则之前）
+        pre_filter_count = len(content_set)
+        print(f'\nTotal unique node links collected: {pre_filter_count}')
+        print('Starting final conversion to Base64 (applying filters and renaming)...')
 
-        all_links_content = '\n'.join(content_set)
-        clash_yaml_from_links = convert(all_links_content, 'clash')
-        
-        if not clash_yaml_from_links:
-            print("Fatal Error: subconverter failed to convert any links to Clash format.")
+        # 直接将所有链接交给 subconverter 进行最终转换
+        final_input_content = '\n'.join(content_set)
+        final_b64_content = convert(final_input_content, 'base64', self.format_config)
+
+        if not final_b64_content:
+            print("Error: Final conversion to Base64 failed, subconverter returned empty content.")
             return
 
-        print("\nStep 2: Cleaning the generated Clash YAML...")
-
-        # 【终极修复】在这里对 subconverter 返回的 YAML 字符串进行文本替换
-        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
-        def add_quotes(match):
-            return f"{match.group(1)}'{match.group(2)}'"
-        
-        cleaned_yaml_str = pattern.sub(add_quotes, clash_yaml_from_links)
-        print("  -> YAML cleaning complete.")
-
-        print("\nStep 3: Parsing the cleaned Clash YAML...")
-        
-        try:
-            clash_config = yaml.safe_load(cleaned_yaml_str)
-            if isinstance(clash_config, dict) and 'proxies' in clash_config:
-                clean_proxies = clash_config['proxies']
-                final_node_count = len(clean_proxies)
-                print(f"  -> Successfully parsed {final_node_count} nodes.")
-            else:
-                clean_proxies = []
-                final_node_count = 0
-                print("  -> Warning: Could not find 'proxies' in the converted Clash config.")
-        except yaml.YAMLError as e:
-            print(f"Fatal Error: Failed to parse the cleaned YAML: {e}")
-            return
-        
-        if final_node_count == 0:
-            print("Merging aborted as no nodes were successfully parsed.")
-            return
-
-        print("\nStep 4: Converting the final clean Clash config to Base64...")
-        
-        final_clash_config = {'proxies': clean_proxies}
-        final_yaml_str_to_convert = yaml.dump(final_clash_config, allow_unicode=True, sort_keys=False)
-        final_b64_content = convert(final_yaml_str_to_convert, 'base64', self.format_config)
-        
+        # 解码最终结果以进行准确计数
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-        print(f"  -> Final conversion successful. Node count to be written: {final_written_count}")
+
+        print(f"  -> Final conversion successful.")
+        print(f"  -> Pre-filter nodes: {pre_filter_count}, Final nodes to be written: {final_written_count}")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
@@ -154,7 +136,7 @@ class merge():
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
     def readme_update(self):
-        # ... readme_update 方法保持不变
+        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_file_path):
@@ -191,7 +173,7 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... __main__ 方法保持不变
+    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
