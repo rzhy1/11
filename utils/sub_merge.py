@@ -2,6 +2,7 @@
 
 import json, os, base64, time, requests, re, subprocess
 
+# ... (base64_decode 和 is_likely_base64 函数保持不变) ...
 def base64_decode(s):
     try:
         s = s.strip()
@@ -15,6 +16,7 @@ def is_likely_base64(s):
     s = s.strip()
     return re.match(r'^[A-Za-z0-9+/=]+$', s) and len(s) % 4 == 0
 
+
 class merge():
     def __init__(self, file_dir, format_config):
         self.list_dir = file_dir['list_dir']
@@ -23,8 +25,10 @@ class merge():
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
         
-        # 定义 subconverter 的目录和可执行文件名
-        self.subconverter_dir = './utils/subconverter'
+        # 【核心修复】使用 __file__ 来构建绝对可靠的路径
+        # os.path.dirname(__file__) -> 获取 sub_merge.py 所在的目录 (即 .../utils)
+        # os.path.join(..., 'subconverter') -> 拼接出 subconverter 目录的路径
+        self.subconverter_dir = os.path.join(os.path.dirname(__file__), 'subconverter')
         self.subconverter_exec = 'subconverter-linux-amd64'
 
         self.url_list = self.read_list()
@@ -32,6 +36,7 @@ class merge():
         if self.readme_file:
             self.readme_update()
 
+    # ... (read_list, deduplicate_nodes 函数保持不变) ...
     def read_list(self):
         with open(self.list_file, 'r', encoding='utf-8') as f:
             return [item for item in json.load(f) if item.get('enabled')]
@@ -71,6 +76,7 @@ class merge():
         return final_nodes
 
     def sub_merge(self):
+        # ... (数据收集部分保持不变) ...
         list_dir, merge_dir = self.list_dir, self.merge_dir
         if os.path.exists(list_dir):
             for f in os.listdir(list_dir): os.remove(os.path.join(list_dir, f))
@@ -116,31 +122,24 @@ class merge():
         print('\nHanding over unique nodes to subconverter for final packaging...')
         final_input_content = '\n'.join(sorted(unique_nodes))
 
-        # 【核心修复】使用 try...finally 和 os.chdir 保证在正确的目录下执行
-        original_cwd = os.getcwd() # 保存当前工作目录
+        # 【逻辑保持不变】使用 try...finally 和 os.chdir 保证在正确的目录下执行
+        original_cwd = os.getcwd() 
         try:
-            # 切换到 subconverter 所在的目录
             os.chdir(self.subconverter_dir)
             print(f"  -> Changed directory to: {os.getcwd()}")
             
-            # 检查文件是否真的在这里
             if not os.path.isfile(f'./{self.subconverter_exec}'):
                 raise FileNotFoundError(f"Executable '{self.subconverter_exec}' not found in CWD '{os.getcwd()}'")
 
-            # 现在，我们使用最简单的相对路径 `./` 来执行
             command = [
                 f'./{self.subconverter_exec}',
                 '--no-color',
                 '--target', 'base64'
             ]
-            if self.format_config.get('rename'):
-                command.extend(['--rename', self.format_config['rename']])
-            if self.format_config.get('include'):
-                command.extend(['--include', self.format_config['include']])
-            if self.format_config.get('exclude'):
-                command.extend(['--exclude', self.format_config['exclude']])
-            if self.format_config.get('deduplicate') is False:
-                 command.append('--no-deduplicate')
+            if self.format_config.get('rename'): command.extend(['--rename', self.format_config['rename']])
+            if self.format_config.get('include'): command.extend(['--include', self.format_config['include']])
+            if self.format_config.get('exclude'): command.extend(['--exclude', self.format_config['exclude']])
+            if self.format_config.get('deduplicate') is False: command.append('--no-deduplicate')
 
             print(f"  -> Executing command: {' '.join(command)}")
             
@@ -157,12 +156,18 @@ class merge():
             if not final_b64_content:
                 print("  -> Conversion failed: Subconverter returned empty content.")
                 if process.stderr: print("  -> Stderr:", process.stderr.decode('utf-8'))
-                os.chdir(original_cwd) # 切换回去
+                os.chdir(original_cwd)
                 return
 
             print("  -> Conversion successful.")
-            # 【注意】路径需要拼接回原始工作目录
-            merge_path_final = os.path.join(original_cwd, self.merge_dir, 'sub_merge_base64.txt')
+            # 写入最终文件时，路径必须相对于原始 CWD
+            # file_dir['merge_dir'] 是 './sub/'，是相对于项目根目录的
+            # 我们需要确保它能被正确解析
+            final_merge_dir = os.path.join(original_cwd, self.merge_dir)
+            if not os.path.exists(final_merge_dir):
+                os.makedirs(final_merge_dir)
+            merge_path_final = os.path.join(final_merge_dir, 'sub_merge_base64.txt')
+            
             with open(merge_path_final, 'wb') as f:
                 f.write(final_b64_content)
             print(f'\nDone! Output merged nodes to {merge_path_final}.')
@@ -173,49 +178,58 @@ class merge():
             print("  -> FATAL ERROR: Subconverter exited with an error.")
             print(f"  -> Stderr: {e.stderr.decode('utf-8')}")
         except FileNotFoundError as e:
-            # 这个错误现在更有意义了
             print(f"  -> FATAL ERROR: {e}")
         except Exception as e:
             print(f"  -> FATAL ERROR: An unexpected error occurred: {e}")
         finally:
-            # 无论成功与否，都切换回原始目录
             os.chdir(original_cwd)
             print(f"  -> Returned to original directory: {os.getcwd()}")
 
 
     def readme_update(self):
         # ... (readme_update 保持不变) ...
+        # 【小修复】确保 readme_update 也使用正确的相对路径
+        original_cwd = os.getcwd()
+        readme_path = os.path.join(original_cwd, self.readme_file)
+        merge_path = os.path.join(original_cwd, self.merge_dir, 'sub_merge_base64.txt')
+        
         print('Updating README...')
-        merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-        if not os.path.exists(merge_path_final):
+        if not os.path.exists(merge_path):
             print(f"Warning: Merged file not found. Skipping README update.")
             return
-        with open(self.readme_file, 'r', encoding='utf-8') as f:
+        
+        with open(readme_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         try:
+            # ...
+            with open(merge_path, 'r', encoding='utf-8') as f_merge:
+                # ...
+                proxies_base64 = f_merge.read()
+                if proxies_base64:
+                    proxies = base64_decode(proxies_base64)
+                    top_amount = len([p for p in proxies.split('\n') if p.strip()])
+                else:
+                    top_amount = 0
+            # ...
             for index, line in enumerate(lines):
                 if '### 所有节点' in line:
                     if index + 1 < len(lines) and '合并节点总数' in lines[index+1]:
                         lines.pop(index+1) 
-                    with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
-                        proxies_base64 = f_merge.read()
-                        if proxies_base64:
-                            proxies = base64_decode(proxies_base64)
-                            top_amount = len([p for p in proxies.split('\n') if p.strip()])
-                        else:
-                            top_amount = 0
                     lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
                     break
         except Exception as e:
             print(f"Error updating README: {e}")
             return
-        with open(self.readme_file, 'w', encoding='utf-8') as f:
+        
+        with open(readme_path, 'w', encoding='utf-8') as f:
              data = ''.join(lines)
              print('完成!\n')
              f.write(data)
 
 if __name__ == '__main__':
     # ... (__main__ 保持不变) ...
+    # 【重要】确保传递给 merge 类的路径都是相对于项目根目录的
+    # 这是正确的，因为 __main__ 是从根目录启动的
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
