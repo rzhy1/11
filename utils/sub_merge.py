@@ -4,10 +4,10 @@ import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
+import tempfile # 导入临时文件模块
 
 @contextmanager
 def suppress_stderr():
-    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
     devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
     with open(devnull_path, 'w') as devnull:
@@ -112,8 +112,6 @@ class merge():
 
         all_links_content = '\n'.join(content_set)
         
-        # 第一次转换，我们接受它会生成有瑕疵的 YAML
-        # 在静音模式下执行，避免打印非致命错误
         with suppress_stderr():
             buggy_clash_yaml = convert(all_links_content, 'clash')
         
@@ -123,28 +121,41 @@ class merge():
         
         print("Step 2: Manually fixing the generated Clash YAML...")
 
-        # 【终极修复】对 subconverter 返回的 YAML 字符串进行文本替换
         pattern = re.compile(r"(server\s*:\s*)(::ffff:[^,}\s]+)")
         def add_quotes(match):
             return f"{match.group(1)}'{match.group(2)}'"
-        
         fixed_clash_yaml = pattern.sub(add_quotes, buggy_clash_yaml)
         print("  -> YAML fixing complete.")
 
         print("\nStep 3: Converting the final clean Clash config to Base64...")
 
-        # 第二次转换，输入是完美的 YAML，不会有任何错误
-        final_b64_content = convert(fixed_clash_yaml, 'base64', self.format_config)
+        # 【终极修复】将修复好的 YAML 写入临时文件
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.yaml', encoding='utf-8') as temp_file:
+            temp_file.write(fixed_clash_yaml)
+            temp_file_path = temp_file.name
         
-        final_b64_decoded = base64_decode(final_b64_content)
-        final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
+        print(f"  -> Wrote clean YAML to temporary file: {temp_file_path}")
 
-        print(f"  -> Final conversion successful. Node count written: {final_written_count}")
+        try:
+            # 将临时文件的路径作为 URL 传给 subconverter
+            # 必须用 'url' 作为输入类型，让 subconverter 去 "下载" 这个本地文件
+            final_b64_content = convert(temp_file_path, 'url', self.format_config)
+            
+            final_b64_decoded = base64_decode(final_b64_content)
+            final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
 
-        merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-        with open(merge_path_final, 'wb') as file:
-            file.write(final_b64_content.encode('utf-8'))
-        print(f'\nDone! Output merged nodes to {merge_path_final}.')
+            print(f"  -> Final conversion successful. Node count written: {final_written_count}")
+
+            merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
+            with open(merge_path_final, 'wb') as file:
+                file.write(final_b64_content.encode('utf-8'))
+            print(f'\nDone! Output merged nodes to {merge_path_final}.')
+
+        finally:
+            # 确保临时文件被删除
+            os.remove(temp_file_path)
+            print(f"  -> Removed temporary file.")
+
 
     def readme_update(self):
         # ... (readme_update 方法保持不变) ...
