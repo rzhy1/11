@@ -24,32 +24,9 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install -r  ./utils/requirements.txt
-#    - name: Start Clash proxy environment
-#      run: |
-#        sudo sh ./utils/scripts/set_proxy.sh
     - name: Merge & speedtest
       run: |
-        # --- 增加的调试步骤 ---
-        echo "--- Debugging subconverter path and permissions ---"
-        # 1. 检查 utils/subconverter 目录下的所有文件，看看到底叫什么名字
-        ls -la ./utils/subconverter/
-        
-        # 2. 检查我们代码中使用的路径是否存在
-        echo "Checking for existence of ./utils/subconverter/subconverter-linux-amd64"
-        if [ -f "./utils/subconverter/subconverter-linux-amd64" ]; then
-          echo "File FOUND."
-        else
-          echo "File NOT FOUND!"
-        fi
-        echo "--- End of Debugging ---"
-        # --- 调试步骤结束 ---
-        
-        # 确保为正确的文件名添加执行权限
-        # 假设通过 ls 发现它其实叫 subconverter
-        # chmod +x ./utils/subconverter/subconverter 
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
-
-        # 执行主程序
         python3 ./utils/main.py
     - name: Commit change
       run: |
