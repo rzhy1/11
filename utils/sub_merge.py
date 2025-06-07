@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
-import json, os, base64, time, requests
-from subconverter import convert, base64_decode
-import sys
-from contextlib import contextmanager
+import json, os, base64, time, requests, re
+# 我们不再需要 subconverter 的 convert 函数
+from subconverter import base64_decode
 
-@contextmanager
-def suppress_stderr():
-    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
-    original_stderr = sys.stderr
-    devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
-    with open(devnull_path, 'w') as devnull:
-        try:
-            sys.stderr = devnull
-            yield
-        finally:
-            sys.stderr = original_stderr
+def is_base64(s):
+    s = s.strip()
+    # Base64 字符串的长度必须是 4 的倍数
+    if len(s) % 4 != 0:
+        return False
+    # 检查是否只包含 Base64 字符
+    if not re.match(r'^[A-Za-z0-9+/]*=?=?$', s):
+        return False
+    try:
+        # 尝试解码，validate=True 会在有非 base64 字符时抛出异常
+        base64.b64decode(s, validate=True)
+        return True
+    except Exception:
+        return False
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -23,6 +25,9 @@ class merge():
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
+
+        # format_config 在这个版本中不再起主要作用，但保留以兼容接口
+        self.format_config = format_config
 
         self.url_list = self.read_list()
         self.sub_merge()
@@ -46,7 +51,8 @@ class merge():
         else:
             os.makedirs(list_dir)
 
-        all_nodes_content = set()
+        content_set = set()
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://')
 
         for item in url_list:
             item_url = item.get('url')
@@ -60,63 +66,51 @@ class merge():
             print(f"Processing [ID: {item_id}] {item_remarks}...")
             
             try:
-                # 【核心逻辑】对每个 URL 单独调用 subconverter，直接转为 Base64
-                # 我们不再自己下载，让 subconverter 用它最擅长的方式处理单个源
-                # 'url' 类型输入能最好地处理各种情况（包括需要 User-Agent 的）
-                # 使用一个最简单的配置，只要求它输出原始节点
-                config = {'raw_format': True}
-                
-                with suppress_stderr(): # 屏蔽掉这个过程中的非致命错误
-                    base64_content = convert(item_url, 'url', config)
+                response = requests.get(item_url, timeout=15)
+                response.raise_for_status()
+                raw_content = response.text.strip()
+                if not raw_content: raise ValueError("Downloaded content is empty.")
 
-                if base64_content:
-                    # 解码得到明文节点
-                    plain_text = base64_decode(base64_content)
-                    nodes = [line.strip() for line in plain_text.splitlines() if line.strip()]
-                    if nodes:
-                        all_nodes_content.update(nodes)
-                        print(f'  -> Success! Converted and got {len(nodes)} nodes.')
-                    else:
-                        print("  -> Warning: Converted but got no nodes.")
+                plain_text_nodes = ''
+                if is_base64(raw_content):
+                    plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
                 else:
-                    print("  -> Warning: Subconverter returned empty content for this source.")
+                    plain_text_nodes = raw_content
+                
+                found_nodes = [line.strip() for line in plain_text_nodes.splitlines() if line.strip().startswith(VALID_PROTOCOLS)]
+                
+                if found_nodes:
+                    content_set.update(found_nodes)
+                    print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
+                else:
+                    print(f"  -> Warning: No valid node links found.")
 
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
             
             print()
 
-        if not all_nodes_content:
+        if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
         
-        # 此时 all_nodes_content 已经包含了所有去重后的节点明文
-        final_node_count = len(all_nodes_content)
-        print(f'\nTotal unique nodes collected: {final_node_count}')
-        print('Starting final packaging to Base64...')
-
-        final_input_content = '\n'.join(all_nodes_content)
+        final_node_count = len(content_set)
+        print(f'\nTotal unique node links collected: {final_node_count}')
         
-        # 【核心逻辑】最后一次打包，使用一个绝对空的配置
-        # 因为去重已经在 Python 的 set 中完成
-        final_convert_config = {}
+        # 【终极核心】我们自己拼接和编码
+        print('Packaging all collected nodes into a Base64 subscription...')
 
-        final_b64_content = convert(final_input_content, 'base64', final_convert_config)
+        # 将所有干净的节点链接用换行符拼接起来
+        final_plain_text = '\n'.join(sorted(list(content_set)))
+        
+        # 自己动手进行 Base64 编码
+        final_b64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
 
-        if not final_b64_content:
-            print("Error: Final packaging to Base64 failed.")
-            return
-
-        final_b64_decoded = base64_decode(final_b64_content)
-        final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-
-        print(f"\nFinal packaging successful.")
-        print(f"  -> Total unique nodes collected: {final_node_count}")
-        print(f"  -> Final nodes written to file: {final_written_count}")
+        print(f"  -> Packaging successful. Final node count: {final_node_count}")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-        with open(merge_path_final, 'wb') as file:
-            file.write(final_b64_content.encode('utf-8'))
+        with open(merge_path_final, 'w', encoding='utf-8') as file:
+            file.write(final_b64_content)
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
 
@@ -124,7 +118,7 @@ class merge():
         # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-        if not os.path.exists(merge_file_path):
+        if not os.path.exists(merge_path_final):
             print(f"Warning: Merged file not found. Skipping README update.")
             return
 
@@ -137,10 +131,11 @@ class merge():
                     if index + 1 < len(lines) and '合并节点总数' in lines[index+1]:
                         lines.pop(index+1) 
 
-                    with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
+                    with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
-                            proxies = base64_decode(proxies_base64)
+                            # 这里的 base64_decode 来自 subconverter，也可以用标准库的
+                            proxies = base64.b64decode(proxies_base64.encode('utf-8')).decode('utf-8')
                             top_amount = len([p for p in proxies.split('\n') if p.strip()])
                         else:
                             top_amount = 0
