@@ -5,8 +5,14 @@ from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
 
-# ... (辅助函数和上下文管理器保持不变) ...
+# 导入 V2Ray 链接解析库
+try:
+    import v2ray_util.v2ray_util as v2ray_util
+except ImportError:
+    print("Error: v2ray_util library not found. Please install it using 'pip install v2ray_util'")
+    sys.exit(1)
 
+# ... (suppress_stderr 和 is_base64 辅助函数保持不变) ...
 @contextmanager
 def suppress_stderr():
     original_stderr = sys.stderr
@@ -36,19 +42,13 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
 
-        # 【终极核心修复】 强制忽略外部配置文件，夺回控制权
         self.format_config = {
-            'deduplicate': True, 
+            'deduplicate': bool(format_config.get('deduplicate', True)), 
             'rename': format_config.get('rename', ''),
-            'include': format_config.get('include_remarks', ''), # 保持从 config.ini 读取
-            'exclude': format_config.get('exclude_remarks', ''), # 保持从 config.ini 读取
-            'config': '' # <-- 强制设置为空字符串！
+            'include': format_config.get('include_remarks', ''), 
+            'exclude': format_config.get('exclude_remarks', ''), 
+            'config': '' # 强制清空 config，确保完全控制
         }
-        print("--- Using sanitized format_config to gain full control ---")
-        print(f"  -> Original config path '{format_config.get('config')}' has been disabled.")
-        print("  -> Final config being used:", self.format_config)
-        print("---------------------------------------------------------")
-
 
         self.url_list = self.read_list()
         self.sub_merge()
@@ -59,6 +59,31 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
+
+    def fix_node_links(self, node_links_set):
+        """
+        使用 v2ray_util 库来解析、修复并重构节点链接。
+        """
+        fixed_links = set()
+        for link in node_links_set:
+            try:
+                if link.startswith('vless://'):
+                    # 解析 VLESS 链接
+                    node = v2ray_util.parse_vless(link)
+                    server = node.get('add', '')
+                    # 如果 server 地址是 IPv6 映射地址，修复它
+                    if server.startswith('::ffff:'):
+                        node['add'] = server.replace('::ffff:', '')
+                    # 重构链接
+                    fixed_link = v2ray_util.build_vless(node)
+                    fixed_links.add(fixed_link)
+                else:
+                    # 对于其他类型的链接，暂时不做处理，直接添加
+                    fixed_links.add(link)
+            except Exception:
+                # 如果解析失败，说明链接格式有问题，直接添加原始链接
+                fixed_links.add(link)
+        return fixed_links
 
     def sub_merge(self):
         url_list = self.url_list
@@ -114,33 +139,38 @@ class merge():
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
+
+        print(f'\nTotal unique node links collected: {len(content_set)}')
         
-        pre_filter_count = len(content_set)
-        print(f'\nTotal unique node links collected: {pre_filter_count}')
+        # 【终极核心修复】
+        print("Fixing VLESS links before final conversion...")
+        fixed_content_set = self.fix_node_links(content_set)
+        fixed_count = len(fixed_content_set)
+        print(f"  -> Link fixing complete. Total nodes to be converted: {fixed_count}")
+
         print('Starting final conversion to Base64...')
 
-        final_input_content = '\n'.join(content_set)
+        final_input_content = '\n'.join(fixed_content_set)
         
         final_b64_content = ''
-        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何无关紧要的非致命错误
+        # 在调用 convert 时，屏蔽其 stderr 输出
         with suppress_stderr():
             final_b64_content = convert(final_input_content, 'base64', self.format_config)
 
         if not final_b64_content:
-            print("Error: Final conversion to Base64 failed. Subconverter returned empty content.")
+            print("Error: Final conversion to Base64 failed.")
             return
 
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
 
         print(f"\nFinal conversion successful.")
-        print(f"  -> Unique links collected: {pre_filter_count}")
+        print(f"  -> Nodes before conversion: {fixed_count}")
         print(f"  -> Final nodes written to file: {final_written_count}")
 
-        # 检查数量差异
-        if pre_filter_count > final_written_count:
-            diff = pre_filter_count - final_written_count
-            print(f"  -> NOTE: {diff} nodes were removed during final conversion, likely by subconverter's internal deduplication.")
+        if fixed_count > final_written_count:
+            diff = fixed_count - final_written_count
+            print(f"  -> NOTE: {diff} nodes were removed by subconverter's deduplication/filtering.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
@@ -194,13 +224,12 @@ if __name__ == '__main__':
         'readme_file': './README.md'
     }
     
-    # 模拟从 config.ini 读取的配置
     format_config = {
         'deduplicate': True, 
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
-        'config': './config/rzhy_mini.ini' # <-- 问题的根源
+        'config': '' 
     }
     
     merge(file_dir, format_config)
