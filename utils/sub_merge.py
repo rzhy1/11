@@ -3,19 +3,15 @@
 import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
 import sys
-from contextlib import contextmanager
+from urllib.parse import unquote
 
-@contextmanager
-def suppress_stderr():
-    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
-    original_stderr = sys.stderr
-    devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
-    with open(devnull_path, 'w') as devnull:
-        try:
-            sys.stderr = devnull
-            yield
-        finally:
-            sys.stderr = original_stderr
+# 导入 V2Ray 链接解析库
+try:
+    import v2ray_util.v2ray_util as v2ray_util
+except ImportError:
+    print("FATAL ERROR: v2ray_util library is required but not found.")
+    print("Please add 'v2ray_util' to your requirements.txt and ensure it is installed.")
+    sys.exit(1)
 
 def is_base64(s):
     s = s.strip()
@@ -34,14 +30,10 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
 
-        # 我们使用外部传入的配置，但会在调用时按需修改
-        self.format_config = {
-            'deduplicate': bool(format_config.get('deduplicate', True)), 
-            'rename': format_config.get('rename', ''),
-            'include': format_config.get('include_remarks', ''), 
-            'exclude': format_config.get('exclude_remarks', ''), 
-            'config': format_config.get('config', '')
-        }
+        # 我们现在自己处理所有逻辑，只从外部获取最基本的规则
+        self.include_remarks = format_config.get('include_remarks', '').strip()
+        self.exclude_remarks = format_config.get('exclude_remarks', '').strip()
+        self.rename_rules = format_config.get('rename', '').strip()
 
         self.url_list = self.read_list()
         self.sub_merge()
@@ -52,6 +44,101 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
+
+    def parse_and_clean_nodes(self, node_links_set):
+        """
+        使用 v2ray_util 解析所有节点，进行去重、过滤和重命名。
+        返回一个最终的、干净的节点链接列表。
+        """
+        all_nodes = []
+        seen_proxies = set()
+
+        # 准备过滤和重命名规则
+        include_filters = [f.strip() for f in self.include_remarks.split('|') if f.strip()]
+        exclude_filters = [f.strip() for f in self.exclude_remarks.split('|') if f.strip()]
+        
+        rename_map = {}
+        if self.rename_rules:
+            for rule in self.rename_rules.split(';'):
+                if '@' in rule:
+                    old, new = rule.split('@')
+                    rename_map[old.strip()] = new.strip()
+
+        for link in node_links_set:
+            try:
+                node_dict = None
+                node_type = ''
+
+                # 解析不同类型的链接
+                if link.startswith('vless://'):
+                    node_dict = v2ray_util.parse_vless(link)
+                    node_type = 'vless'
+                elif link.startswith('vmess://'):
+                    # v2ray_util 的 vmess 解析返回的是 base64 编码的 json
+                    vmess_json = base64.b64decode(link[8:]).decode('utf-8')
+                    node_dict = json.loads(vmess_json)
+                    node_type = 'vmess'
+                elif link.startswith('trojan://'):
+                    node_dict = v2ray_util.parse_trojan(link)
+                    node_type = 'trojan'
+                elif link.startswith('ss://'):
+                    node_dict = v2ray_util.parse_ss(link)
+                    node_type = 'ss'
+                
+                if not node_dict:
+                    continue
+
+                # 1. 精确去重
+                proxy_id_parts = [
+                    node_type,
+                    str(node_dict.get('add', '')),
+                    str(node_dict.get('port', '')),
+                    str(node_dict.get('id', '')) # for vmess/vless/trojan
+                ]
+                proxy_id = '-'.join(proxy_id_parts)
+                if proxy_id in seen_proxies:
+                    continue
+                seen_proxies.add(proxy_id)
+
+                # 2. 过滤
+                node_name = unquote(node_dict.get('ps', '') or node_dict.get('remarks', ''))
+                
+                # 应用 exclude 规则
+                if self.exclude_remarks and any(f in node_name for f in exclude_filters):
+                    continue
+                
+                # 应用 include 规则
+                if self.include_remarks and not any(f in node_name for f in include_filters):
+                    continue
+
+                # 3. 重命名
+                for old, new in rename_map.items():
+                    node_name = node_name.replace(old, new)
+                
+                if 'ps' in node_dict: node_dict['ps'] = node_name
+                if 'remarks' in node_dict: node_dict['remarks'] = node_name
+
+                # 4. 重新构建链接
+                final_link = ''
+                if node_type == 'vless':
+                    final_link = v2ray_util.build_vless(node_dict)
+                elif node_type == 'vmess':
+                    vmess_json_str = json.dumps(node_dict, separators=(',', ':'))
+                    final_link = 'vmess://' + base64.b64encode(vmess_json_str.encode('utf-8')).decode('utf-8')
+                elif node_type == 'trojan':
+                    final_link = v2ray_util.build_trojan(node_dict)
+                elif node_type == 'ss':
+                    final_link = v2ray_util.build_ss(node_dict)
+                
+                if final_link:
+                    all_nodes.append(final_link)
+
+            except Exception as e:
+                # 忽略解析或处理失败的链接
+                # print(f"  -> Warning: Failed to process link '{link[:30]}...': {e}")
+                pass
+        
+        return all_nodes
 
     def sub_merge(self):
         url_list = self.url_list
@@ -108,41 +195,27 @@ class merge():
             print('Merging failed: No nodes collected from any source.')
             return
         
-        pre_filter_count = len(content_set)
-        print(f'\nTotal unique node links collected: {pre_filter_count}')
+        print(f'\nTotal unique node links collected: {len(content_set)}')
+        
+        print("Starting nodes processing (deduplication, filtering, renaming)...")
+        final_node_links = self.parse_and_clean_nodes(content_set)
+        final_node_count = len(final_node_links)
+        print(f"  -> Processing complete. Final node count: {final_node_count}")
+
         print('Starting final conversion to Base64...')
 
-        final_input_content = '\n'.join(content_set)
+        final_input_content = '\n'.join(final_node_links)
         
-        # 【核心】创建一个绝对干净的配置用于转换，只进行去重
-        # 这会覆盖掉任何可能从 config.ini 传入的、导致问题的配置
-        final_convert_config = {
-            'deduplicate': True,
-            # 如果你依然想使用 config.ini 中的 rename/include/exclude, 可以取消下面的注释
-            # 'rename': self.format_config['rename'],
-            # 'include': self.format_config['include'],
-            # 'exclude': self.format_config['exclude'],
-        }
+        # 【终极核心】使用一个绝对空的配置，只做打包
+        final_convert_config = {}
 
-        final_b64_content = ''
-        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏非致命错误
-        with suppress_stderr():
-            final_b64_content = convert(final_input_content, 'base64', final_convert_config)
+        final_b64_content = convert(final_input_content, 'base64', final_convert_config)
 
         if not final_b64_content:
-            print("Error: Final conversion to Base64 failed. Subconverter returned empty content.")
+            print("Error: Final conversion to Base64 failed.")
             return
 
-        final_b64_decoded = base64_decode(final_b64_content)
-        final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-
         print(f"\nFinal conversion successful.")
-        print(f"  -> Unique links collected: {pre_filter_count}")
-        print(f"  -> Final nodes written to file: {final_written_count}")
-
-        if pre_filter_count > final_written_count:
-            diff = abs(pre_filter_count - final_written_count)
-            print(f"  -> NOTE: {diff} nodes were removed by subconverter, likely due to its internal deduplication or filtering of invalid nodes.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
@@ -151,6 +224,7 @@ class merge():
 
 
     def readme_update(self):
+        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
@@ -187,17 +261,15 @@ class merge():
 
 
 if __name__ == '__main__':
+    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
         'merge_dir': './sub/',
-        'update_dir': './sub/update/',
-        'readme_file': './README.md',
-        'share_file': './sub/share.txt'
+        'readme_file': './README.md'
     }
     
-    # 这里的 format_config 依然会从 main.py 传进来
-    # 但我们的脚本内部会创建一个更干净的配置来执行转换
+    # 模拟从 config.ini 读取的配置
     format_config = {
         'deduplicate': True, 
         'rename': '',
