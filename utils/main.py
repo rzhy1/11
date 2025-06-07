@@ -2,72 +2,67 @@
 
 import os, urllib
 import configparser
-import sys
-
-# --- 核心修改：动态计算路径 ---
-# 获取 main.py 所在的目录 (即 'utils' 目录)
-UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
-# 获取项目根目录 (即 'utils' 的上一级目录)
-PROJECT_ROOT = os.path.dirname(UTILS_DIR)
-
-# 将 utils 目录和项目根目录都加入到模块搜索路径，确保能找到所有模块
-sys.path.insert(0, UTILS_DIR)
-sys.path.insert(0, PROJECT_ROOT)
-# -----------------------------
 
 from sub_update import update
 from sub_merge import merge
 from subconverter import convert, base64_decode
 
-# 使用绝对路径来读取配置文件
-config_file = os.path.join(UTILS_DIR, 'config.ini')
+config_file = './utils/config.ini'
 
 def configparse(section):
     config = configparser.ConfigParser()
     config.read(config_file, encoding='utf-8')
-    # --- 核心修改：修正返回的路径为绝对路径 ---
-    parsed_config = dict(config[section])
-    for key, value in parsed_config.items():
-        if 'dir' in key or 'file' in key:
-            # 将所有相对路径 ./sub/... 转换为相对于项目根目录的绝对路径
-            if value.startswith('./'):
-                parsed_config[key] = os.path.join(PROJECT_ROOT, value[2:])
-    return parsed_config
+    if section == 'common':
+        return config['common']
+    elif section == 'subconverter':
+        return config['subconverter']
+    elif section == 'speedtest':
+        return config['speedtest']
 
 if __name__ == '__main__':
+
     try:
         print('Downloading Country.mmdb...')
-        country_mmdb_path = os.path.join(UTILS_DIR, 'Country.mmdb')
-        urllib.request.urlretrieve('https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb', country_mmdb_path)
+        urllib.request.urlretrieve('https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb', './utils/Country.mmdb')
         print('Success!\n')
     except Exception:
         print('Failed!\n')
         pass
 
-    common_config = configparse('common')
+    if configparse('common').getboolean('update_enabled'):
+        config = configparse('common')
+        update(config)
 
-    if common_config.get('update_enabled', 'false').lower() == 'true':
-        print('--- Running Subscription Update ---')
-        update(common_config)
-
-    if common_config.get('merge_enabled', 'false').lower() == 'true':
-        print('--- Running Subscription Merge ---')
+    if configparse('common').getboolean('merge_enabled'):
+        file_dir = configparse('common')
         format_config = configparse('subconverter')
-        merge(common_config, format_config)
+        merge(file_dir, format_config)
 
-        # 同样，为 speedtest 添加 try-except 块
-        if common_config.getboolean('speedtest_enabled'):
-            print("\n--- Running Speed Test ---")
-            # Speedtest 的逻辑比较复杂且依赖外部命令，暂时保持原样
-            # 但至少要保证前面的步骤成功
-            if os.path.exists(common_config['share_file']):
-                # ... 你的 speedtest 逻辑 ...
-                print("Speed test logic would run here (currently placeholder).")
-            else:
-                print("Skipping speed test because merged file does not exist.")
+    if configparse('common').getboolean('speedtest_enabled'):
+        share_file = configparse('common')['share_file']
+        share_file_clash = configparse('common')['share_file_clash']
+        subscription = configparse('speedtest')['subscription']
+        range = configparse('speedtest')['output_range']
+        os.system(f'proxychains python3 ./utils/litespeedtest/speedtest.py --subscription \"../../{subscription}\" --range \"200,1100\" --path \"../../temp\"')
 
-    except (FileNotFoundError, KeyError) as e:
-        print(f"FATAL CONFIG ERROR: {e}")
-        print("Please check your './utils/config.ini' file.")
-    except Exception as e:
-        print(f"An unexpected error occurred in main execution: {e}")
+        east_asian_proxies = convert('../../temp','base64',{'deduplicate':False,'rename':'','include':'港|HK|Hong Kong|坡|SG|狮城|Singapore|日|JP|东京|大阪|埼玉|Japan|台|TW|新北|彰化|Taiwan|韩|KR|KOR|首尔|Korea','exclude':'','config':''})
+        north_america_proxies = convert('../../temp','base64',{'deduplicate':False,'rename':'','include':'美|US|United States|加拿大|CA|Canada|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥','exclude':'','config':''})
+        other_country_proxies = convert('../../temp','base64',{'deduplicate':False,'rename':'','include':'','exclude':'US|HK|SG|JP|TW|KR|美|港|坡|日|台|韩|CA|加','config':''})
+        area_proxies = {
+            'east_asia': [east_asian_proxies, 45],
+            'north_america': [north_america_proxies, 25],
+            'other_area':[other_country_proxies, 25]
+        }
+        share_proxies = []
+        for area in area_proxies.keys():
+            with open('./temp', 'w', encoding='utf-8') as temp_file:
+                temp_file.write(area_proxies[area][0])
+            os.system(f'proxychains python3 ./utils/litespeedtest/speedtest.py --subscription \"../../temp\" --range \"{area_proxies[area][1]}\" --path \"../../temp\"')
+            with open('./temp', 'r', encoding='utf-8') as temp_file:
+                content = temp_file.read()
+                share_proxies.append(base64_decode(content))
+        with open('./temp', 'w', encoding='utf-8') as temp_file:
+            temp_file.write(''.join(share_proxies))
+        os.system(f'python3 ./utils/subconverter/subconvert.py --subscription \"../../temp\" --target \"base64\" --output \"../../{share_file}\"')
+        os.system(f'python3 ./utils/subconverter/subconvert.py --subscription \"../../temp\" --target \"clash\" --output \"../../{share_file_clash}\"')
+        os.remove('./temp')
