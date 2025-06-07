@@ -9,7 +9,6 @@ from contextlib import contextmanager
 def suppress_stderr():
     """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
-    # 在 GitHub Actions 等环境中，使用 /dev/null
     devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
     with open(devnull_path, 'w') as devnull:
         try:
@@ -18,7 +17,6 @@ def suppress_stderr():
         finally:
             sys.stderr = original_stderr
 
-# 辅助函数：判断字符串是否可能是 Base64
 def is_base64(s):
     s = s.strip()
     if len(s) % 4 != 0: return False
@@ -54,24 +52,6 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
 
-    def fix_node_links(self, node_links):
-        """
-        接收一个节点链接的集合，修复其中已知的问题。
-        """
-        fixed_links = set()
-        # 修复 vless server 地址中 ::ffff: 的问题
-        vless_pattern = re.compile(r"(vless://[^@]+@)::ffff:([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(:[0-9]+.*)")
-        
-        for link in node_links:
-            match = vless_pattern.match(link)
-            if match:
-                # 重组链接: part1(vless://uuid@) + part2(ipv4) + part3(:port...)
-                fixed_link = f"{match.group(1)}{match.group(2)}{match.group(3)}"
-                fixed_links.add(fixed_link)
-            else:
-                fixed_links.add(link)
-        return fixed_links
-
     def sub_merge(self):
         url_list = self.url_list
         list_dir = self.list_dir
@@ -102,7 +82,6 @@ class merge():
                 response = requests.get(item_url, timeout=15)
                 response.raise_for_status()
                 raw_content = response.text.strip()
-
                 if not raw_content: raise ValueError("Downloaded content is empty.")
 
                 plain_text_nodes = ''
@@ -111,15 +90,11 @@ class merge():
                 else:
                     plain_text_nodes = raw_content
                 
-                found_nodes_count = 0
-                for line in plain_text_nodes.splitlines():
-                    clean_line = line.strip()
-                    if clean_line.startswith(VALID_PROTOCOLS):
-                        content_set.add(clean_line)
-                        found_nodes_count += 1
+                found_nodes = [line.strip() for line in plain_text_nodes.splitlines() if line.strip().startswith(VALID_PROTOCOLS)]
                 
-                if found_nodes_count > 0:
-                    print(f'  -> Success! Extracted {found_nodes_count} valid node links.')
+                if found_nodes:
+                    content_set.update(found_nodes)
+                    print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
                 else:
                     print(f"  -> Warning: No valid node links found.")
 
@@ -133,31 +108,38 @@ class merge():
             return
 
         print(f'\nTotal unique node links collected: {len(content_set)}')
-        
-        # 【核心修复步骤】
-        print("Fixing known issues in node links (e.g., VLESS IPv6 mapping)...")
-        fixed_content_set = self.fix_node_links(content_set)
-        print(f"  -> Link fixing complete. Nodes after fixing: {len(fixed_content_set)}")
+        print('Step 1: Converting all links to a temporary Clash format...')
 
-        print('Starting final conversion to Base64...')
-
-        final_input_content = '\n'.join(fixed_content_set)
+        all_links_content = '\n'.join(content_set)
         
-        final_b64_content = ''
-        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何非致命的解析错误
+        # 第一次转换，我们接受它会生成有瑕疵的 YAML
+        # 在静音模式下执行，避免打印非致命错误
         with suppress_stderr():
-            final_b64_content = convert(final_input_content, 'base64', self.format_config)
-
-        if not final_b64_content:
-            print("Error: Final conversion to Base64 failed, subconverter may have critical issues.")
+            buggy_clash_yaml = convert(all_links_content, 'clash')
+        
+        if not buggy_clash_yaml:
+            print("Fatal Error: subconverter failed to convert links to Clash format.")
             return
+        
+        print("Step 2: Manually fixing the generated Clash YAML...")
 
+        # 【终极修复】对 subconverter 返回的 YAML 字符串进行文本替换
+        pattern = re.compile(r"(server\s*:\s*)(::ffff:[^,}\s]+)")
+        def add_quotes(match):
+            return f"{match.group(1)}'{match.group(2)}'"
+        
+        fixed_clash_yaml = pattern.sub(add_quotes, buggy_clash_yaml)
+        print("  -> YAML fixing complete.")
+
+        print("\nStep 3: Converting the final clean Clash config to Base64...")
+
+        # 第二次转换，输入是完美的 YAML，不会有任何错误
+        final_b64_content = convert(fixed_clash_yaml, 'base64', self.format_config)
+        
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
 
-        print(f"\nFinal conversion successful.")
-        print(f"  -> Total unique links before final conversion: {len(fixed_content_set)}")
-        print(f"  -> Final nodes written to file: {final_written_count}")
+        print(f"  -> Final conversion successful. Node count written: {final_written_count}")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
