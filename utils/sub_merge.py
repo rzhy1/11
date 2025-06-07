@@ -4,18 +4,6 @@ import json, os, base64, time, requests, re, subprocess
 
 # 我们不再需要导入 subconverter 包，因为我们直接调用可执行文件
 # from subconverter import convert, base64_decode
-import subprocess
-
-# 执行 echo
-subprocess.run(['echo', '11111'], shell=True)
-
-# 检查 subconverter 版本
-result = subprocess.run(
-    ['./utils/subconverter/subconverter-linux-amd64', '--version'],
-    capture_output=True,
-    text=True
-)
-print("Subconverter 版本:", result.stdout)
 
 # 我们自己实现一个可靠的 base64_decode
 def base64_decode(s):
