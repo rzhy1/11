@@ -9,7 +9,7 @@ def is_likely_base64(s):
         return False
     try:
         decoded = base64.b64decode(s).decode('utf-8')
-        if 'vmess://' in decoded or 'proxies:' in decoded or 'ss://' in decoded or 'vless://' in decoded:
+        if any(kw in decoded for kw in ['vmess://', 'proxies:', 'ss://', 'vless://']):
             return True
         if any(char.isprintable() or char.isspace() for char in decoded):
             return True
@@ -46,6 +46,7 @@ class merge():
         return cleaned_nodes
 
     def sub_merge(self):
+        # ... (sub_merge 方法的前半部分保持不变) ...
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
@@ -75,9 +76,7 @@ class merge():
                 response.raise_for_status()
                 raw_content = response.text.strip()
                 if not raw_content: raise ValueError("Downloaded content is empty.")
-
                 plain_text_nodes = ''
-                
                 if is_likely_base64(raw_content):
                     print("  -> Detected Base64 format, decoding...")
                     plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
@@ -87,19 +86,15 @@ class merge():
                 else:
                     print("  -> Detected Plain Text node list format.")
                     plain_text_nodes = raw_content
-
                 found_nodes = [line.strip() for line in plain_text_nodes.splitlines() if line.strip()]
-                
                 if found_nodes:
                     cleaned_nodes = self.cleanup_node_list(found_nodes)
                     content_set.update(cleaned_nodes)
                     print(f'  -> Success! Added {len(cleaned_nodes)} lines to the merge pool.')
                 else:
                     print(f"  -> ⭐⭐ Warning: No content lines found after processing.")
-
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
-            
             print()
 
         if not content_set:
@@ -111,27 +106,18 @@ class merge():
         print('Handing over to subconverter for final processing, filtering, and packaging...')
 
         final_input_content = '\n'.join(sorted(list(content_set)))
-        
-        # 【核心修复】在这里！我们需要告诉 subconverter 输入的是什么。
-        # 最可靠的方法是：将我们的明文内容编码成 Base64，然后告诉 subconverter 输入类型是 'base64'。
-        
-        # 1. 将我们准备好的明文节点列表编码成 Base64
         final_input_b64 = base64.b64encode(final_input_content.encode('utf-8')).decode('utf-8')
         
-        # 2. 准备配置，并明确指定输入类型为 'base64'
+        # 【核心修复】在这里！我们强制关闭 subconverter 的去重功能。
         subconverter_config = {
-            'deduplicate': bool(self.format_config.get('deduplicate', True)),
+            'deduplicate': False, # <-- 强制设置为 False，绕过有问题的代码
             'rename': self.format_config.get('rename', ''),
             'include': self.format_config.get('include_remarks', ''),
             'exclude': self.format_config.get('exclude_remarks', ''),
             'config': self.format_config.get('config', ''),
-            'url_type': 'base64' # <-- 明确告诉 subconverter，第一个参数是 Base64 编码的内容
+            'url_type': 'base64'
         }
         
-        # 3. 调用 convert 函数
-        # 第一个参数是 Base64 编码的节点列表
-        # 第二个参数是目标输出格式
-        # 第三个参数是包含输入类型的配置
         final_b64_content = convert(final_input_b64, 'base64', subconverter_config)
 
         if not final_b64_content:
@@ -139,7 +125,6 @@ class merge():
             return
 
         print(f"  -> Subconverter processing successful.")
-
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
             file.write(final_b64_content)
@@ -184,8 +169,9 @@ if __name__ == '__main__':
         'merge_dir': './sub/',
         'readme_file': './README.md',
     }
+    # 这里的 deduplicate 设置不再重要，因为我们在代码里硬编码了 False
     format_config = {
-        'deduplicate': True,
+        'deduplicate': True, 
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
