@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-# 我们现在可以安全地使用这个导入了
 from subconverter import convert, base64_decode
 
-# 辅助函数 is_likely_base64 保持不变
+# is_likely_base64 保持不变
 def is_likely_base64(s):
     if len(s.strip()) % 4 != 0 or not re.match('^[A-Za-z0-9+/=]+$', s.strip()):
         return False
@@ -19,6 +18,7 @@ def is_likely_base64(s):
         return False
 
 class merge():
+    # __init__, read_list, cleanup_node_list 保持不变
     def __init__(self,file_dir,format_config):
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
@@ -46,6 +46,7 @@ class merge():
         return cleaned_nodes
 
     def sub_merge(self):
+        # ... (数据收集部分完全不变) ...
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
@@ -63,13 +64,10 @@ class merge():
             item_url = item.get('url')
             item_id = item.get('id')
             item_remarks = item.get('remarks')
-            
             if not item_url:
                 print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.")
                 continue
-
             print(f"Processing [ID: {item_id:0>2d}] {item_remarks} from {item_url}")
-            
             try:
                 response = requests.get(item_url, timeout=15)
                 response.raise_for_status()
@@ -102,15 +100,15 @@ class merge():
         
         print(f'\nTotal unique lines collected: {len(content_set)}')
         
-        # 【核心修复】将所有节点写入一个临时文件
-        temp_subscription_file = os.path.join(self.merge_dir, 'temp_sub_for_convert.txt')
-        final_input_content = '\n'.join(sorted(list(content_set)))
-        
-        with open(temp_subscription_file, 'w', encoding='utf-8') as f:
-            f.write(final_input_content)
+        print('Handing over to subconverter for final processing...')
 
-        print(f'Handing over temporary subscription file to subconverter: {temp_subscription_file}')
+        # 【核心修复】将所有节点拼接成明文，然后编码成一个标准的 Base64 订阅内容
+        final_input_content = '\n'.join(sorted(list(content_set)))
+        final_input_b64 = base64.b64encode(final_input_content.encode('utf-8')).decode('utf-8')
         
+        # 这个 Base64 字符串就是 subconvert.py 最期望接收的格式之一
+        print(f'  -> Packaged all nodes into a single Base64 string.')
+
         subconverter_config = {
             'deduplicate': self.format_config.get('deduplicate', True),
             'rename': self.format_config.get('rename', ''),
@@ -120,31 +118,26 @@ class merge():
         }
         
         try:
-            # 【核心修复】将临时文件的路径作为 subscription 参数传递
-            final_b64_content = convert(temp_subscription_file, 'base64', subconverter_config)
+            # 【核心修复】将这个 Base64 字符串作为 subscription 参数传递
+            final_b64_content = convert(final_input_b64, 'base64', subconverter_config)
 
             if not final_b64_content:
                 print("  -> Subconverter returned empty content. There might be no valid nodes after filtering.")
-                # 清理临时文件
-                os.remove(temp_subscription_file)
                 return
 
             print(f"  -> Subconverter processing successful.")
             merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-            # convert 函数返回的是字符串，所以用 'w' 写入
             with open(merge_path_final, 'w', encoding='utf-8') as file:
                 file.write(final_b64_content)
             print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
         except Exception as e:
             print(f"  -> FATAL ERROR during final conversion: {e}")
-        finally:
-            # 无论成功与否，都删除临时文件
-            if os.path.exists(temp_subscription_file):
-                os.remove(temp_subscription_file)
 
 
+    # readme_update 方法保持不变
     def readme_update(self):
+        # ... (和之前一样) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
@@ -176,6 +169,7 @@ class merge():
 
 
 if __name__ == '__main__':
+    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
