@@ -4,10 +4,10 @@ import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
-import tempfile # 导入临时文件模块
 
 @contextmanager
 def suppress_stderr():
+    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
     devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
     with open(devnull_path, 'w') as devnull:
@@ -33,14 +33,18 @@ class merge():
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
-
+        # 【关键】我们在这里直接使用一个最简化的配置，强制忽略外部传入的 include/exclude
         self.format_config = {
-            'deduplicate': bool(format_config.get('deduplicate', True)), 
+            'deduplicate': True, 
             'rename': format_config.get('rename', ''),
-            'include': format_config.get('include_remarks', ''), 
-            'exclude': format_config.get('exclude_remarks', ''), 
+            'include': '', # 强制清空 include
+            'exclude': '', # 强制清空 exclude
             'config': format_config.get('config', '')
         }
+        print("--- Using simplified format_config to avoid filtering ---")
+        print(self.format_config)
+        print("---------------------------------------------------------")
+
 
         self.url_list = self.read_list()
         self.sub_merge()
@@ -107,54 +111,44 @@ class merge():
             print('Merging failed: No nodes collected from any source.')
             return
 
-        print(f'\nTotal unique node links collected: {len(content_set)}')
-        print('Step 1: Converting all links to a temporary Clash format...')
+        # ---- DEBUGGING STEP 1: Save all collected links ----
+        debug_dir = self.merge_dir
+        all_links_path = os.path.join(debug_dir, 'debug_all_links.txt')
+        with open(all_links_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(sorted(list(content_set))))
+        print(f"\n[DEBUG] Saved all {len(content_set)} unique links to: {all_links_path}")
+        # ----------------------------------------------------
 
-        all_links_content = '\n'.join(content_set)
+        print('\nStarting final conversion to Base64...')
+
+        final_input_content = '\n'.join(content_set)
         
+        final_b64_content = ''
+        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何非致命的解析错误
         with suppress_stderr():
-            buggy_clash_yaml = convert(all_links_content, 'clash')
-        
-        if not buggy_clash_yaml:
-            print("Fatal Error: subconverter failed to convert links to Clash format.")
+            final_b64_content = convert(final_input_content, 'base64', self.format_config)
+
+        if not final_b64_content:
+            print("Error: Final conversion to Base64 failed. Subconverter returned empty content.")
             return
-        
-        print("Step 2: Manually fixing the generated Clash YAML...")
 
-        pattern = re.compile(r"(server\s*:\s*)(::ffff:[^,}\s]+)")
-        def add_quotes(match):
-            return f"{match.group(1)}'{match.group(2)}'"
-        fixed_clash_yaml = pattern.sub(add_quotes, buggy_clash_yaml)
-        print("  -> YAML fixing complete.")
+        # ---- DEBUGGING STEP 2: Save the final output for comparison ----
+        final_nodes_path = os.path.join(debug_dir, 'debug_final_nodes.txt')
+        final_b64_decoded = base64_decode(final_b64_content)
+        final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
+        with open(final_nodes_path, 'w', encoding='utf-8') as f:
+            f.write(final_b64_decoded)
+        print(f"[DEBUG] Saved the final {final_written_count} decoded nodes to: {final_nodes_path}")
+        # -----------------------------------------------------------
 
-        print("\nStep 3: Converting the final clean Clash config to Base64...")
+        print(f"\nFinal conversion successful.")
+        print(f"  -> Unique links collected: {len(content_set)}")
+        print(f"  -> Final nodes written to file: {final_written_count}")
 
-        # 【终极修复】将修复好的 YAML 写入临时文件
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.yaml', encoding='utf-8') as temp_file:
-            temp_file.write(fixed_clash_yaml)
-            temp_file_path = temp_file.name
-        
-        print(f"  -> Wrote clean YAML to temporary file: {temp_file_path}")
-
-        try:
-            # 将临时文件的路径作为 URL 传给 subconverter
-            # 必须用 'url' 作为输入类型，让 subconverter 去 "下载" 这个本地文件
-            final_b64_content = convert(temp_file_path, 'url', self.format_config)
-            
-            final_b64_decoded = base64_decode(final_b64_content)
-            final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-
-            print(f"  -> Final conversion successful. Node count written: {final_written_count}")
-
-            merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-            with open(merge_path_final, 'wb') as file:
-                file.write(final_b64_content.encode('utf-8'))
-            print(f'\nDone! Output merged nodes to {merge_path_final}.')
-
-        finally:
-            # 确保临时文件被删除
-            os.remove(temp_file_path)
-            print(f"  -> Removed temporary file.")
+        merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
+        with open(merge_path_final, 'wb') as file:
+            file.write(final_b64_content.encode('utf-8'))
+        print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
 
     def readme_update(self):
