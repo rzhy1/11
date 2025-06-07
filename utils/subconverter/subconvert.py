@@ -18,18 +18,16 @@ def convert(content_str, target, other_config={}):
         
     output = ""
     try:
-        # 【核心修复】构建完整的命令行参数列表
         executable = 'subconverter-linux-amd64' if os.name == 'posix' else 'subconverter-windows-amd64.exe'
         command = [
             f'./{executable}',
-            '--no-color', # 禁用颜色输出，让日志更干净
+            '--no-color',
             '--target', target,
-            '--url', temp_input_file, # 输入文件
-            '--output', temp_output_file # 输出文件
+            '--url', temp_input_file,
+            '--output', temp_output_file
         ]
 
-        # 动态添加其他配置参数
-        if other_config.get('deduplicate') is False: # 注意检查 False
+        if other_config.get('deduplicate') is False:
             command.append('--no-deduplicate')
         if other_config.get('rename'):
             command.extend(['--rename', other_config['rename']])
@@ -41,8 +39,16 @@ def convert(content_str, target, other_config={}):
             command.extend(['--config', other_config['config']])
         
         print(f"  -> Executing subconverter command: {' '.join(command)}")
+        print(f"  -> Waiting for subconverter to process (timeout set to 300 seconds)...")
         
-        process = subprocess.run(command, capture_output=True, text=True, encoding='utf-8', timeout=60)
+        # 【核心修复】延长超时时间
+        process = subprocess.run(
+            command, 
+            capture_output=True, 
+            text=True, 
+            encoding='utf-8', 
+            timeout=300 # 延长超时到 5 分钟
+        )
 
         if process.returncode != 0:
             print("  -> Subconverter process exited with an error.")
@@ -58,10 +64,12 @@ def convert(content_str, target, other_config={}):
         with open(temp_output_file, 'r', encoding='utf-8', errors='ignore') as f:
             output = f.read()
 
+    except subprocess.TimeoutExpired:
+        print("  -> FATAL ERROR: Subconverter timed out after 300 seconds. The dataset might be too large or complex.")
+        return ""
     except Exception as e:
         print(f"An error occurred while running subconverter: {e}")
     finally:
-        # 清理临时文件
         if os.path.exists(temp_input_file):
             os.remove(temp_input_file)
         if os.path.exists(temp_output_file):
