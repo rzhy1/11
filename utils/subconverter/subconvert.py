@@ -1,82 +1,78 @@
-#!/usr/bin/env python3
+# utils/subconverter/subconvert.py 最终高效版
 
 import os, subprocess, base64
 
-def convert(content_str, target, other_config={}):
+def convert(input_content, input_type, target_format, config={}):
     """
-    【最终决定版】直接通过命令行参数与 subconverter 核心交互，不再修改 INI 文件。
+    【高效版】接收输入内容和类型，调用 subconverter 核心，并返回输出内容。
+    - input_content: URL, 本地文件路径, 或 Base64 编码的字符串
+    - input_type: 'url' 或 'base64'
+    - target_format: 'clash' 或 'base64'
+    - config: 包含过滤、重命名规则的字典
     """
     work_dir = os.getcwd()
     subconverter_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(subconverter_dir)
 
-    temp_input_file = './temp_input.txt'
-    temp_output_file = './temp_output.txt' # 定义一个临时的输出文件名
-
-    with open(temp_input_file, 'w', encoding='utf-8') as f:
-        f.write(content_str)
-        
+    # 准备一个临时的输出文件
+    temp_output_file = './temp_output_artifact.tmp'
+    
     output = ""
     try:
         executable = 'subconverter-linux-amd64' if os.name == 'posix' else 'subconverter-windows-amd64.exe'
         command = [
             f'./{executable}',
             '--no-color',
-            '--target', target,
-            '--url', temp_input_file,
+            '--target', target_format,
             '--output', temp_output_file
         ]
 
-        if other_config.get('deduplicate') is False:
-            command.append('--no-deduplicate')
-        if other_config.get('rename'):
-            command.extend(['--rename', other_config['rename']])
-        if other_config.get('include'):
-            command.extend(['--include', other_config['include']])
-        if other_config.get('exclude'):
-            command.extend(['--exclude', other_config['exclude']])
-        if other_config.get('config'):
-            command.extend(['--config', other_config['config']])
+        # 根据输入类型构建命令
+        # 注意：对于 'url' 类型，input_content 就是 URL 或文件路径
+        # 对于 'base64' 类型，subconverter 期望从 stdin 读取
+        if input_type == 'url':
+            command.extend(['--url', input_content])
+            stdin_content = None
+        elif input_type == 'base64':
+            stdin_content = input_content.encode('utf-8')
+        else:
+            raise ValueError(f"Unsupported input_type: {input_type}")
+
+        # 添加其他配置
+        if config.get('rename'): command.extend(['--rename', config['rename']])
+        if config.get('include'): command.extend(['--include', config['include']])
+        if config.get('exclude'): command.extend(['--exclude', config['exclude']])
+        if config.get('config'): command.extend(['--config', config['config']])
         
-        print(f"  -> Executing subconverter command: {' '.join(command)}")
-        print(f"  -> Waiting for subconverter to process (timeout set to 300 seconds)...")
-        
-        # 【核心修复】延长超时时间
         process = subprocess.run(
-            command, 
-            capture_output=True, 
-            text=True, 
-            encoding='utf-8', 
-            timeout=300 # 延长超时到 5 分钟
+            command,
+            input=stdin_content,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=120 # 单次转换超时2分钟，足够了
         )
 
         if process.returncode != 0:
-            print("  -> Subconverter process exited with an error.")
-            print("  -> Stderr:", process.stderr)
+            print(f"  -> Subconverter failed for input. Stderr: {process.stderr.strip()}")
             return ""
 
-        if not os.path.exists(temp_output_file):
-            print("  -> Error: Subconverter ran successfully, but the output file was not created.")
-            print("  -> Stdout:", process.stdout)
-            print("  -> Stderr:", process.stderr)
-            return ""
-
-        with open(temp_output_file, 'r', encoding='utf-8', errors='ignore') as f:
-            output = f.read()
+        if os.path.exists(temp_output_file):
+            with open(temp_output_file, 'r', encoding='utf-8', errors='ignore') as f:
+                output = f.read()
+            os.remove(temp_output_file)
+        else:
+             print(f"  -> Warning: Output file was not created by subconverter.")
 
     except subprocess.TimeoutExpired:
-        print("  -> FATAL ERROR: Subconverter timed out after 300 seconds. The dataset might be too large or complex.")
-        return ""
+        print(f"  -> Subconverter timed out processing the input.")
     except Exception as e:
-        print(f"An error occurred while running subconverter: {e}")
+        print(f"  -> An error occurred while running subconverter: {e}")
     finally:
-        if os.path.exists(temp_input_file):
-            os.remove(temp_input_file)
-        if os.path.exists(temp_output_file):
-            os.remove(temp_output_file)
         os.chdir(work_dir)
 
     return output
+
 
 def base64_decode(content):
     try:
