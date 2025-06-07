@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
-# 我们不再需要 subconverter 的 convert 函数
+# 我们不再需要 subconverter 的 convert 函数，但保留 base64_decode 用于 readme_update
 from subconverter import base64_decode
+import sys
+from urllib.parse import unquote
+
+# 导入 V2Ray 链接解析库
+try:
+    import v2ray_util.v2ray_util as v2ray_util
+except ImportError:
+    print("FATAL ERROR: v2ray_util library is required but not found.")
+    print("Please add 'v2ray_util' to your requirements.txt and ensure it is installed.")
+    sys.exit(1)
 
 def is_base64(s):
     s = s.strip()
-    # Base64 字符串的长度必须是 4 的倍数
-    if len(s) % 4 != 0:
-        return False
-    # 检查是否只包含 Base64 字符
-    if not re.match(r'^[A-Za-z0-9+/]*=?=?$', s):
-        return False
+    if len(s) % 4 != 0: return False
+    if not re.match(r'^[A-Za-z0-9+/]*=?=?$', s): return False
     try:
-        # 尝试解码，validate=True 会在有非 base64 字符时抛出异常
         base64.b64decode(s, validate=True)
         return True
     except Exception:
@@ -26,9 +31,6 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
 
-        # format_config 在这个版本中不再起主要作用，但保留以兼容接口
-        self.format_config = format_config
-
         self.url_list = self.read_list()
         self.sub_merge()
         if self.readme_file:
@@ -38,6 +40,52 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
+
+    def deduplicate_nodes(self, node_links_set):
+        """
+        使用 v2ray_util 解析所有节点，进行精确去重。
+        返回一个最终的、不重复的节点链接列表。
+        """
+        unique_nodes = {} # 使用字典来存储，键是唯一标识，值是链接
+        seen_fingerprints = set()
+
+        for link in node_links_set:
+            try:
+                fingerprint = ''
+                node_type = ''
+                
+                # 解析链接并创建唯一指纹
+                if link.startswith('vless://') or link.startswith('trojan://'):
+                    parts = link.split('@')
+                    if len(parts) < 2: continue
+                    protocol = parts[0]
+                    server_part = parts[1].split('?')[0].split('#')[0]
+                    fingerprint = f"{protocol}@{server_part}"
+                elif link.startswith('vmess://'):
+                    try:
+                        # 对于 vmess，解码其 base64 部分来获取核心信息
+                        vmess_json = base64.b64decode(link[8:]).decode('utf-8')
+                        node_dict = json.loads(vmess_json)
+                        fingerprint = f"vmess-{node_dict.get('add','')}-{node_dict.get('port','')}-{node_dict.get('id','')}"
+                    except Exception:
+                        # 如果解码失败，使用整个链接（除了# remarks）作为指纹
+                        fingerprint = link.split('#')[0]
+                elif link.startswith('ss://'):
+                    # SS 链接的去重比较复杂，简单处理
+                    fingerprint = link.split('#')[0]
+                else:
+                    # 其他未知类型
+                    fingerprint = link.split('#')[0]
+                
+                if fingerprint not in seen_fingerprints:
+                    seen_fingerprints.add(fingerprint)
+                    unique_nodes[fingerprint] = link
+            
+            except Exception:
+                # 忽略解析失败的链接
+                continue
+        
+        return list(unique_nodes.values())
 
     def sub_merge(self):
         url_list = self.url_list
@@ -94,19 +142,24 @@ class merge():
             print('Merging failed: No nodes collected from any source.')
             return
         
-        final_node_count = len(content_set)
-        print(f'\nTotal unique node links collected: {final_node_count}')
+        initial_node_count = len(content_set)
+        print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        # 【终极核心】我们自己拼接和编码
-        print('Packaging all collected nodes into a Base64 subscription...')
+        # 【核心】自己动手进行精确去重
+        print("Performing precise deduplication...")
+        final_node_links = self.deduplicate_nodes(content_set)
+        final_node_count = len(final_node_links)
+        removed_count = initial_node_count - final_node_count
+        print(f"  -> Deduplication complete. Removed {removed_count} duplicate nodes.")
+        print(f"  -> Final unique node count: {final_node_count}")
 
-        # 将所有干净的节点链接用换行符拼接起来
-        final_plain_text = '\n'.join(sorted(list(content_set)))
+        print('\nPackaging all unique nodes into a Base64 subscription...')
+
+        final_plain_text = '\n'.join(sorted(final_node_links))
         
-        # 自己动手进行 Base64 编码
         final_b64_content = base64.b64encode(final_plain_text.encode('utf-8')).decode('utf-8')
 
-        print(f"  -> Packaging successful. Final node count: {final_node_count}")
+        print(f"  -> Packaging successful.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'w', encoding='utf-8') as file:
@@ -134,7 +187,7 @@ class merge():
                     with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
-                            # 这里的 base64_decode 来自 subconverter，也可以用标准库的
+                            # 使用标准库的 base64 解码
                             proxies = base64.b64decode(proxies_base64.encode('utf-8')).decode('utf-8')
                             top_amount = len([p for p in proxies.split('\n') if p.strip()])
                         else:
