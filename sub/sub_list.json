@@ -183,10 +183,10 @@
     "id": 20,
     "remarks": "Lewis-1217/FreeNodes",
     "site": "https://github.com/Lewis-1217/FreeNodes",
-    "url": "https://raw.githubusercontent.com/Lewis-1217/FreeNodes/main/bpjzx1|https://raw.githubusercontent.com/Lewis-1217/FreeNodes/main/bpjzx2",
+    "url": "https://raw.githubusercontent.com/Lewis-1217/FreeNodes/main/bpjzx1",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 21,
