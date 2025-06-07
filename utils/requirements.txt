@@ -2,5 +2,5 @@ geoip2
 PyYAML
 requests
 beautifulsoup4
-aiohttp==3.7.4
 v2ray_util
+aiohttp==3.7.4
