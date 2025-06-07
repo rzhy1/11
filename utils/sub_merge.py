@@ -4,16 +4,6 @@ import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
-import v2ray_util
-
-# 导入 V2Ray 链接解析库
-try:
-    import v2ray_util.v2ray_util as v2ray_util
-except ImportError:
-    # 这个错误理论上不应该再出现，但保留它以防万一
-    print("FATAL ERROR: v2ray_util library is required but not found.")
-    print("Please add 'v2ray_util' to your requirements.txt and ensure it is installed.")
-    sys.exit(1)
 
 @contextmanager
 def suppress_stderr():
@@ -44,12 +34,13 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
 
+        # 我们使用外部传入的配置，但会在调用时按需修改
         self.format_config = {
             'deduplicate': bool(format_config.get('deduplicate', True)), 
             'rename': format_config.get('rename', ''),
             'include': format_config.get('include_remarks', ''), 
             'exclude': format_config.get('exclude_remarks', ''), 
-            'config': '' # 强制清空 config，确保完全控制
+            'config': format_config.get('config', '')
         }
 
         self.url_list = self.read_list()
@@ -61,39 +52,6 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
-
-    def fix_node_links(self, node_links_set):
-        """
-        使用 v2ray_util 库来解析、修复并重构 VLESS 节点链接。
-        """
-        fixed_links = set()
-        vless_fix_count = 0
-        for link in node_links_set:
-            try:
-                # 只针对 vless 链接进行修复
-                if link.startswith('vless://'):
-                    node = v2ray_util.parse_vless(link)
-                    server = node.get('add', '')
-                    if server and server.startswith('::ffff:'):
-                        # 修复 IPv6 映射地址
-                        node['add'] = server.replace('::ffff:', '')
-                        fixed_link = v2ray_util.build_vless(node)
-                        fixed_links.add(fixed_link)
-                        vless_fix_count += 1
-                    else:
-                        # 无需修复的 vless 链接
-                        fixed_links.add(link)
-                else:
-                    # 其他协议的链接直接添加
-                    fixed_links.add(link)
-            except Exception:
-                # 如果解析失败，说明链接格式本身有问题，直接添加原始链接让 subconverter 处理
-                fixed_links.add(link)
-        
-        if vless_fix_count > 0:
-            print(f"  -> Fixed {vless_fix_count} VLESS links with IPv6 mapping issue.")
-            
-        return fixed_links
 
     def sub_merge(self):
         url_list = self.url_list
@@ -149,47 +107,53 @@ class merge():
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
-
-        print(f'\nTotal unique node links collected: {len(content_set)}')
         
-        print("Fixing known issues in node links...")
-        fixed_content_set = self.fix_node_links(content_set)
-        fixed_count = len(fixed_content_set)
-        print(f"  -> Link fixing complete. Total nodes to be converted: {fixed_count}")
-
+        pre_filter_count = len(content_set)
+        print(f'\nTotal unique node links collected: {pre_filter_count}')
         print('Starting final conversion to Base64...')
 
-        final_input_content = '\n'.join(fixed_content_set)
+        final_input_content = '\n'.join(content_set)
         
+        # 【核心】创建一个绝对干净的配置用于转换，只进行去重
+        # 这会覆盖掉任何可能从 config.ini 传入的、导致问题的配置
+        final_convert_config = {
+            'deduplicate': True,
+            # 如果你依然想使用 config.ini 中的 rename/include/exclude, 可以取消下面的注释
+            # 'rename': self.format_config['rename'],
+            # 'include': self.format_config['include'],
+            # 'exclude': self.format_config['exclude'],
+        }
+
         final_b64_content = ''
+        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏非致命错误
         with suppress_stderr():
-            final_b64_content = convert(final_input_content, 'base64', self.format_config)
+            final_b64_content = convert(final_input_content, 'base64', final_convert_config)
 
         if not final_b64_content:
-            print("Error: Final conversion to Base64 failed.")
+            print("Error: Final conversion to Base64 failed. Subconverter returned empty content.")
             return
 
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
 
         print(f"\nFinal conversion successful.")
-        print(f"  -> Nodes before conversion: {fixed_count}")
+        print(f"  -> Unique links collected: {pre_filter_count}")
         print(f"  -> Final nodes written to file: {final_written_count}")
 
-        if fixed_count > final_written_count:
-            diff = fixed_count - final_written_count
-            print(f"  -> NOTE: {diff} nodes were removed by subconverter's deduplication/filtering.")
+        if pre_filter_count > final_written_count:
+            diff = abs(pre_filter_count - final_written_count)
+            print(f"  -> NOTE: {diff} nodes were removed by subconverter, likely due to its internal deduplication or filtering of invalid nodes.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
             file.write(final_b64_content.encode('utf-8'))
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
+
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
-        merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
-        if not os.path.exists(merge_file_path):
+        merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
+        if not os.path.exists(merge_path_final):
             print(f"Warning: Merged file not found. Skipping README update.")
             return
 
@@ -202,7 +166,7 @@ class merge():
                     if index + 1 < len(lines) and '合并节点总数' in lines[index+1]:
                         lines.pop(index+1) 
 
-                    with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
+                    with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
                             proxies = base64_decode(proxies_base64)
@@ -221,21 +185,25 @@ class merge():
              print('完成!\n')
              f.write(data)
 
+
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
         'merge_dir': './sub/',
-        'readme_file': './README.md'
+        'update_dir': './sub/update/',
+        'readme_file': './README.md',
+        'share_file': './sub/share.txt'
     }
     
+    # 这里的 format_config 依然会从 main.py 传进来
+    # 但我们的脚本内部会创建一个更干净的配置来执行转换
     format_config = {
         'deduplicate': True, 
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
-        'config': '' 
+        'config': ''
     }
     
     merge(file_dir, format_config)
