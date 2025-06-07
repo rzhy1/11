@@ -3,14 +3,7 @@
 import json, os, base64, time, requests, re
 from urllib.parse import unquote
 
-# 导入新的、可靠的解析库
-try:
-    from proxy_tools.proxies import Vmess, Vless, Trojan, Shadowsocks
-except ImportError:
-    print("FATAL ERROR: proxy-tools library not found.")
-    print("Please add 'proxy-tools' to your requirements.txt and ensure it is installed.")
-    import sys
-    sys.exit(1)
+# 我们不再需要 subconverter 和任何外部解析库
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -29,40 +22,41 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
 
-    def deduplicate_nodes(self, node_links_set):
+    def deduplicate_nodes_by_regex(self, node_links_set):
         """
-        使用 proxy-tools 库进行专家级的解析和去重。
+        使用正则表达式提取“地址:端口”作为核心指纹进行去重。
+        这是在不引入任何新依赖的情况下的最佳实践。
         """
         unique_nodes = {} # {fingerprint: link}
+        
+        # 正则表达式，用于匹配 host:port 部分
+        # 匹配 @ 和 #/? 之间的内容
+        pattern = re.compile(r"@([^?#]+)")
 
         for link in node_links_set:
             try:
-                node = None
-                # 使用 proxy-tools 解析链接
-                if link.startswith('vless://'):
-                    node = Vless.from_str(link)
-                elif link.startswith('vmess://'):
-                    node = Vmess.from_str(link)
-                elif link.startswith('trojan://'):
-                    node = Trojan.from_str(link)
-                elif link.startswith('ss://'):
-                    node = Shadowsocks.from_str(link)
+                fingerprint = ''
+                protocol = link.split('://')[0].lower()
+                
+                if protocol == 'vmess':
+                    # 对于 VMESS，我们只能去重完全一样的 Base64 部分
+                    fingerprint = link.split('://')[1]
                 else:
-                    # 对于不支持的协议，使用链接主体作为指纹
-                    fingerprint = link.split('#')[0]
-                    if fingerprint not in unique_nodes:
-                        unique_nodes[fingerprint] = link
-                    continue
-
-                # 构建一个极其精确的指纹
-                fingerprint = node.fingerprint
+                    # 对于其他协议
+                    match = pattern.search(link)
+                    if match:
+                        # server_part 可能是 user:pass@host:port 中的 host:port
+                        # 或者 host:port
+                        server_part = match.group(1).split('@')[-1].strip().lower()
+                        fingerprint = f"{protocol}-{server_part}"
+                    else:
+                        # 如果正则匹配失败，使用链接主体作为后备方案
+                        fingerprint = link.split('#')[0]
 
                 if fingerprint not in unique_nodes:
-                    # 我们保留第一个遇到的节点，以保留其原始的节点名
                     unique_nodes[fingerprint] = link
 
             except Exception:
-                # 忽略任何解析失败的链接
                 continue
         
         return list(unique_nodes.values())
@@ -126,8 +120,8 @@ class merge():
         initial_node_count = len(content_set)
         print(f'\nTotal node links collected (before deduplication): {initial_node_count}')
         
-        print("Performing expert-level deduplication...")
-        final_node_links = self.deduplicate_nodes(content_set)
+        print("Performing deduplication using RegEx...")
+        final_node_links = self.deduplicate_nodes_by_regex(content_set)
         final_node_count = len(final_node_links)
         removed_count = initial_node_count - final_node_count
         print(f"  -> Deduplication complete. Removed {removed_count} duplicate nodes.")
@@ -147,7 +141,6 @@ class merge():
 
 
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
@@ -184,7 +177,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
