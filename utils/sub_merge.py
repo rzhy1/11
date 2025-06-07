@@ -92,7 +92,7 @@ class merge():
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}")
             
-            print() # 分隔条目
+            print()
 
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
@@ -101,51 +101,51 @@ class merge():
         print(f'\nTotal unique node links collected: {len(content_set)}')
         print('Step 1: Converting all links to a unified Clash format...')
 
-        # 步骤 1: 将所有纯链接转换为 Clash YAML，这会产生非致命错误，但我们只取其成功转换的部分
         all_links_content = '\n'.join(content_set)
-        # 这里 subconverter 会打印非致命错误，这是正常的
         clash_yaml_from_links = convert(all_links_content, 'clash')
         
         if not clash_yaml_from_links:
             print("Fatal Error: subconverter failed to convert any links to Clash format.")
             return
 
-        print("\nStep 2: Parsing the unified Clash format and cleaning up...")
+        print("\nStep 2: Cleaning the generated Clash YAML...")
+
+        # 【终极修复】在这里对 subconverter 返回的 YAML 字符串进行文本替换
+        pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
+        def add_quotes(match):
+            return f"{match.group(1)}'{match.group(2)}'"
         
-        # 步骤 2: 使用 PyYAML 安全地解析，它会忽略掉 subconverter 报错的那些行
+        cleaned_yaml_str = pattern.sub(add_quotes, clash_yaml_from_links)
+        print("  -> YAML cleaning complete.")
+
+        print("\nStep 3: Parsing the cleaned Clash YAML...")
+        
         try:
-            clash_config = yaml.safe_load(clash_yaml_from_links)
-            # 确保解析结果是字典且包含 proxies
+            clash_config = yaml.safe_load(cleaned_yaml_str)
             if isinstance(clash_config, dict) and 'proxies' in clash_config:
                 clean_proxies = clash_config['proxies']
                 final_node_count = len(clean_proxies)
                 print(f"  -> Successfully parsed {final_node_count} nodes.")
             else:
-                # 如果解析失败或格式不对，则认为没有节点
                 clean_proxies = []
                 final_node_count = 0
                 print("  -> Warning: Could not find 'proxies' in the converted Clash config.")
         except yaml.YAMLError as e:
-            print(f"Fatal Error: Failed to parse YAML from subconverter: {e}")
+            print(f"Fatal Error: Failed to parse the cleaned YAML: {e}")
             return
         
         if final_node_count == 0:
             print("Merging aborted as no nodes were successfully parsed.")
             return
 
-        # 步骤 3: 构建最终的、干净的 Clash 配置
+        print("\nStep 4: Converting the final clean Clash config to Base64...")
+        
         final_clash_config = {'proxies': clean_proxies}
-        final_yaml_str = yaml.dump(final_clash_config, allow_unicode=True, sort_keys=False)
+        final_yaml_str_to_convert = yaml.dump(final_clash_config, allow_unicode=True, sort_keys=False)
+        final_b64_content = convert(final_yaml_str_to_convert, 'base64', self.format_config)
         
-        print("\nStep 3: Converting the final clean Clash config to Base64...")
-        
-        # 步骤 4: 进行最终转换，这一步的输入是完美的，不会再有错误
-        final_b64_content = convert(final_yaml_str, 'base64', self.format_config)
-        
-        # 验证最终数量
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-
         print(f"  -> Final conversion successful. Node count to be written: {final_written_count}")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
@@ -154,7 +154,7 @@ class merge():
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
     def readme_update(self):
-        # ... (readme_update 方法保持不变) ...
+        # ... readme_update 方法保持不变
         print('Updating README...')
         merge_file_path = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_file_path):
@@ -191,7 +191,7 @@ class merge():
 
 
 if __name__ == '__main__':
-    # ... (__main__ 方法保持不变) ...
+    # ... __main__ 方法保持不变
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
