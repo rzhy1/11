@@ -2,7 +2,6 @@
 
 import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
-# 导入用于静音的库
 import sys
 from contextlib import contextmanager
 
@@ -10,13 +9,14 @@ from contextlib import contextmanager
 def suppress_stderr():
     """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
-    devnull = open(os.devnull, 'w')
-    try:
-        sys.stderr = devnull
-        yield
-    finally:
-        sys.stderr = original_stderr
-        devnull.close()
+    # 在 GitHub Actions 等环境中，使用 /dev/null
+    devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
+    with open(devnull_path, 'w') as devnull:
+        try:
+            sys.stderr = devnull
+            yield
+        finally:
+            sys.stderr = original_stderr
 
 # 辅助函数：判断字符串是否可能是 Base64
 def is_base64(s):
@@ -54,20 +54,23 @@ class merge():
             raw_list = json.load(f)
         return [item for item in raw_list if item.get('enabled')]
 
-    def fix_vless_ipv6_issue(self, node_link):
+    def fix_node_links(self, node_links):
         """
-        修复 VLESS 链接中 ::ffff: 形式的 IPv6 映射地址，将其转换回 IPv4。
+        接收一个节点链接的集合，修复其中已知的问题。
         """
-        # 正则表达式查找 vless://...@::ffff:xxx.xxx.xxx.xxx:port
-        # 使用非捕获组 (?:...) 来匹配 vless://
-        pattern = re.compile(r"(vless://[^@]+@)::ffff:([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(:[0-9]+.*)")
+        fixed_links = set()
+        # 修复 vless server 地址中 ::ffff: 的问题
+        vless_pattern = re.compile(r"(vless://[^@]+@)::ffff:([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(:[0-9]+.*)")
         
-        match = pattern.match(node_link)
-        if match:
-            # 重组链接: part1(vless://uuid@) + part2(ipv4) + part3(:port...)
-            fixed_link = f"{match.group(1)}{match.group(2)}{match.group(3)}"
-            return fixed_link
-        return node_link
+        for link in node_links:
+            match = vless_pattern.match(link)
+            if match:
+                # 重组链接: part1(vless://uuid@) + part2(ipv4) + part3(:port...)
+                fixed_link = f"{match.group(1)}{match.group(2)}{match.group(3)}"
+                fixed_links.add(fixed_link)
+            else:
+                fixed_links.add(link)
+        return fixed_links
 
     def sub_merge(self):
         url_list = self.url_list
@@ -112,13 +115,11 @@ class merge():
                 for line in plain_text_nodes.splitlines():
                     clean_line = line.strip()
                     if clean_line.startswith(VALID_PROTOCOLS):
-                        # 【核心修复】在加入集合前，修复链接
-                        fixed_line = self.fix_vless_ipv6_issue(clean_line)
-                        content_set.add(fixed_line)
+                        content_set.add(clean_line)
                         found_nodes_count += 1
                 
                 if found_nodes_count > 0:
-                    print(f'  -> Success! Extracted and fixed {found_nodes_count} valid node links.')
+                    print(f'  -> Success! Extracted {found_nodes_count} valid node links.')
                 else:
                     print(f"  -> Warning: No valid node links found.")
 
@@ -131,26 +132,32 @@ class merge():
             print('Merging failed: No nodes collected from any source.')
             return
 
-        pre_filter_count = len(content_set)
-        print(f'\nTotal unique and fixed node links collected: {pre_filter_count}')
+        print(f'\nTotal unique node links collected: {len(content_set)}')
+        
+        # 【核心修复步骤】
+        print("Fixing known issues in node links (e.g., VLESS IPv6 mapping)...")
+        fixed_content_set = self.fix_node_links(content_set)
+        print(f"  -> Link fixing complete. Nodes after fixing: {len(fixed_content_set)}")
+
         print('Starting final conversion to Base64...')
 
-        final_input_content = '\n'.join(content_set)
+        final_input_content = '\n'.join(fixed_content_set)
         
         final_b64_content = ''
-        # 【核心修复】在调用 convert 时，屏蔽其 stderr 输出
+        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何非致命的解析错误
         with suppress_stderr():
             final_b64_content = convert(final_input_content, 'base64', self.format_config)
 
         if not final_b64_content:
-            print("Error: Final conversion to Base64 failed. This might be a critical subconverter issue.")
+            print("Error: Final conversion to Base64 failed, subconverter may have critical issues.")
             return
 
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
 
-        print(f"  -> Final conversion successful.")
-        print(f"  -> Pre-filter nodes: {pre_filter_count}, Final nodes written: {final_written_count}")
+        print(f"\nFinal conversion successful.")
+        print(f"  -> Total unique links before final conversion: {len(fixed_content_set)}")
+        print(f"  -> Final nodes written to file: {final_written_count}")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
