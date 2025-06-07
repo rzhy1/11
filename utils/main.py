@@ -4,13 +4,9 @@ import os, urllib
 import configparser
 import sys
 
-# --- 核心修改：动态计算绝对路径 ---
-# 获取 main.py 所在的目录 (即 'utils' 目录)
+# --- 动态计算绝对路径 (保持不变) ---
 UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
-# 获取项目根目录 (即 'utils' 的上一级目录)
 PROJECT_ROOT = os.path.dirname(UTILS_DIR)
-
-# 将 utils 目录和项目根目录都加入到模块搜索路径，以防万一
 sys.path.insert(0, UTILS_DIR)
 sys.path.insert(0, PROJECT_ROOT)
 # -----------------------------
@@ -18,7 +14,6 @@ sys.path.insert(0, PROJECT_ROOT)
 # 导入我们自己的模块
 from sub_merge import merge
 from sub_update import update
-from subconverter import base64_decode
 
 # 使用绝对路径来读取配置文件
 config_file = os.path.join(UTILS_DIR, 'config.ini')
@@ -26,20 +21,24 @@ config_file = os.path.join(UTILS_DIR, 'config.ini')
 def configparse(section):
     config = configparser.ConfigParser()
     config.read(config_file, encoding='utf-8')
-    # --- 核心修改：将所有相对路径转换为绝对路径 ---
-    parsed_config = dict(config[section])
-    for key, value in parsed_config.items():
+    
+    # 直接返回 SectionProxy 对象，它支持 getboolean 等方法
+    # 我们只对传给 merge 函数的配置进行路径修正
+    return config[section]
+
+def get_file_dir_config(config_section):
+    """专门用于处理路径，返回一个修复了路径的字典"""
+    file_dir = {}
+    for key, value in config_section.items():
         # 检查是否是需要处理的路径字段
         if isinstance(value, str) and ('dir' in key or 'file' in key):
-            # 将所有 ./sub/... 或 sub/... 形式的路径转换为基于项目根目录的绝对路径
             if value.startswith('./'):
-                # 移除 './'
                 value = value[2:]
-            
-            # 使用 os.path.join 来安全地拼接路径
-            parsed_config[key] = os.path.join(PROJECT_ROOT, value)
-            
-    return parsed_config
+            file_dir[key] = os.path.join(PROJECT_ROOT, value)
+        else:
+            file_dir[key] = value
+    return file_dir
+
 
 if __name__ == '__main__':
     try:
@@ -52,18 +51,21 @@ if __name__ == '__main__':
         pass
 
     common_config = configparse('common')
+    subconverter_config = configparse('subconverter')
+    speedtest_config = configparse('speedtest')
 
-    # 从 config.ini 读取的配置可能是字符串 'true' 或 'false'
-    if common_config.get('update_enabled', 'false').lower() == 'true':
+    # 使用 getboolean 方法
+    if common_config.getboolean('update_enabled', fallback=False):
         print('--- Running Subscription Update ---')
-        update(common_config)
+        # 传递修复了路径的配置字典
+        update(get_file_dir_config(common_config))
 
-    if common_config.get('merge_enabled', 'false').lower() == 'true':
+    if common_config.getboolean('merge_enabled', fallback=False):
         print('--- Running Subscription Merge ---')
-        format_config = configparse('subconverter')
-        # 将 common_config 和 format_config 合并，因为 merge 类需要它们
-        # file_dir 参数现在由 common_config 提供
-        merge(common_config, format_config)
+        # 将两个配置字典合并传给 merge
+        file_dir = get_file_dir_config(common_config)
+        format_config = dict(subconverter_config)
+        merge(file_dir, format_config)
 
     if configparse('common').getboolean('speedtest_enabled'):
         share_file = configparse('common')['share_file']
