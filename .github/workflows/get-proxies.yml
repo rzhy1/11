@@ -22,8 +22,9 @@ jobs:
       run: sudo timedatectl set-timezone 'Asia/Shanghai'
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
-        pip install -r ./utils/requirements.txt
+        python3 -m pip install --upgrade pip
+        python3 -m pip install -r  ./utils/requirements.txt
+        python3 -m pip install v2ray_util
 #    - name: Start Clash proxy environment
 #      run: |
 #        sudo sh ./utils/scripts/set_proxy.sh
@@ -31,7 +32,7 @@ jobs:
       run: |
         chmod +x ./utils/subconverter/subconverter-linux-amd64 
         #chmod +x ./utils/litespeedtest/lite-linux-amd64
-        python ./utils/main.py
+        python3 ./utils/main.py
     - name: Commit change
       run: |
         git config --local user.email "actions@github.com"
