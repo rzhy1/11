@@ -101,7 +101,7 @@ class merge():
                 print(f"Skipping [ID: {item_id:0>2d}] {item_remarks} because URL is empty.")
                 continue
 
-            print(f"Processing [ID: {item_id}] {item_remarks}...")
+            print(f"Processing [ID: {item_id:0>2d}] {item_url}")
             
             try:
                 response = requests.get(item_url, timeout=15)
