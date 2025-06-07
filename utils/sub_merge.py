@@ -63,7 +63,7 @@ class merge():
                 print(f"Skipping [ID: {item_id:0>2d}] {item_url} because URL is empty.")
                 continue
 
-            print(f"Processing [ID: {item_id}] {item_url}...")
+            print(f"Processing [ID: {item_id}] {item_url}")
             
             try:
                 response = requests.get(item_url, timeout=15)
