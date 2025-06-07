@@ -41,8 +41,8 @@ class merge():
         else:
             os.makedirs(list_dir)
 
-        all_proxies = [] # 存储所有解析出的 Clash 格式的代理字典
-        seen_proxies = set() # 用于精确去重
+        all_proxies = [] 
+        seen_proxies = set()
 
         for item in url_list:
             item_url = item.get('url')
@@ -56,7 +56,7 @@ class merge():
             print(f"Processing [ID: {item_id}] {item_remarks}...")
             
             try:
-                # 步骤 1: 永远由我们自己下载内容
+                # 步骤 1: 下载内容
                 response = requests.get(item_url, timeout=15)
                 response.raise_for_status()
                 raw_content = response.text.strip()
@@ -64,14 +64,32 @@ class merge():
                 if not raw_content:
                     raise ValueError("Downloaded content is empty.")
 
-                # 步骤 2: 将原始文本（无论格式）直接交给 subconverter 转换为 Clash YAML
-                # subconverter 能自动识别输入是 base64 还是纯文本节点列表
-                clash_yaml_content = convert(raw_content, 'clash')
+                input_for_subconverter = raw_content
+                
+                # 【核心修复】预解析和清洗，避免 proxy-provider 问题
+                try:
+                    # 尝试将内容作为 YAML 解析
+                    parsed_yaml = yaml.safe_load(raw_content)
+                    # 如果是字典且包含 'proxies'，说明它是一个 Clash 配置
+                    if isinstance(parsed_yaml, dict) and 'proxies' in parsed_yaml:
+                        print("  -> Detected as Clash config. Extracting 'proxies' only.")
+                        # 我们只提取 'proxies' 部分，丢弃其他所有配置（包括 proxy-providers）
+                        proxies_only_config = {'proxies': parsed_yaml['proxies']}
+                        # 将这个干净的、只含 proxies 的配置转换回 YAML 字符串
+                        input_for_subconverter = yaml.dump(proxies_only_config, allow_unicode=True)
+                except yaml.YAMLError:
+                    # 如果解析 YAML 失败，说明它不是 YAML 格式（可能是 Base64 或纯文本节点）
+                    # 保持原始 content 不变，直接交给 subconverter 处理
+                    print("  -> Detected as non-YAML content (likely Base64 or plain text).")
+                    pass
+
+                # 步骤 2: 将清洗过的或原始的内容交给 subconverter 转换为统一的 Clash YAML
+                clash_yaml_content = convert(input_for_subconverter, 'clash')
 
                 if not clash_yaml_content:
                     raise ValueError("subconverter returned empty content when converting to Clash format.")
 
-                # 步骤 3: 解析 YAML 并提取 proxies
+                # 步骤 3: 解析最终的、干净的 YAML 并提取 proxies
                 clash_config = yaml.safe_load(clash_yaml_content)
                 proxies = clash_config.get('proxies', [])
                 
@@ -80,15 +98,13 @@ class merge():
                     # 步骤 4: 精确去重并添加到总列表
                     new_nodes_count = 0
                     for proxy in proxies:
-                        # 创建一个唯一的标识符用于去重，例如：类型-服务器-端口
                         proxy_id_parts = [
                             proxy.get('type'),
                             proxy.get('server'),
                             str(proxy.get('port')),
-                            proxy.get('uuid', '') # vless/trojan/vmess
+                            proxy.get('uuid', '')
                         ]
                         proxy_id = '-'.join(filter(None, proxy_id_parts))
-
                         if proxy_id not in seen_proxies:
                             seen_proxies.add(proxy_id)
                             all_proxies.append(proxy)
@@ -97,14 +113,12 @@ class merge():
                     if new_nodes_count > 0:
                         print(f'  -> Added {new_nodes_count} new unique nodes.')
                     
-                    # 写入缓存文件（Clash YAML 格式，便于调试）
                     with open(f'{list_dir}{item_id:0>2d}.yml', 'w', encoding='utf-8') as f:
                         yaml.dump({'proxies': proxies}, f, allow_unicode=True, sort_keys=False)
-
                 else:
                     print(f'  -> Warning: Source converted, but no proxies found inside.')
                 
-                print() # 每个条目处理完后加一个空行
+                print() 
 
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}\n")
@@ -118,23 +132,15 @@ class merge():
         print(f'\nTotal unique nodes collected: {len(all_proxies)}')
         print('Starting final merge and conversion to Base64...')
 
-        # 步骤 5: 将去重后的代理列表重新构造成一个最终的 Clash 配置
-        final_clash_config = {
-            'proxies': all_proxies
-        }
-        
-        # 将这个 Python 字典转换回 YAML 字符串
+        # 步骤 5: 最终合并
+        final_clash_config = {'proxies': all_proxies}
         final_yaml_str = yaml.dump(final_clash_config, allow_unicode=True, sort_keys=False)
-        
-        # 步骤 6: 最后，将这个最终的、干净的 Clash 配置交给 subconverter 转换成 Base64
-        # 这里的 format_config 包含了 include/exclude/rename 等规则
         final_b64_content = convert(final_yaml_str, 'base64', self.format_config)
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
             file.write(final_b64_content.encode('utf-8'))
         print(f'Done! Output merged nodes to {merge_path_final}.')
-
 
     def readme_update(self):
         print('Updating README...')
@@ -155,7 +161,6 @@ class merge():
                     with open(merge_file_path, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
-                            # 解码并计算节点数
                             proxies = base64_decode(proxies_base64)
                             top_amount = len([p for p in proxies.split('\n') if p.strip()])
                         else:
@@ -174,7 +179,6 @@ class merge():
 
 
 if __name__ == '__main__':
-    # 这里需要提供实际的 file_dir 和 format_config 参数
     file_dir = {
         'list_dir': './sub/list/',
         'list_file': './sub/sub_list.json',
@@ -183,7 +187,7 @@ if __name__ == '__main__':
     }
     
     format_config = {
-        'deduplicate': True, # 注意：去重已在脚本内实现，此项作用不大
+        'deduplicate': True, 
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
