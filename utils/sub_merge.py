@@ -28,7 +28,7 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
-        self.subconverter_path = './subconverter/subconverter-linux-amd64'
+        self.subconverter_path = './utils/subconverter/subconverter-linux-amd64'
 
         self.url_list = self.read_list()
         self.sub_merge()
