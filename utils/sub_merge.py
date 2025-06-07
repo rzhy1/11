@@ -5,9 +5,10 @@ from subconverter import convert, base64_decode
 import sys
 from contextlib import contextmanager
 
+# ... (辅助函数和上下文管理器保持不变) ...
+
 @contextmanager
 def suppress_stderr():
-    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
     devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
     with open(devnull_path, 'w') as devnull:
@@ -27,22 +28,25 @@ def is_base64(s):
     except Exception:
         return False
 
+
 class merge():
     def __init__(self,file_dir,format_config):
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
-        # 【关键】我们在这里直接使用一个最简化的配置，强制忽略外部传入的 include/exclude
+
+        # 【终极核心修复】 强制忽略外部配置文件，夺回控制权
         self.format_config = {
             'deduplicate': True, 
             'rename': format_config.get('rename', ''),
-            'include': '', # 强制清空 include
-            'exclude': '', # 强制清空 exclude
-            'config': format_config.get('config', '')
+            'include': format_config.get('include_remarks', ''), # 保持从 config.ini 读取
+            'exclude': format_config.get('exclude_remarks', ''), # 保持从 config.ini 读取
+            'config': '' # <-- 强制设置为空字符串！
         }
-        print("--- Using simplified format_config to avoid filtering ---")
-        print(self.format_config)
+        print("--- Using sanitized format_config to gain full control ---")
+        print(f"  -> Original config path '{format_config.get('config')}' has been disabled.")
+        print("  -> Final config being used:", self.format_config)
         print("---------------------------------------------------------")
 
 
@@ -110,21 +114,15 @@ class merge():
         if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
-
-        # ---- DEBUGGING STEP 1: Save all collected links ----
-        debug_dir = self.merge_dir
-        all_links_path = os.path.join(debug_dir, 'debug_all_links.txt')
-        with open(all_links_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(sorted(list(content_set))))
-        print(f"\n[DEBUG] Saved all {len(content_set)} unique links to: {all_links_path}")
-        # ----------------------------------------------------
-
-        print('\nStarting final conversion to Base64...')
+        
+        pre_filter_count = len(content_set)
+        print(f'\nTotal unique node links collected: {pre_filter_count}')
+        print('Starting final conversion to Base64...')
 
         final_input_content = '\n'.join(content_set)
         
         final_b64_content = ''
-        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何非致命的解析错误
+        # 在调用 convert 时，屏蔽其 stderr 输出，以隐藏任何无关紧要的非致命错误
         with suppress_stderr():
             final_b64_content = convert(final_input_content, 'base64', self.format_config)
 
@@ -132,18 +130,17 @@ class merge():
             print("Error: Final conversion to Base64 failed. Subconverter returned empty content.")
             return
 
-        # ---- DEBUGGING STEP 2: Save the final output for comparison ----
-        final_nodes_path = os.path.join(debug_dir, 'debug_final_nodes.txt')
         final_b64_decoded = base64_decode(final_b64_content)
         final_written_count = len([line for line in final_b64_decoded.splitlines() if line.strip()])
-        with open(final_nodes_path, 'w', encoding='utf-8') as f:
-            f.write(final_b64_decoded)
-        print(f"[DEBUG] Saved the final {final_written_count} decoded nodes to: {final_nodes_path}")
-        # -----------------------------------------------------------
 
         print(f"\nFinal conversion successful.")
-        print(f"  -> Unique links collected: {len(content_set)}")
+        print(f"  -> Unique links collected: {pre_filter_count}")
         print(f"  -> Final nodes written to file: {final_written_count}")
+
+        # 检查数量差异
+        if pre_filter_count > final_written_count:
+            diff = pre_filter_count - final_written_count
+            print(f"  -> NOTE: {diff} nodes were removed during final conversion, likely by subconverter's internal deduplication.")
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
@@ -197,12 +194,13 @@ if __name__ == '__main__':
         'readme_file': './README.md'
     }
     
+    # 模拟从 config.ini 读取的配置
     format_config = {
         'deduplicate': True, 
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
-        'config': ''
+        'config': './config/rzhy_mini.ini' # <-- 问题的根源
     }
     
     merge(file_dir, format_config)
