@@ -24,7 +24,7 @@ class merge():
         self.format_config = format_config
         
         # 定义 subconverter 的目录和可执行文件名
-        self.subconverter_dir = './subconverter'
+        self.subconverter_dir = './utils/subconverter'
         self.subconverter_exec = 'subconverter-linux-amd64'
 
         self.url_list = self.read_list()
