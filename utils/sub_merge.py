@@ -2,7 +2,18 @@
 
 import json, os, base64, time, requests, re
 from subconverter import convert, base64_decode
-import yaml  # 导入PyYAML库
+
+# 辅助函数：判断字符串是否可能是 Base64
+def is_base64(s):
+    # Base64 字符串的长度必须是 4 的倍数，且不含非法字符
+    if len(s.strip()) % 4 != 0:
+        return False
+    try:
+        # validate=True 会在有非 base64 字符时抛出异常
+        base64.b64decode(s, validate=True)
+        return True
+    except Exception:
+        return False
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -41,8 +52,9 @@ class merge():
         else:
             os.makedirs(list_dir)
 
-        all_proxies = [] 
-        seen_proxies = set()
+        content_set = set()
+        # 定义我们认可的节点协议
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://')
 
         for item in url_list:
             item_url = item.get('url')
@@ -64,78 +76,47 @@ class merge():
                 if not raw_content:
                     raise ValueError("Downloaded content is empty.")
 
-                input_for_subconverter = raw_content
-                
-                # 【核心修复】预解析和清洗，避免 proxy-provider 问题
-                try:
-                    # 尝试将内容作为 YAML 解析
-                    parsed_yaml = yaml.safe_load(raw_content)
-                    # 如果是字典且包含 'proxies'，说明它是一个 Clash 配置
-                    if isinstance(parsed_yaml, dict) and 'proxies' in parsed_yaml:
-                        print("  -> Detected as Clash config. Extracting 'proxies' only.")
-                        # 我们只提取 'proxies' 部分，丢弃其他所有配置（包括 proxy-providers）
-                        proxies_only_config = {'proxies': parsed_yaml['proxies']}
-                        # 将这个干净的、只含 proxies 的配置转换回 YAML 字符串
-                        input_for_subconverter = yaml.dump(proxies_only_config, allow_unicode=True)
-                except yaml.YAMLError:
-                    # 如果解析 YAML 失败，说明它不是 YAML 格式（可能是 Base64 或纯文本节点）
-                    # 保持原始 content 不变，直接交给 subconverter 处理
-                    print("  -> Detected as non-YAML content (likely Base64 or plain text).")
-                    pass
-
-                # 步骤 2: 将清洗过的或原始的内容交给 subconverter 转换为统一的 Clash YAML
-                clash_yaml_content = convert(input_for_subconverter, 'clash')
-
-                if not clash_yaml_content:
-                    raise ValueError("subconverter returned empty content when converting to Clash format.")
-
-                # 步骤 3: 解析最终的、干净的 YAML 并提取 proxies
-                clash_config = yaml.safe_load(clash_yaml_content)
-                proxies = clash_config.get('proxies', [])
-                
-                if proxies:
-                    print(f'  -> Success! Found and converted {len(proxies)} nodes.')
-                    # 步骤 4: 精确去重并添加到总列表
-                    new_nodes_count = 0
-                    for proxy in proxies:
-                        proxy_id_parts = [
-                            proxy.get('type'),
-                            proxy.get('server'),
-                            str(proxy.get('port')),
-                            proxy.get('uuid', '')
-                        ]
-                        proxy_id = '-'.join(filter(None, proxy_id_parts))
-                        if proxy_id not in seen_proxies:
-                            seen_proxies.add(proxy_id)
-                            all_proxies.append(proxy)
-                            new_nodes_count += 1
-                    
-                    if new_nodes_count > 0:
-                        print(f'  -> Added {new_nodes_count} new unique nodes.')
-                    
-                    with open(f'{list_dir}{item_id:0>2d}.yml', 'w', encoding='utf-8') as f:
-                        yaml.dump({'proxies': proxies}, f, allow_unicode=True, sort_keys=False)
+                # 步骤 2: 获取明文节点内容
+                plain_text_nodes = ''
+                if is_base64(raw_content):
+                    print("  -> Detected as Base64. Decoding...")
+                    plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
                 else:
-                    print(f'  -> Warning: Source converted, but no proxies found inside.')
+                    print("  -> Detected as plain text.")
+                    plain_text_nodes = raw_content
                 
-                print() 
+                # 步骤 3: 【核心过滤】只提取有效的节点分享链接
+                found_nodes = []
+                for line in plain_text_nodes.splitlines():
+                    clean_line = line.strip()
+                    if clean_line.startswith(VALID_PROTOCOLS):
+                        found_nodes.append(clean_line)
+                
+                if found_nodes:
+                    content_set.update(found_nodes)
+                    print(f'  -> Success! Extracted {len(found_nodes)} valid nodes.\n')
+                    # 写入缓存文件（只包含干净的节点）
+                    with open(f'{list_dir}{item_id:0>2d}.txt', 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(found_nodes))
+                else:
+                    raise ValueError("No valid node links found in the content.")
 
             except Exception as e:
                 print(f"  -> Failed! Reason: {e}\n")
                 with open(f'{list_dir}{item_id:0>2d}.err', 'w', encoding='utf-8') as f:
                     f.write(f"Error processing subscription: {e}")
 
-        if not all_proxies:
+        if not content_set:
             print('Merging failed: No nodes collected from any source.')
             return
 
-        print(f'\nTotal unique nodes collected: {len(all_proxies)}')
+        print(f'\nTotal unique nodes collected: {len(content_set)}')
         print('Starting final merge and conversion to Base64...')
 
-        # 步骤 5: 最终合并
-        final_clash_config = {'proxies': all_proxies}
-        final_yaml_str = yaml.dump(final_clash_config, allow_unicode=True, sort_keys=False)
-        final_b64_content = convert(final_yaml_str, 'base64', self.format_config)
+        # 步骤 4: 最终合并
+        # 此时的 content_set 只包含纯粹的、干净的节点分享链接
+        final_input_content = '\n'.join(content_set)
+        final_b64_content = convert(final_input_content, 'base64', self.format_config)
 
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         with open(merge_path_final, 'wb') as file:
