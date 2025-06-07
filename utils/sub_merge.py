@@ -29,13 +29,6 @@ class merge():
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
         self.subconverter_path = './utils/subconverter/subconverter-linux-amd64'
-        # 添加路径检查
-        if not os.path.exists(self.subconverter_path):
-            raise FileNotFoundError(
-                f"Subconverter executable missing at {self.subconverter_path}\n"
-                "Download it from: https://github.com/tindy2013/subconverter/releases\n"
-                "Then run: chmod +x {self.subconverter_path}"
-            )
 
         self.url_list = self.read_list()
         self.sub_merge()
