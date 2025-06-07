@@ -9,12 +9,14 @@ from contextlib import contextmanager
 try:
     import v2ray_util.v2ray_util as v2ray_util
 except ImportError:
-    print("Error: v2ray_util library not found. Please install it using 'pip install v2ray_util'")
+    # 这个错误理论上不应该再出现，但保留它以防万一
+    print("FATAL ERROR: v2ray_util library is required but not found.")
+    print("Please add 'v2ray_util' to your requirements.txt and ensure it is installed.")
     sys.exit(1)
 
-# ... (suppress_stderr 和 is_base64 辅助函数保持不变) ...
 @contextmanager
 def suppress_stderr():
+    """一个上下文管理器，可以临时屏蔽 stderr 输出。"""
     original_stderr = sys.stderr
     devnull_path = '/dev/null' if sys.platform != 'win32' else 'NUL'
     with open(devnull_path, 'w') as devnull:
@@ -33,7 +35,6 @@ def is_base64(s):
         return True
     except Exception:
         return False
-
 
 class merge():
     def __init__(self,file_dir,format_config):
@@ -62,27 +63,35 @@ class merge():
 
     def fix_node_links(self, node_links_set):
         """
-        使用 v2ray_util 库来解析、修复并重构节点链接。
+        使用 v2ray_util 库来解析、修复并重构 VLESS 节点链接。
         """
         fixed_links = set()
+        vless_fix_count = 0
         for link in node_links_set:
             try:
+                # 只针对 vless 链接进行修复
                 if link.startswith('vless://'):
-                    # 解析 VLESS 链接
                     node = v2ray_util.parse_vless(link)
                     server = node.get('add', '')
-                    # 如果 server 地址是 IPv6 映射地址，修复它
-                    if server.startswith('::ffff:'):
+                    if server and server.startswith('::ffff:'):
+                        # 修复 IPv6 映射地址
                         node['add'] = server.replace('::ffff:', '')
-                    # 重构链接
-                    fixed_link = v2ray_util.build_vless(node)
-                    fixed_links.add(fixed_link)
+                        fixed_link = v2ray_util.build_vless(node)
+                        fixed_links.add(fixed_link)
+                        vless_fix_count += 1
+                    else:
+                        # 无需修复的 vless 链接
+                        fixed_links.add(link)
                 else:
-                    # 对于其他类型的链接，暂时不做处理，直接添加
+                    # 其他协议的链接直接添加
                     fixed_links.add(link)
             except Exception:
-                # 如果解析失败，说明链接格式有问题，直接添加原始链接
+                # 如果解析失败，说明链接格式本身有问题，直接添加原始链接让 subconverter 处理
                 fixed_links.add(link)
+        
+        if vless_fix_count > 0:
+            print(f"  -> Fixed {vless_fix_count} VLESS links with IPv6 mapping issue.")
+            
         return fixed_links
 
     def sub_merge(self):
@@ -142,8 +151,7 @@ class merge():
 
         print(f'\nTotal unique node links collected: {len(content_set)}')
         
-        # 【终极核心修复】
-        print("Fixing VLESS links before final conversion...")
+        print("Fixing known issues in node links...")
         fixed_content_set = self.fix_node_links(content_set)
         fixed_count = len(fixed_content_set)
         print(f"  -> Link fixing complete. Total nodes to be converted: {fixed_count}")
@@ -153,7 +161,6 @@ class merge():
         final_input_content = '\n'.join(fixed_content_set)
         
         final_b64_content = ''
-        # 在调用 convert 时，屏蔽其 stderr 输出
         with suppress_stderr():
             final_b64_content = convert(final_input_content, 'base64', self.format_config)
 
@@ -176,7 +183,6 @@ class merge():
         with open(merge_path_final, 'wb') as file:
             file.write(final_b64_content.encode('utf-8'))
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
-
 
     def readme_update(self):
         # ... (readme_update 方法保持不变) ...
@@ -213,7 +219,6 @@ class merge():
              data = ''.join(lines)
              print('完成!\n')
              f.write(data)
-
 
 if __name__ == '__main__':
     # ... (__main__ 方法保持不变) ...
