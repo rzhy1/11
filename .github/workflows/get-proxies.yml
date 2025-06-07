@@ -27,11 +27,12 @@ jobs:
     - name: 验证文件
       run: |
         ls -la utils/subconverter/
+        chmod +x ./utils/subconverter/subconverter-linux-amd64 
         ./utils/subconverter/subconverter-linux-amd64 --version
     - name: Merge & speedtest
       working-directory: ./utils
       run: |
-        chmod +x subconverter/subconverter-linux-amd64 
+        chmod +x ./subconverter/subconverter-linux-amd64 
         python3 main.py
     - name: Commit change
       run: |
