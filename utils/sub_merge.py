@@ -1,8 +1,25 @@
 #!/usr/bin/env python3
 
-import json, os, base64, time, requests, re, yaml
-# 我们现在要从 subconverter 包中导入我们自己编写的 convert 函数
-from subconverter import convert, base64_decode
+import json, os, base64, time, requests, re, subprocess
+
+# 我们不再需要导入 subconverter 包，因为我们直接调用可执行文件
+# from subconverter import convert, base64_decode
+
+# 我们自己实现一个可靠的 base64_decode
+def base64_decode(s):
+    try:
+        s = s.strip()
+        missing_padding = len(s) % 4
+        if missing_padding: s += '=' * (4 - missing_padding)
+        return base64.b64decode(s).decode('utf-8', 'ignore')
+    except Exception:
+        return ""
+
+def is_likely_base64(s):
+    s = s.strip()
+    # Base64 字符串的长度必须是4的倍数 (在补全=号后)
+    # 并且只包含特定字符集
+    return re.match(r'^[A-Za-z0-9+/=]+$', s) and len(s) % 4 == 0
 
 class merge():
     def __init__(self, file_dir, format_config):
@@ -11,6 +28,8 @@ class merge():
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
+        self.subconverter_path = './utils/subconverter/subconverter-linux-amd64'
+
         self.url_list = self.read_list()
         self.sub_merge()
         if self.readme_file:
@@ -20,87 +39,147 @@ class merge():
         with open(self.list_file, 'r', encoding='utf-8') as f:
             return [item for item in json.load(f) if item.get('enabled')]
 
-    def sub_merge(self):
-        url_list = self.url_list
-        list_dir, merge_dir = self.list_dir, self.merge_dir
+    def deduplicate_nodes(self, nodes):
+        """高效的节点去重函数，基于 server:port 或其他核心标识"""
+        print("\nPerforming advanced deduplication...")
+        unique_proxies = {} # 使用字典来去重 { 'fingerprint': 'node_link' }
+        for node in nodes:
+            fingerprint = ""
+            try:
+                protocol = node.split('://')[0].lower()
+                if protocol == 'vmess':
+                    # VMess V2RayN an VLESS an Trojan
+                    try:
+                        decoded_part = base64.b64decode(node[8:]).decode('utf-8')
+                        vmess_config = json.loads(decoded_part)
+                        fingerprint = f"{vmess_config.get('add', '')}:{vmess_config.get('port', '')}"
+                    except: # 解码失败或非json，可能是其他格式
+                         fingerprint = node.split('#')[0]
+                elif protocol in ['vless', 'trojan', 'ss']:
+                    # VLESS/Trojan/SS: user@server:port
+                    match = re.search(r'//(?:.*@)?([^?#:]+:\d+)', node)
+                    if match:
+                        fingerprint = match.group(1)
+                    else:
+                         fingerprint = node.split('#')[0].split('?')[0] # 备用方案
+                else: # SSR and others
+                    fingerprint = node.split('#')[0]
 
+                if fingerprint not in unique_proxies:
+                    unique_proxies[fingerprint] = node
+            except Exception as e:
+                print(f"  -> Could not create fingerprint for node, skipping: {node[:30]}... ({e})")
+                continue # 如果出错，跳过这个节点
+        
+        final_nodes = list(unique_proxies.values())
+        removed_count = len(nodes) - len(final_nodes)
+        print(f"  -> Deduplication complete. Removed {removed_count} duplicate nodes.")
+        return final_nodes
+
+    def sub_merge(self):
+        list_dir, merge_dir = self.list_dir, self.merge_dir
         if os.path.exists(list_dir):
             for f in os.listdir(list_dir): os.remove(os.path.join(list_dir, f))
         else:
             os.makedirs(list_dir)
 
-        all_proxies_list = [] # 用于收集所有 YAML 格式的节点
-
-        print("--- Step 1: Converting all subscriptions to unified YAML format ---")
-        for item in url_list:
+        all_nodes = [] # 使用列表，因为 set 无法保证顺序，且我们自己去重
+        for item in self.url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
             if not item_url: continue
             
-            print(f"Processing [ID: {item_id:0>2d}] {item_remarks}")
-            
-            # 【核心改变】立即将每个订阅源转换为 Clash Provider 格式
-            # 输入内容是 URL，输入类型是 'url'，目标格式是 'clash'
-            # 我们暂时不关心过滤规则，只做格式统一
-            clash_provider_str = convert(item_url, 'url', 'clash', {})
-            
-            if clash_provider_str:
-                try:
-                    # 解析 YAML，提取 'proxies' 列表
-                    data = yaml.safe_load(clash_provider_str)
-                    proxies = data.get('proxies')
-                    if proxies and isinstance(proxies, list):
-                        all_proxies_list.extend(proxies)
-                        print(f"  -> Success! Converted and added {len(proxies)} nodes.")
-                    else:
-                        print("  -> Warning: Converted, but no 'proxies' list found in YAML.")
-                except yaml.YAMLError as e:
-                    print(f"  -> Failed to parse YAML: {e}")
-            else:
-                print(f"  -> Failed to convert this subscription.")
-            print()
+            print(f"Processing [ID: {item_id:0>2d}] {item_remarks} from {item_url}")
+            try:
+                response = requests.get(item_url, timeout=20)
+                response.raise_for_status()
+                raw_content = response.text.strip()
+                if not raw_content: raise ValueError("Downloaded content is empty.")
 
-        if not all_proxies_list:
-            print('Merging failed: No nodes collected from any source.')
+                plain_text_nodes = ""
+                # 智能格式判断
+                if is_likely_base64(raw_content):
+                    print("  -> Detected Base64 format, decoding...")
+                    plain_text_nodes = base64_decode(raw_content)
+                else:
+                    # 对于 YAML 或纯文本，我们都直接作为文本处理
+                    # subconverter 核心能自动识别里面的节点
+                    print("  -> Detected Plain Text or YAML format.")
+                    plain_text_nodes = raw_content
+                
+                found_lines = [line.strip() for line in plain_text_nodes.splitlines() if line.strip()]
+                if found_lines:
+                    all_nodes.extend(found_lines)
+                    print(f'  -> Success! Added {len(found_lines)} lines to merge pool.')
+                else:
+                    print("  -> ⭐⭐ Warning: No content lines found.")
+            except Exception as e:
+                print(f"  -> Failed! Reason: {e}")
+            finally:
+                print()
+        
+        if not all_nodes:
+            print('Merging failed: No nodes collected.')
             return
 
-        print(f"\n--- Step 2: Deduplicating {len(all_proxies_list)} collected nodes ---")
+        print(f'\nTotal lines collected (before deduplication): {len(all_nodes)}')
         
-        # 在合并的 YAML 层面进行高效去重
-        unique_proxies_dict = {}
-        for proxy in all_proxies_list:
-            # 使用 server:port 作为节点的唯一标识
-            fingerprint = f"{proxy.get('server', '')}:{proxy.get('port', '')}"
-            if fingerprint != ':' and fingerprint not in unique_proxies_dict: # 避免空指纹
-                unique_proxies_dict[fingerprint] = proxy
-        
-        final_proxies = list(unique_proxies_dict.values())
-        removed_count = len(all_proxies_list) - len(final_proxies)
-        print(f'Deduplication complete. Removed {removed_count} duplicate nodes.')
-        print(f'Final unique node count: {len(final_proxies)}')
+        # 步骤 1: 在 Python 中高效去重
+        unique_nodes = self.deduplicate_nodes(all_nodes)
+        print(f'Total unique nodes after deduplication: {len(unique_nodes)}')
 
-        # 将最终的、去重后的节点列表打包成一个大的 Clash Provider YAML
-        final_clash_provider = {'proxies': final_proxies}
-        final_clash_provider_str = yaml.dump(final_clash_provider, allow_unicode=True)
-        
-        # 将这个巨大的 YAML 内容编码成 Base64
-        final_clash_provider_b64 = base64.b64encode(final_clash_provider_str.encode('utf-8')).decode('utf-8')
+        # 步骤 2: 将去重后的、干净的节点列表交给 subconverter
+        print('\nHanding over unique nodes to subconverter for final packaging...')
+        final_input_content = '\n'.join(sorted(unique_nodes))
 
-        print('\n--- Step 3: Final packaging with rules ---')
-        
-        # 【最终打包】最后一次调用 subconverter，应用所有规则
-        # 这次输入内容是 Base64 字符串，输入类型是 'base64'
-        final_b64_content = convert(final_clash_provider_b64, 'base64', 'base64', self.format_config)
+        try:
+            command = [
+                self.subconverter_path,
+                '--no-color',
+                '--target', 'base64'
+            ]
+            # 动态添加配置
+            if self.format_config.get('rename'):
+                command.extend(['--rename', self.format_config['rename']])
+            if self.format_config.get('include'):
+                command.extend(['--include', self.format_config['include']])
+            if self.format_config.get('exclude'):
+                command.extend(['--exclude', self.format_config['exclude']])
+            # 注意：subconverter 的去重可能与我们的不同，建议关闭
+            if self.format_config.get('deduplicate') is False:
+                 command.append('--no-deduplicate')
 
-        if not final_b64_content:
-            print("Final packaging failed. Subconverter returned empty content.")
-            return
+            print(f"  -> Executing subconverter with {len(unique_nodes)} nodes... (timeout: 180s)")
+            
+            process = subprocess.run(
+                command,
+                input=final_input_content.encode('utf-8'),
+                capture_output=True,
+                check=True, # 如果出错，会抛出异常
+                timeout=180 # 3分钟超时，对于去重后的数据量应该足够
+            )
+            
+            final_b64_content = process.stdout
 
-        print("Final packaging successful.")
-        merge_path_final = os.path.join(self.merge_dir, 'sub_merge_base64.txt')
-        with open(merge_path_final, 'w', encoding='utf-8') as f:
-            f.write(final_b64_content)
-        print(f'\nDone! Output merged nodes to {merge_path_final}.')
+            if not final_b64_content:
+                print("  -> Conversion failed: Subconverter returned empty content.")
+                if process.stderr: print("  -> Stderr:", process.stderr.decode('utf-8'))
+                return
 
+            print("  -> Conversion successful.")
+            merge_path_final = os.path.join(self.merge_dir, 'sub_merge_base64.txt')
+            with open(merge_path_final, 'wb') as f:
+                f.write(final_b64_content)
+            print(f'\nDone! Output merged nodes to {merge_path_final}.')
+
+        except subprocess.TimeoutExpired:
+            print("  -> FATAL ERROR: Subconverter timed out even after deduplication. The final node set might still be too large or complex.")
+        except subprocess.CalledProcessError as e:
+            print("  -> FATAL ERROR: Subconverter exited with an error.")
+            print(f"  -> Stderr: {e.stderr.decode('utf-8')}")
+        except FileNotFoundError:
+            print(f"  -> FATAL ERROR: Subconverter executable not found at '{self.subconverter_path}'")
+        except Exception as e:
+            print(f"  -> FATAL ERROR: An unexpected error occurred: {e}")
 
     def readme_update(self):
         # ... (readme_update 保持不变) ...
@@ -142,7 +221,7 @@ if __name__ == '__main__':
         'readme_file': './README.md',
     }
     format_config = {
-        'deduplicate': False, # 我们自己去重，这里可以关掉
+        'deduplicate': False, # 推荐关闭，因为我们自己做了更可控的去重
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
