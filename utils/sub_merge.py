@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json, os, base64, time, requests, re
+# 我们现在可以安全地使用这个导入了
 from subconverter import convert, base64_decode
 
 # 辅助函数 is_likely_base64 保持不变
@@ -18,7 +19,6 @@ def is_likely_base64(s):
         return False
 
 class merge():
-    # __init__, read_list, cleanup_node_list 方法保持不变
     def __init__(self,file_dir,format_config):
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
@@ -46,7 +46,6 @@ class merge():
         return cleaned_nodes
 
     def sub_merge(self):
-        # ... (sub_merge 方法的前半部分保持不变) ...
         url_list = self.url_list
         list_dir = self.list_dir
         merge_dir = self.merge_dir
@@ -79,7 +78,7 @@ class merge():
                 plain_text_nodes = ''
                 if is_likely_base64(raw_content):
                     print("  -> Detected Base64 format, decoding...")
-                    plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
+                    plain_text_nodes = base64_decode(raw_content)
                 elif 'proxies:' in raw_content or 'proxy-groups:' in raw_content:
                     print("  -> Detected YAML format.")
                     plain_text_nodes = raw_content
@@ -103,34 +102,48 @@ class merge():
         
         print(f'\nTotal unique lines collected: {len(content_set)}')
         
-        print('Handing over to subconverter for final processing, filtering, and packaging...')
-
+        # 【核心修复】将所有节点写入一个临时文件
+        temp_subscription_file = os.path.join(self.merge_dir, 'temp_sub_for_convert.txt')
         final_input_content = '\n'.join(sorted(list(content_set)))
-        final_input_b64 = base64.b64encode(final_input_content.encode('utf-8')).decode('utf-8')
         
-        # 【核心修复】在这里！我们强制关闭 subconverter 的去重功能。
+        with open(temp_subscription_file, 'w', encoding='utf-8') as f:
+            f.write(final_input_content)
+
+        print(f'Handing over temporary subscription file to subconverter: {temp_subscription_file}')
+        
         subconverter_config = {
-            'deduplicate': False, # <-- 强制设置为 False，绕过有问题的代码
+            'deduplicate': self.format_config.get('deduplicate', True),
             'rename': self.format_config.get('rename', ''),
             'include': self.format_config.get('include_remarks', ''),
             'exclude': self.format_config.get('exclude_remarks', ''),
-            'config': self.format_config.get('config', ''),
-            'url_type': 'base64'
+            'config': self.format_config.get('config', '')
         }
         
-        final_b64_content = convert(final_input_b64, 'base64', subconverter_config)
+        try:
+            # 【核心修复】将临时文件的路径作为 subscription 参数传递
+            final_b64_content = convert(temp_subscription_file, 'base64', subconverter_config)
 
-        if not final_b64_content:
-            print("  -> Subconverter returned empty content. There might be no valid nodes after filtering.")
-            return
+            if not final_b64_content:
+                print("  -> Subconverter returned empty content. There might be no valid nodes after filtering.")
+                # 清理临时文件
+                os.remove(temp_subscription_file)
+                return
 
-        print(f"  -> Subconverter processing successful.")
-        merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
-        with open(merge_path_final, 'wb') as file:
-            file.write(final_b64_content)
-        print(f'\nDone! Output merged nodes to {merge_path_final}.')
+            print(f"  -> Subconverter processing successful.")
+            merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
+            # convert 函数返回的是字符串，所以用 'w' 写入
+            with open(merge_path_final, 'w', encoding='utf-8') as file:
+                file.write(final_b64_content)
+            print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
-    # readme_update 方法保持不变
+        except Exception as e:
+            print(f"  -> FATAL ERROR during final conversion: {e}")
+        finally:
+            # 无论成功与否，都删除临时文件
+            if os.path.exists(temp_subscription_file):
+                os.remove(temp_subscription_file)
+
+
     def readme_update(self):
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
@@ -161,7 +174,7 @@ class merge():
              print('完成!\n')
              f.write(data)
 
-# __main__ 方法保持不变
+
 if __name__ == '__main__':
     file_dir = {
         'list_dir': './sub/list/',
@@ -169,9 +182,8 @@ if __name__ == '__main__':
         'merge_dir': './sub/',
         'readme_file': './README.md',
     }
-    # 这里的 deduplicate 设置不再重要，因为我们在代码里硬编码了 False
     format_config = {
-        'deduplicate': True, 
+        'deduplicate': True,
         'rename': '',
         'include_remarks': '',
         'exclude_remarks': '',
