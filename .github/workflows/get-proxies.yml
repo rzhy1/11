@@ -28,10 +28,10 @@ jobs:
 #      run: |
 #        sudo sh ./utils/scripts/set_proxy.sh
     - name: Merge & speedtest
+      working-directory: ./utils
       run: |
-        chmod +x ./utils/subconverter/subconverter-linux-amd64 
-        #chmod +x ./utils/litespeedtest/lite-linux-amd64
-        python3 ./utils/main.py
+        chmod +x ./subconverter/subconverter-linux-amd64 
+        python3 main.py
     - name: Commit change
       run: |
         git config --local user.email "actions@github.com"
