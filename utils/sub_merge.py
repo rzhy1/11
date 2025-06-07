@@ -1,36 +1,30 @@
 #!/usr/bin/env python3
+
 import json, os, base64, time, requests, re
-# 重新引入 subconverter，它是我们强大的后盾
 from subconverter import convert, base64_decode
 
-# 辅助函数，用于更可靠地判断 Base64
+# 辅助函数 is_likely_base64 保持不变
 def is_likely_base64(s):
-    # 基础检查：长度、字符集等
-    if len(s) % 4 != 0 or not re.match('^[A-Za-z0-9+/=]+$', s):
+    if len(s.strip()) % 4 != 0 or not re.match('^[A-Za-z0-9+/=]+$', s.strip()):
         return False
     try:
-        # 尝试解码，如果内容看起来像乱码（包含大量非 ascii 控制字符），可能不是节点列表的 base64
         decoded = base64.b64decode(s).decode('utf-8')
-        # 简单启发式：如果解码后包含常见协议或关键词，则可能性高
-        if 'vmess://' in decoded or 'proxies:' in decoded or 'ss://' in decoded:
+        if 'vmess://' in decoded or 'proxies:' in decoded or 'ss://' in decoded or 'vless://' in decoded:
             return True
-        # 如果解码后全是二进制数据，可能性低
         if any(char.isprintable() or char.isspace() for char in decoded):
-            # 如果可打印字符比例很高，也可能是
             return True
         return False
     except Exception:
         return False
 
-
 class merge():
+    # __init__, read_list, cleanup_node_list 方法保持不变
     def __init__(self,file_dir,format_config):
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
-
         self.url_list = self.read_list()
         self.sub_merge()
         if self.readme_file:
@@ -42,13 +36,10 @@ class merge():
         return [item for item in raw_list if item.get('enabled')]
 
     def cleanup_node_list(self, nodes):
-        """对节点列表的每一行进行清洗，修复潜在的YAML语法问题。"""
         cleaned_nodes = []
-        # 这个正则专门修复 server: [ipv6地址] 的问题
         pattern = re.compile(r"(server\s*:\s*)([^,'\"\s{}[\]]+:[^,'\"\s{}[\]]+)")
         def add_quotes(match):
             return f"{match.group(1)}'{match.group(2)}'"
-        
         for node in nodes:
             cleaned_node = pattern.sub(add_quotes, node)
             cleaned_nodes.append(cleaned_node)
@@ -87,28 +78,19 @@ class merge():
 
                 plain_text_nodes = ''
                 
-                # 【智能格式判断】
-                # 1. 判断是否是 Base64
                 if is_likely_base64(raw_content):
                     print("  -> Detected Base64 format, decoding...")
                     plain_text_nodes = base64.b64decode(raw_content).decode('utf-8', errors='ignore')
-                # 2. 如果不是 Base64，判断是否是 YAML
                 elif 'proxies:' in raw_content or 'proxy-groups:' in raw_content:
                     print("  -> Detected YAML format.")
-                    # 对于 YAML，我们直接把整个内容交给 subconverter，它能专业地解析
                     plain_text_nodes = raw_content
-                # 3. 否则，认为是纯文本节点列表
                 else:
                     print("  -> Detected Plain Text node list format.")
                     plain_text_nodes = raw_content
 
-                # 从解码/原始文本中提取有效节点
-                # 注意：我们不再用 startswith 来过滤，因为YAML格式的节点不符合这个规则
-                # 我们将所有内容都加入，让 subconverter 去识别
                 found_nodes = [line.strip() for line in plain_text_nodes.splitlines() if line.strip()]
                 
                 if found_nodes:
-                    # 在加入集合前，先进行清洗
                     cleaned_nodes = self.cleanup_node_list(found_nodes)
                     content_set.update(cleaned_nodes)
                     print(f'  -> Success! Added {len(cleaned_nodes)} lines to the merge pool.')
@@ -128,20 +110,29 @@ class merge():
         
         print('Handing over to subconverter for final processing, filtering, and packaging...')
 
-        # 将所有收集到的干净行拼接起来
         final_input_content = '\n'.join(sorted(list(content_set)))
         
-        # 从 self.format_config 获取 subconverter 的配置
+        # 【核心修复】在这里！我们需要告诉 subconverter 输入的是什么。
+        # 最可靠的方法是：将我们的明文内容编码成 Base64，然后告诉 subconverter 输入类型是 'base64'。
+        
+        # 1. 将我们准备好的明文节点列表编码成 Base64
+        final_input_b64 = base64.b64encode(final_input_content.encode('utf-8')).decode('utf-8')
+        
+        # 2. 准备配置，并明确指定输入类型为 'base64'
         subconverter_config = {
             'deduplicate': bool(self.format_config.get('deduplicate', True)),
             'rename': self.format_config.get('rename', ''),
             'include': self.format_config.get('include_remarks', ''),
             'exclude': self.format_config.get('exclude_remarks', ''),
-            'config': self.format_config.get('config', '')
+            'config': self.format_config.get('config', ''),
+            'url_type': 'base64' # <-- 明确告诉 subconverter，第一个参数是 Base64 编码的内容
         }
         
-        # 【核心】调用 subconverter 进行专业处理
-        final_b64_content = convert(final_input_content, 'base64', subconverter_config)
+        # 3. 调用 convert 函数
+        # 第一个参数是 Base64 编码的节点列表
+        # 第二个参数是目标输出格式
+        # 第三个参数是包含输入类型的配置
+        final_b64_content = convert(final_input_b64, 'base64', subconverter_config)
 
         if not final_b64_content:
             print("  -> Subconverter returned empty content. There might be no valid nodes after filtering.")
@@ -154,23 +145,20 @@ class merge():
             file.write(final_b64_content)
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
 
-
+    # readme_update 方法保持不变
     def readme_update(self):
         print('Updating README...')
         merge_path_final = f'{self.merge_dir}/sub_merge_base64.txt'
         if not os.path.exists(merge_path_final):
             print(f"Warning: Merged file not found. Skipping README update.")
             return
-
         with open(self.readme_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-
         try:
             for index, line in enumerate(lines):
                 if '### 所有节点' in line:
                     if index + 1 < len(lines) and '合并节点总数' in lines[index+1]:
                         lines.pop(index+1) 
-
                     with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
                         proxies_base64 = f_merge.read()
                         if proxies_base64:
@@ -178,19 +166,17 @@ class merge():
                             top_amount = len([p for p in proxies.split('\n') if p.strip()])
                         else:
                             top_amount = 0
-                    
                     lines.insert(index+1, f'合并节点总数: `{top_amount}`\n')
                     break
         except Exception as e:
             print(f"Error updating README: {e}")
             return
-        
         with open(self.readme_file, 'w', encoding='utf-8') as f:
              data = ''.join(lines)
              print('完成!\n')
              f.write(data)
 
-
+# __main__ 方法保持不变
 if __name__ == '__main__':
     file_dir = {
         'list_dir': './sub/list/',
@@ -198,8 +184,6 @@ if __name__ == '__main__':
         'merge_dir': './sub/',
         'readme_file': './README.md',
     }
-    
-    # 确保 format_config 被正确传递
     format_config = {
         'deduplicate': True,
         'rename': '',
@@ -207,5 +191,4 @@ if __name__ == '__main__':
         'exclude_remarks': '',
         'config': ''
     }
-    
     merge(file_dir, format_config)
