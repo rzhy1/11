@@ -154,12 +154,12 @@
   },
   {
     "id": 17,
-    "remarks": "wrfree/free",
-    "site": "https://github.com/wrfree/free",
-    "url": "https://raw.githubusercontent.com/wrfree/free/main/v2",
+    "remarks": "clash/proxies",
+    "site": "https://proxypool.link",
+    "url": "https://proxypool.link/clash/proxies",
     "update_method": "auto",
-    "type": "subscription",
-    "enabled": false
+    "type": "raw_text_url",
+    "enabled": true
   },
   {
     "id": 18,
@@ -181,12 +181,12 @@
   },
   {
     "id": 20,
-    "remarks": "Lewis-1217/FreeNodes",
-    "site": "https://github.com/Lewis-1217/FreeNodes",
-    "url": "https://raw.githubusercontent.com/Lewis-1217/FreeNodes/main/bpjzx1",
+    "remarks": "PuddinCat/BestClash",
+    "site": "https://raw.githubusercontent.com/PuddinCat/BestClash",
+    "url": "https://raw.githubusercontent.com/PuddinCat/BestClash/main/proxies.yaml",
     "update_method": "auto",
-    "type": "subscription",
-    "enabled": false
+    "type": "raw_text_url",
+    "enabled": true
   },
   {
     "id": 21,
