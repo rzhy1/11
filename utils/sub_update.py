@@ -142,6 +142,32 @@ class update():
 
     def find_link(self, id, current_url):
   
+        if id == 18:
+            try:
+                # 请求 GitHub API 获取文件列表
+                api_url = "https://api.github.com/repos/free-nodes/v2rayfree/contents/"
+                resp = requests.get(api_url, timeout=5)
+                
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    
+                    # 筛选逻辑：
+                    # 1. 排除 README.md
+                    # 2. 根据数据特征，文件均以 'v' 开头 (如 v202602122)
+                    target_files = [f for f in res_json if f['name'].startswith('v')]
+                    
+                    if target_files:
+                        # 按文件名降序排列 (字符串排序: v202602122 > v202602121)
+                        target_files.sort(key=lambda x: x['name'], reverse=True)
+                        
+                        # 返回最新文件的 raw 下载链接
+                        return target_files[0]['download_url']
+                    else:
+                        return current_url
+                return current_url
+            except Exception:
+                return current_url
+                
         if id == 33:
             url_update = 'https://v2cross.com/archives/1884'
 
