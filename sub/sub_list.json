@@ -163,10 +163,10 @@
   },
   {
     "id": 18,
-    "remarks": "aiboboxx/v2rayfree",
+    "remarks": "free-nodes/v2rayfree",
     "site": "https://github.com/aiboboxx/v2rayfree",
-    "url": "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
-    "update_method": "auto",
+    "url": "https://raw.githubusercontent.com/free-nodes/v2rayfree/main/README.md",
+    "update_method": "page_release",
     "type": "subscription",
     "enabled": true
   },
