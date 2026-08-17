@@ -264,7 +264,7 @@
     "id": 29,
     "remarks": "xiaoji235/airport-free",
     "site": "https://github.com/xiaoji235/airport-free",
-    "url": "https://cdn.jsdelivr.net/gh/xiaoji235/airport-free/v2ray.txt",
+    "url": "https://raw.githubusercontent.com/xiaoji235/airport-free/refs/heads/main/v2ray.txt",
     "update_method": "auto",
     "type": "raw_text_url",
     "enabled": true
