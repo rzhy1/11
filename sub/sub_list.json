@@ -64,9 +64,9 @@
   },
   {
     "id": 7,
-    "remarks": "https://clashfreenode.com",
-    "site": "https://clashfreenode.com/feed",
-    "url": "https://clashfreenode.com/feed/v2ray-20251221.txt",
+    "remarks": "https://nodebus.net",
+    "site": "https://nodebus.net",
+    "url": "https://nodebus.net/cfn-new/d05df6d9aded3345/20260814-v2ray.txt",
     "update_method": "change_date",
     "type": "subscription",
     "enabled": true
