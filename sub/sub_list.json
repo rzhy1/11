@@ -174,7 +174,7 @@
     "id": 19,
     "remarks": "mfuu/v2ray",
     "site": "https://github.com/mfuu/v2ray/",
-    "url": "https://raw.githubusercontent.com/mfuu/v2ray/master/v2ray",
+    "url": "https://raw.githubusercontent.com/mfuu/FreeProxies/refs/heads/master/sub",
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
