@@ -208,14 +208,14 @@ class merge():
                     all_nodes_raw.extend(found_nodes)
                     print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
                 else:
-                    print(f"  -> ⭐⭐ Warning: No valid node links found.")
+                    print(f"  -> 🔴🔴🔴🔴 Warning: No valid node links found.")
             except Exception as e:
-                print(f"  -> ⭐⭐ Failed! Reason: {e}")
+                print(f"  -> 🔴🔴🔴🔴 Failed! Reason: {e}")
             finally:
                 print()
 
         if not all_nodes_raw:
-            print('⭐⭐ Merging failed: No nodes collected.')
+            print('🔴🔴🔴🔴 Merging failed: No nodes collected.')
             return
         
         # 【核心改变】在合并前，调用智能去重函数
