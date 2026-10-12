@@ -69,20 +69,21 @@ class update():
                 import requests
                 import re
                 from datetime import datetime, timedelta
-
+        
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
                 for delta in [0, 1]:
                     date_str = (datetime.today() - timedelta(days=delta)).strftime('%Y%m%d')
                     page_url = f'https://clashfreenode.com/a/fn{date_str}.html'
-                    
+        
                     try:
                         res = requests.get(page_url, headers=headers, timeout=10)
                         if res.status_code == 200:
-                            pattern = rf'https://nodebus\.net/cfn-new/[a-zA-Z0-9]+/{date_str}-v2ray\.txt'
+                            # 源码中的真实格式：https://nodebus.net/cfn/8568b1c0f1da79b3/20261012-v2ray.txt
+                            pattern = rf'https://nodebus\.net/cfn/[a-f0-9]+/{date_str}-v2ray\.txt'
                             match = re.search(pattern, res.text)
-                            
+        
                             if match:
                                 new_url = match.group(0)
                                 if self.url_updated(new_url):
@@ -90,9 +91,9 @@ class update():
                                 break
                     except Exception:
                         continue
-
+        
             except Exception as e:
-                print(f"ID 7 获取最新链接失败: {e}")  
+                print(f"ID 7 获取最新链接失败: {e}")
             return current_url
             
         if id == 111:
