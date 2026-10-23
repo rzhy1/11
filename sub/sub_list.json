@@ -66,7 +66,7 @@
     "id": 7,
     "remarks": "https://clashfreenode.com/",
     "site": "https://clashfreenode.com/",
-    "url": "https://nodebus.net/cfn/bd43109722e3e929/20261021-v2ray.txt",
+    "url": "https://nodebus.net/cfn/9ff9e0971f932ba1/20261023-v2ray.txt",
     "update_method": "change_date",
     "type": "subscription",
     "enabled": true
@@ -165,7 +165,7 @@
     "id": 18,
     "remarks": "free-nodes/v2rayfree",
     "site": "https://github.com/aiboboxx/v2rayfree",
-    "url": "https://raw.githubusercontent.com/free-nodes/v2rayfree/main/v20261023",
+    "url": "https://raw.githubusercontent.com/free-nodes/v2rayfree/main/v20261024",
     "update_method": "page_release",
     "type": "subscription",
     "enabled": true
