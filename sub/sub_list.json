@@ -190,12 +190,12 @@
   },
   {
     "id": 21,
-    "remarks": "vveg26/getProxy",
-    "site": "https://github.com/vveg26/getProxy",
-    "url": "https://raw.githubusercontent.com/vveg26/chromego_merge/main/sub/merged_proxies_new.yaml",
+    "remarks": "wenxig/dongtai-sub",
+    "site": "https://github.com/wenxig/dongtai-sub",
+    "url": "https://raw.githubusercontent.com/wenxig/dongtai-sub/refs/heads/main/data/sub.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 22,
