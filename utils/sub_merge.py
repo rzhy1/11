@@ -383,33 +383,18 @@ class merge:
         if not os.path.exists(merge_path_final):
             print("Warning: Merged file not found. Skipping README update.")
             return
-        if not os.path.exists(self.readme_file):
-            print("Warning: README file not found. Skipping README update.")
-            return
 
-        with open(self.readme_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
+        with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
+            proxies_base64 = f_merge.read().strip()
+            if proxies_base64:
+                proxies = base64_decode(proxies_base64)
+                top_amount = len([p for p in proxies.splitlines() if p.strip()])
+            else:
+                top_amount = 0
 
-        try:
-            for index, line in enumerate(lines):
-                if '### 所有节点' in line:
-                    if index + 1 < len(lines) and '合并节点总数' in lines[index + 1]:
-                        lines.pop(index + 1)
-                    with open(merge_path_final, 'r', encoding='utf-8') as f_merge:
-                        proxies_base64 = f_merge.read().strip()
-                        if proxies_base64:
-                            proxies = base64_decode(proxies_base64)
-                            top_amount = len([p for p in proxies.splitlines() if p.strip()])
-                        else:
-                            top_amount = 0
-                    lines.insert(index + 1, f'合并节点总数: `{top_amount}`\n')
-                    break
-        except Exception as e:
-            print(f"Error updating README: {e}")
-            return
-
+        sub_url = 'https://raw.githubusercontent.com/rzhy1/11/master/sub/sub_merge_base64.txt'
         with open(self.readme_file, 'w', encoding='utf-8') as f:
-            f.write(''.join(lines))
+            f.write(f'[{top_amount}]({sub_url})\n')
         print('完成!\n')
 
 
