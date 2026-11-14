@@ -1,82 +1,85 @@
 #!/usr/bin/env python3
 
-import os, urllib
-import configparser
+import os
 import sys
+import configparser
+import urllib.request
 
 # --- 动态计算绝对路径 ---
-# 获取 main.py 所在的目录 (即 'utils' 目录)
 UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
-# 获取项目根目录 (即 'utils' 的上一级目录)
 PROJECT_ROOT = os.path.dirname(UTILS_DIR)
 
-# 将 utils 目录和项目根目录都加入到模块搜索路径，以防万一
-sys.path.insert(0, UTILS_DIR)
-sys.path.insert(0, PROJECT_ROOT)
+if UTILS_DIR not in sys.path:
+    sys.path.insert(0, UTILS_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 # -----------------------------
 
-# 导入我们自己的模块
 from sub_merge import merge
 from sub_update import update
 
-# 使用绝对路径来读取配置文件
-config_file = os.path.join(UTILS_DIR, 'config.ini')
+CONFIG_FILE = os.path.join(UTILS_DIR, 'config.ini')
 
-def configparse(section):
-    """
-    读取指定 section 的配置，并返回一个 configparser 的 SectionProxy 对象。
-    """
+
+def load_config(config_path):
+    """一次性读取配置文件"""
     config = configparser.ConfigParser()
-    config.read(config_file, encoding='utf-8')
-    # 检查 section 是否存在，避免 KeyErorr
+    if not os.path.exists(config_path):
+        print(f"Warning: Config file not found at {config_path}")
+        return config
+    config.read(config_path, encoding='utf-8')
+    return config
+
+
+def get_section(config, section):
+    """安全获取 section，即使不存在也返回支持 .getboolean() 的空 SectionProxy"""
     if section in config:
         return config[section]
-    # 如果 section 不存在，返回一个空字典，让 .getboolean 等方法可以安全地使用 fallback
-    return {}
+    return configparser.ConfigParser()['DEFAULT']
+
 
 def get_file_dir_config(config_section):
-    """
-    专门用于处理路径，将 config_section 转换为一个修复了路径的字典。
-    """
+    """将配置中的 *_dir / *_file 相对路径转换为基于项目根目录的规范路径"""
     file_dir = {}
     for key, value in config_section.items():
-        # 检查是否是需要处理的路径字段
-        if isinstance(value, str) and ('dir' in key or 'file' in key):
-            if value.startswith('./'):
-                value = value[2:]
-            file_dir[key] = os.path.join(PROJECT_ROOT, value)
+        if isinstance(value, str) and key.endswith(('_dir', '_file')) and value.strip():
+            file_dir[key] = os.path.normpath(os.path.join(PROJECT_ROOT, value.strip()))
         else:
             file_dir[key] = value
     return file_dir
 
 
-if __name__ == '__main__':
+def download_country_mmdb(save_path, timeout=15):
+    """带超时控制的 Country.mmdb 下载（若 sub_update 不用此文件可移除调用）"""
+    url = 'https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb'
     try:
         print('Downloading Country.mmdb...')
-        country_mmdb_path = os.path.join(UTILS_DIR, 'Country.mmdb')
-        urllib.request.urlretrieve('https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb', country_mmdb_path)
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=timeout) as resp, open(save_path, 'wb') as out_file:
+            out_file.write(resp.read())
         print('Success!\n')
     except Exception as e:
         print(f'Failed to download Country.mmdb: {e}\n')
-        pass
 
-    # 一次性读取所有需要的配置 sections
-    common_config = configparse('common')
-    subconverter_config = configparse('subconverter')
 
-    # 使用 getboolean 方法，并提供 fallback 默认值
+if __name__ == '__main__':
+    # 如果 sub_update 不需要 Country.mmdb，可以直接注释掉下面这两行
+    country_mmdb_path = os.path.join(UTILS_DIR, 'Country.mmdb')
+    download_country_mmdb(country_mmdb_path)
+
+    config = load_config(CONFIG_FILE)
+    common_config = get_section(config, 'common')
+    subconverter_config = get_section(config, 'subconverter')
+
+    file_dir = get_file_dir_config(common_config)
+
     if common_config.getboolean('update_enabled', fallback=False):
         print('--- Running Subscription Update ---')
-        # 传递修复了路径的配置字典
-        update(get_file_dir_config(common_config))
+        update(file_dir)
 
     if common_config.getboolean('merge_enabled', fallback=False):
         print('--- Running Subscription Merge ---')
-        # 准备好传给 merge 类的参数
-        file_dir = get_file_dir_config(common_config)
         format_config = dict(subconverter_config)
         merge(file_dir, format_config)
-
-    # --- 所有与测速相关的代码已被完全删除 ---
 
     print("\nAll tasks completed.")
