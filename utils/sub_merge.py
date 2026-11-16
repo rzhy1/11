@@ -407,7 +407,7 @@ class merge:
         if not pattern:
             return True
         try:
-            return re.search(str(pattern), name, re.I) is not None
+            return re.search(str(pattern), name) is not None
         except re.error as exc:
             print(f"  -> Invalid Provider filter ignored: {exc}")
             return None
@@ -489,9 +489,14 @@ class merge:
                                     if not isinstance(rule, dict) or 'pattern' not in rule:
                                         continue
                                     try:
+                                        replacement = re.sub(
+                                            r'\$(\d+)',
+                                            lambda match: r'\g<' + match.group(1) + '>',
+                                            str(rule.get('target', ''))
+                                        )
                                         proxy_data['name'] = re.sub(
                                             str(rule.get('pattern', '')),
-                                            str(rule.get('target', '')),
+                                            replacement,
                                             str(proxy_data.get('name') or '')
                                         )
                                     except re.error as regex_error:
