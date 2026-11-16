@@ -185,7 +185,21 @@ class merge:
                 canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
                 return protocol + "|" + canonical
             if protocol == "ssr":
-                return protocol + "|" + raw.strip()
+                decoded = base64_decode(raw)
+                if not decoded:
+                    return None
+                if "/?" in decoded:
+                    config, query_string = decoded.split("/?", 1)
+                    query = urllib.parse.parse_qsl(query_string, keep_blank_values=True)
+                else:
+                    config, query = decoded, []
+                # SSR remarks 通常藏在外层 Base64 的 remarks 参数中，也不应影响节点身份。
+                query = sorted((str(k), str(v)) for k, v in query if str(k).lower() != "remarks")
+                return json.dumps({
+                    "protocol": protocol,
+                    "config": config,
+                    "query": query
+                }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             if protocol not in ("vless", "trojan", "hysteria2", "ss"):
                 return None
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
