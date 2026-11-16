@@ -189,6 +189,17 @@ class merge:
             if protocol not in ("vless", "trojan", "hysteria2", "ss"):
                 return None
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
+            if protocol == "ss" and (not parsed.hostname or not parsed.port or not parsed.username):
+                # 兼容旧式 ss://base64(method:password@server:port) 链接。
+                legacy = self.parse_share_link(link)
+                if not legacy:
+                    return None
+                return json.dumps({
+                    "protocol": protocol,
+                    "server": legacy.get("server", "").lower(),
+                    "port": legacy.get("port", ""),
+                    "credentials": legacy.get("id", "")
+                }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             if not parsed.hostname or not parsed.port or not parsed.username:
                 return None
             username = urllib.parse.unquote(parsed.username)
@@ -384,7 +395,7 @@ class merge:
             return re.search(str(pattern), name, re.I) is not None
         except re.error as exc:
             print(f"  -> Invalid Provider filter ignored: {exc}")
-            return True
+            return None
 
     def sub_merge(self):
         url_list = self.url_list
