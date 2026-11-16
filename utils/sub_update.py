@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json, re
 import requests
+import yaml
 
 
 class update():
@@ -56,6 +57,109 @@ class update():
             file = open(self.list_file, 'w', encoding='utf-8')
             file.write(updated_list)
             file.close()
+
+        self.update_clash_profiles()
+
+    def update_clash_profiles(self):
+        """解析启用的 Clash Profile，递归收集远程 Provider 地址及元数据。"""
+        profiles = [
+            item for item in self.raw_list
+            if item.get('enabled') and item.get('type') == 'clash_profile' and item.get('url')
+        ]
+        if not profiles:
+            return
+
+        changed = False
+        for profile in profiles:
+            try:
+                providers = self._collect_clash_providers(profile['url'])
+                if providers:
+                    if profile.get('providers') != providers:
+                        profile['providers'] = providers
+                        changed = True
+                    print(f"Clash Profile [{profile.get('id')}] discovered {len(providers)} remote providers.")
+                else:
+                    print(f"Clash Profile [{profile.get('id')}] has no providers; keeping cached provider list.")
+            except Exception as e:
+                print(f"Clash Profile [{profile.get('id')}] refresh failed; keeping cached provider list: {e}")
+
+        if changed:
+            updated_list = json.dumps(self.raw_list, sort_keys=False, indent=2, ensure_ascii=False)
+            with open(self.list_file, 'w', encoding='utf-8') as file:
+                file.write(updated_list)
+
+    def _collect_clash_providers(self, profile_url, max_depth=4):
+        """递归下载 YAML 配置以发现 proxy-providers；不解析节点内容。"""
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; SubscriptionProviderCollector/1.0)'
+        }
+        providers = []
+        recorded = set()
+        fetched_urls = set()
+
+        def walk_config(config, source_url, depth):
+            if depth > max_depth or not isinstance(config, dict):
+                return
+
+            provider_map = config.get('proxy-providers')
+            if not isinstance(provider_map, dict):
+                return
+
+            for provider_name, provider_config in provider_map.items():
+                if not isinstance(provider_config, dict):
+                    continue
+
+                provider_type = str(provider_config.get('type', 'http')).lower()
+                raw_url = provider_config.get('url')
+                if provider_type != 'http' or not isinstance(raw_url, str) or not raw_url.strip():
+                    continue
+
+                provider_url = urljoin(source_url, raw_url.strip())
+                if not provider_url.lower().startswith(('http://', 'https://')):
+                    continue
+
+                override = provider_config.get('override') or {}
+                if not isinstance(override, dict):
+                    override = {}
+
+                record_key = (str(provider_name), provider_url)
+                if record_key not in recorded:
+                    providers.append({
+                        'name': str(provider_name),
+                        'url': provider_url,
+                        'type': provider_type,
+                        'path': provider_config.get('path'),
+                        'interval': provider_config.get('interval'),
+                        'exclude_filter': provider_config.get('exclude-filter') or provider_config.get('exclude_filter'),
+                        'additional_prefix': override.get('additional-prefix') or override.get('additional_prefix') or '',
+                        'source_url': source_url,
+                        'depth': depth
+                    })
+                    recorded.add(record_key)
+
+                if provider_url in fetched_urls or depth >= max_depth:
+                    continue
+
+                fetched_urls.add(provider_url)
+                try:
+                    response = requests.get(provider_url, headers=headers, timeout=(5, 20))
+                    response.raise_for_status()
+                    child_text = response.content.decode('utf-8-sig', errors='replace')
+                    child_config = yaml.safe_load(child_text)
+                    if isinstance(child_config, dict):
+                        walk_config(child_config, response.url or provider_url, depth + 1)
+                except Exception as e:
+                    print(f"  Provider YAML discovery skipped [{provider_name}]: {e}")
+
+        response = requests.get(profile_url, headers=headers, timeout=(5, 25))
+        response.raise_for_status()
+        profile_text = response.content.decode('utf-8-sig', errors='replace')
+        profile_config = yaml.safe_load(profile_text)
+        if not isinstance(profile_config, dict):
+            raise ValueError("Clash Profile YAML root must be a mapping.")
+
+        walk_config(profile_config, response.url or profile_url, 0)
+        return providers
 
     def change_date(self,id,current_url):
         if id == 0:
