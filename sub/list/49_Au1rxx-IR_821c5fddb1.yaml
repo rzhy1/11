@@ -1,0 +1,365 @@
+proxies:
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1886174153
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.219
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: e3e0e1c3-599e-4ae1-8ad4-d9e90effacc4
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1886904132
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.219
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: e3e0e1c3-599e-4ae1-8ad4-d9e90effacc4
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1909216434
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.219
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: e3e0e1c3-599e-4ae1-8ad4-d9e90effacc4
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1920323166
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1920324777
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1920328648
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1923132142
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1926140973
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1926740100
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.221
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1927168587
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1927176559
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.221
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1927193130
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1934825038
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: random
+      flow: xtls-rprx-vision
+      name: vless-1934825040
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.219
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: e3e0e1c3-599e-4ae1-8ad4-d9e90effacc4
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1935612028
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1935804877
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1938584422
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.221
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1938584434
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1945511608
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.221
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1946055080
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.222
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1947501421
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.220
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1947501467
+      network: tcp
+      port: 8443
+      reality-opts:
+        public-key: 8NkTRxC5Q7bptx-8ADobkuhPK-ZN0kEEbzv6tCFGMzE
+        short-id: 69984b9e02545831
+      server: 198.16.113.221
+      servername: www.apple.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 98a24806-141a-43d3-b094-bd66c4eb93b8
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - vless-1886174153
+        - vless-1886904132
+        - vless-1909216434
+        - vless-1920323166
+        - vless-1920324777
+        - vless-1920328648
+        - vless-1923132142
+        - vless-1926140973
+        - vless-1926740100
+        - vless-1927168587
+        - vless-1927176559
+        - vless-1927193130
+        - vless-1934825038
+        - vless-1934825040
+        - vless-1935612028
+        - vless-1935804877
+        - vless-1938584422
+        - vless-1938584434
+        - vless-1945511608
+        - vless-1946055080
+        - vless-1947501421
+        - vless-1947501467
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - vless-1886174153
+        - vless-1886904132
+        - vless-1909216434
+        - vless-1920323166
+        - vless-1920324777
+        - vless-1920328648
+        - vless-1923132142
+        - vless-1926140973
+        - vless-1926740100
+        - vless-1927168587
+        - vless-1927176559
+        - vless-1927193130
+        - vless-1934825038
+        - vless-1934825040
+        - vless-1935612028
+        - vless-1935804877
+        - vless-1938584422
+        - vless-1938584434
+        - vless-1945511608
+        - vless-1946055080
+        - vless-1947501421
+        - vless-1947501467
+      type: select
+rules:
+    - MATCH,select

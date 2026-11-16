@@ -1,0 +1,226 @@
+proxies:
+    - client-fingerprint: chrome
+      name: vless-1827156108
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: firefox
+      name: vless-1827156655
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: firefox
+      name: vless-1853462285
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: ios
+      name: vless-1856198677
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: safari
+      name: vless-1856198833
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: chrome
+      name: vless-1859957276
+      network: raw
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: chrome
+      name: vless-1873593298
+      network: raw
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: chrome
+      name: vless-1874737491
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: safari
+      name: vless-1929113325
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: edge
+      name: vless-1930489333
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: firefox
+      name: vless-1932506031
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: firefox
+      name: vless-1941897247
+      network: tcp
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - client-fingerprint: chrome
+      name: vless-1945511636
+      network: raw
+      port: 25895
+      reality-opts:
+        public-key: jOVKSP-bS9OkILJ8Epz8hadh6qhavCrOiJYeF0NCn0k
+        short-id: a73f0410d728c823
+      server: ee.h1cloud.net
+      servername: www.samsung.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: f90b7d43-69e2-4b46-a672-8029bc6796a2
+    - cipher: chacha20-ietf-poly1305
+      name: shadowsocks-1947294092
+      password: D7VAn-qRmggr9bIZXCZbxRQ9nYGfkJ-l
+      port: 1355
+      server: dns22.m3hrzd.ir
+      type: ss
+      udp: true
+    - name: hysteria2-1947409529
+      password: 2a0fc918-9c61-451b-a9ad-e8f796e70f52
+      port: 443
+      server: 13.143.239.127
+      skip-cert-verify: false
+      sni: nl1.obxodvpn.us
+      type: hysteria2
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - vless-1827156108
+        - vless-1827156655
+        - vless-1853462285
+        - vless-1856198677
+        - vless-1856198833
+        - vless-1859957276
+        - vless-1873593298
+        - vless-1874737491
+        - vless-1929113325
+        - vless-1930489333
+        - vless-1932506031
+        - vless-1941897247
+        - vless-1945511636
+        - shadowsocks-1947294092
+        - hysteria2-1947409529
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - vless-1827156108
+        - vless-1827156655
+        - vless-1853462285
+        - vless-1856198677
+        - vless-1856198833
+        - vless-1859957276
+        - vless-1873593298
+        - vless-1874737491
+        - vless-1929113325
+        - vless-1930489333
+        - vless-1932506031
+        - vless-1941897247
+        - vless-1945511636
+        - shadowsocks-1947294092
+        - hysteria2-1947409529
+      type: select
+rules:
+    - MATCH,select

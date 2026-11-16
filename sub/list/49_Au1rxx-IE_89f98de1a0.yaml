@@ -1,0 +1,47 @@
+proxies:
+    - name: vless-1853352597
+      network: ws
+      port: 8880
+      server: 77.75.199.30
+      type: vless
+      udp: true
+      uuid: 6202b230-417c-4d8e-b624-0f71afa9c75d
+    - name: vless-1856962108
+      network: ws
+      port: 8880
+      server: 185.207.196.30
+      type: vless
+      udp: true
+      uuid: 6202b230-417c-4d8e-b624-0f71afa9c75d
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1947242974
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: _qSbW4JL4Ffqvj25vX-6a2ul9Qlj6PBdlF0ghsf_0RQ
+        short-id: a9dc98a7dc87a7dc
+      server: 45.132.176.61
+      servername: sopelka.yandex-api.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 1b7ee703-fa08-4305-8469-ae3e30e61e44
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - vless-1853352597
+        - vless-1856962108
+        - vless-1947242974
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - vless-1853352597
+        - vless-1856962108
+        - vless-1947242974
+      type: select
+rules:
+    - MATCH,select

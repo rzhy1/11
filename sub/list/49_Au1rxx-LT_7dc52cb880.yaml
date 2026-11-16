@@ -1,0 +1,94 @@
+proxies:
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827146021
+      password: 37Z4TFCYhfxcpc9Q
+      port: 9086
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827146201
+      password: mwgRg9hRq3b4Qnwb
+      port: 9068
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827967866
+      password: b8KkNDjEd5QqFyRm
+      port: 9002
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827967959
+      password: xaupMUvhptwxdDUg
+      port: 9012
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827967999
+      password: Lp27rqyJq72bZsqX
+      port: 9045
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827968179
+      password: JCJpbRbQZNw9XFZG
+      port: 9078
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827968200
+      password: M3t2ZEQcMGRWBjRa
+      port: 9011
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827968381
+      password: UkXRsXvR6buDMG2Y
+      port: 9001
+      server: 195.238.126.20
+      type: ss
+      udp: true
+    - cipher: aes-256-cfb
+      name: shadowsocks-1827968517
+      password: y9VURyNzJWNRYEGQ
+      port: 9008
+      server: 195.238.126.20
+      type: ss
+      udp: true
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - shadowsocks-1827146021
+        - shadowsocks-1827146201
+        - shadowsocks-1827967866
+        - shadowsocks-1827967959
+        - shadowsocks-1827967999
+        - shadowsocks-1827968179
+        - shadowsocks-1827968200
+        - shadowsocks-1827968381
+        - shadowsocks-1827968517
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - shadowsocks-1827146021
+        - shadowsocks-1827146201
+        - shadowsocks-1827967866
+        - shadowsocks-1827967959
+        - shadowsocks-1827967999
+        - shadowsocks-1827968179
+        - shadowsocks-1827968200
+        - shadowsocks-1827968381
+        - shadowsocks-1827968517
+      type: select
+rules:
+    - MATCH,select

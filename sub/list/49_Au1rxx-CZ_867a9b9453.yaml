@@ -1,0 +1,349 @@
+proxies:
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1827152843
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1835058280
+      network: raw
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1853340720
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1854108406
+      network: raw
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1867296179
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1923902920
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: random
+      flow: xtls-rprx-vision
+      name: vless-1930442169
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: hlY5ce1UsVIgE46y5PlEZhUsSaXUnCtoDLLaGrhInjw
+        short-id: 23d0950d60bc0d5b
+      server: 195.123.245.241
+      servername: gateway.icloud.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 7c053ca8-38cc-45e2-930c-eda1fd66f903
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1932656551
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1934952388
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1935621151
+      network: raw
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1937005528
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1937259667
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1937424915
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1938430907
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1938637462
+      network: raw
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1938651544
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1945547259
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1946054164
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1947014534
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: _SukRXeT9BnvrE3eQTrw8vwsrhu7w3hNTMTEK2xzHEw
+        short-id: ""
+      server: 46.8.113.64
+      servername: www.zabbix.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 55ad002b-6cdf-4d76-81bb-91f3f605afc5
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1947016653
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: 31.77.13.22
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1947016685
+      network: tcp
+      port: 2063
+      reality-opts:
+        public-key: MMpt_jWc4J3oySBdf5sPDVRkiWlZmOObth6A1scM9BM
+        short-id: ""
+      server: cz-prg.dontblockmepls.com
+      servername: rusbid.de
+      tls: true
+      type: vless
+      udp: true
+      uuid: b18d5990-96eb-4587-a386-7f8ef7591e6a
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - vless-1827152843
+        - vless-1835058280
+        - vless-1853340720
+        - vless-1854108406
+        - vless-1867296179
+        - vless-1923902920
+        - vless-1930442169
+        - vless-1932656551
+        - vless-1934952388
+        - vless-1935621151
+        - vless-1937005528
+        - vless-1937259667
+        - vless-1937424915
+        - vless-1938430907
+        - vless-1938637462
+        - vless-1938651544
+        - vless-1945547259
+        - vless-1946054164
+        - vless-1947014534
+        - vless-1947016653
+        - vless-1947016685
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - vless-1827152843
+        - vless-1835058280
+        - vless-1853340720
+        - vless-1854108406
+        - vless-1867296179
+        - vless-1923902920
+        - vless-1930442169
+        - vless-1932656551
+        - vless-1934952388
+        - vless-1935621151
+        - vless-1937005528
+        - vless-1937259667
+        - vless-1937424915
+        - vless-1938430907
+        - vless-1938637462
+        - vless-1938651544
+        - vless-1945547259
+        - vless-1946054164
+        - vless-1947014534
+        - vless-1947016653
+        - vless-1947016685
+      type: select
+rules:
+    - MATCH,select

@@ -1,0 +1,571 @@
+proxies:
+    - name: hysteria2-1827145501
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 160.187.100.109
+      skip-cert-verify: true
+      sni: vpn-tw-002.fastervpn.world
+      type: hysteria2
+    - name: hysteria2-1827145791
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: whatsapp.com
+      type: hysteria2
+    - name: hysteria2-1827145810
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: t.me
+      type: hysteria2
+    - alterId: 0
+      cipher: auto
+      name: vmess-1827158093
+      network: tcp
+      port: 21037
+      server: dog-tw.kunlun01dns.com
+      type: vmess
+      udp: true
+      uuid: 9464ca40-dd75-3742-a628-d931a9f413b2
+    - name: hysteria2-1827534209
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https://t.me/oneclickvpnkeys
+      type: hysteria2
+    - name: hysteria2-1827534250
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: 127.0.0.1
+      type: hysteria2
+    - name: hysteria2-1828371253
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: 103.115.109.49
+      type: hysteria2
+    - name: hysteria2-1828371338
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https://t.me/wangcai2
+      type: hysteria2
+    - name: hysteria2-1828371613
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 160.187.100.109
+      skip-cert-verify: true
+      sni: 160.187.100.109
+      type: hysteria2
+    - name: hysteria2-1828371723
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: "https://t.me/wangcai2\U0001F1E8\U0001F1F3"
+      type: hysteria2
+    - name: hysteria2-1828372303
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: vpn-tw-002.fastervpn.world\u0026insecure=1\u0026allowinsecure=1
+      type: hysteria2
+    - name: hysteria2-1828372344
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: vk.com
+      type: hysteria2
+    - name: hysteria2-1828372442
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: vpn-tw-002.fastervpn.world
+      type: hysteria2
+    - name: hysteria2-1828372700
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: 'https:'
+      type: hysteria2
+    - name: hysteria2-1828372812
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: speedtest.tinkoff.ru
+      type: hysteria2
+    - name: hysteria2-1828373437
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: css.rbxcdn.com
+      type: hysteria2
+    - name: hysteria2-1828374855
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https
+      type: hysteria2
+    - name: hysteria2-1830466990
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https%3a%2f%2ft.me%2fwangcai2%f0%9f%87%a8%f0%9f%87%b3
+      type: hysteria2
+    - name: hysteria2-1830467063
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https%3a%2f%2ft.me%2fwangcai2
+      type: hysteria2
+    - name: hysteria2-1832765000
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: ""
+      type: hysteria2
+    - name: hysteria2-1832765364
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 160.187.100.109
+      skip-cert-verify: true
+      sni: 127.0.0.1
+      type: hysteria2
+    - name: hysteria2-1832765412
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: t.me
+      type: hysteria2
+    - name: hysteria2-1832880276
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: google.com
+      type: hysteria2
+    - name: hysteria2-1853331426
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https%3a%2f%2ft.me%2foneclickvpnkeys
+      type: hysteria2
+    - name: hysteria2-1853331609
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 160.187.100.109
+      skip-cert-verify: true
+      sni: ""
+      type: hysteria2
+    - name: hysteria2-1853489128
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: vpn-tw-002.fastervpn.world%5cu0026insecure%3d1%5cu0026allowinsecure%3d1
+      type: hysteria2
+    - name: hysteria2-1853489224
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https%3a
+      type: hysteria2
+    - name: vless-1853976393
+      network: ws
+      port: 443
+      server: 60.248.219.53
+      servername: ty986gfazs.cainiaohub.xyz
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: vless-1853976410
+      network: ws
+      port: 443
+      server: 59.125.69.23
+      servername: ty986gfazs.cainiaohub.xyz
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: hysteria2-1854030061
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 160.187.100.109
+      skip-cert-verify: true
+      sni: "off"
+      type: hysteria2
+    - name: hysteria2-1854030136
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: "off"
+      type: hysteria2
+    - name: vless-1854030146
+      network: ws
+      port: 443
+      server: 60.248.219.78
+      servername: ty986gfazs.cainiaohub.xyz
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: hysteria2-1854059937
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: www.bing.com
+      type: hysteria2
+    - name: hysteria2-1854131186
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: ""
+      type: hysteria2
+    - name: vless-1858145906
+      network: ws
+      port: 8880
+      server: 154.194.12.40
+      type: vless
+      udp: true
+      uuid: 6202b230-417c-4d8e-b624-0f71afa9c75d
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1871234238
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1873593944
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1873977195
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1874697547
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - client-fingerprint: chrome
+      flow: xtls-rprx-vision
+      name: vless-1874737555
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - name: hysteria2-1877087157
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: vpn-tw-002.fastervpn.world
+      skip-cert-verify: true
+      sni: 127.0.0.1
+      type: hysteria2
+    - name: hysteria2-1877087164
+      password: H7mP2xY9kJ4nQ8wR5tF6vB3z
+      port: 443
+      server: 103.115.109.49
+      skip-cert-verify: true
+      sni: https://t.me/oneclickvpnkeys
+      type: hysteria2
+    - name: vless-1883377929
+      network: ws
+      port: 443
+      server: 59.125.69.22
+      servername: tse1.mm.bing.net
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: vless-1884133492
+      network: ws
+      port: 443
+      server: 151.242.189.40
+      servername: vlso5.1d.mom
+      skip-cert-verify: false
+      tls: true
+      type: vless
+      udp: true
+      uuid: a1de0630-5786-48a0-84f6-dc6f2de10d6d
+    - name: trojan-1938560229
+      password: 0a9f1f5a397bd427
+      port: 443
+      server: 125.227.86.45
+      skip-cert-verify: true
+      sni: tg.freecodes
+      type: trojan
+      udp: true
+    - name: vless-1940442208
+      network: ws
+      port: 443
+      server: 59.125.69.23
+      servername: ""
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: vless-1940442212
+      network: ws
+      port: 443
+      server: 60.248.219.78
+      servername: ""
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: vless-1943108707
+      network: ws
+      port: 8443
+      server: n04.jinggai.online
+      servername: n04.jinggai.online
+      skip-cert-verify: false
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - name: vless-1944434951
+      network: ws
+      port: 8443
+      server: n04.jinggai.online
+      servername: n04.jinggai.online
+      skip-cert-verify: false
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - name: vless-1945975743
+      network: ws
+      port: 8443
+      server: n04.jinggai.online
+      servername: n04.jinggai.online
+      skip-cert-verify: false
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - name: vless-1946592259
+      network: ws
+      port: 443
+      server: 60.248.219.78
+      servername: 60.248.219.78
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: c1c04450-bf71-4049-ad0c-9cf6d94d9f1f
+    - name: vless-1947302176
+      network: ws
+      port: 8443
+      server: n04.jinggai.online
+      servername: n04.jinggai.online
+      skip-cert-verify: true
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+    - client-fingerprint: firefox
+      flow: xtls-rprx-vision
+      name: vless-1947501304
+      network: tcp
+      port: 443
+      reality-opts:
+        public-key: Q8QwBSGN6J-FqgDV1pYNm0VThS_xNRyQ3DPPa9YZ3j4
+        short-id: cff998a4
+      server: 152.32.167.33
+      servername: www.amazon.com
+      tls: true
+      type: vless
+      udp: true
+      uuid: 91ad30e9-ab06-4b4c-9fb9-1c2aa97d8b3a
+proxy-groups:
+    - interval: 300
+      name: auto
+      proxies:
+        - hysteria2-1827145501
+        - hysteria2-1827145791
+        - hysteria2-1827145810
+        - vmess-1827158093
+        - hysteria2-1827534209
+        - hysteria2-1827534250
+        - hysteria2-1828371253
+        - hysteria2-1828371338
+        - hysteria2-1828371613
+        - hysteria2-1828371723
+        - hysteria2-1828372303
+        - hysteria2-1828372344
+        - hysteria2-1828372442
+        - hysteria2-1828372700
+        - hysteria2-1828372812
+        - hysteria2-1828373437
+        - hysteria2-1828374855
+        - hysteria2-1830466990
+        - hysteria2-1830467063
+        - hysteria2-1832765000
+        - hysteria2-1832765364
+        - hysteria2-1832765412
+        - hysteria2-1832880276
+        - hysteria2-1853331426
+        - hysteria2-1853331609
+        - hysteria2-1853489128
+        - hysteria2-1853489224
+        - vless-1853976393
+        - vless-1853976410
+        - hysteria2-1854030061
+        - hysteria2-1854030136
+        - vless-1854030146
+        - hysteria2-1854059937
+        - hysteria2-1854131186
+        - vless-1858145906
+        - vless-1871234238
+        - vless-1873593944
+        - vless-1873977195
+        - vless-1874697547
+        - vless-1874737555
+        - hysteria2-1877087157
+        - hysteria2-1877087164
+        - vless-1883377929
+        - vless-1884133492
+        - trojan-1938560229
+        - vless-1940442208
+        - vless-1940442212
+        - vless-1943108707
+        - vless-1944434951
+        - vless-1945975743
+        - vless-1946592259
+        - vless-1947302176
+        - vless-1947501304
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+    - name: select
+      proxies:
+        - auto
+        - hysteria2-1827145501
+        - hysteria2-1827145791
+        - hysteria2-1827145810
+        - vmess-1827158093
+        - hysteria2-1827534209
+        - hysteria2-1827534250
+        - hysteria2-1828371253
+        - hysteria2-1828371338
+        - hysteria2-1828371613
+        - hysteria2-1828371723
+        - hysteria2-1828372303
+        - hysteria2-1828372344
+        - hysteria2-1828372442
+        - hysteria2-1828372700
+        - hysteria2-1828372812
+        - hysteria2-1828373437
+        - hysteria2-1828374855
+        - hysteria2-1830466990
+        - hysteria2-1830467063
+        - hysteria2-1832765000
+        - hysteria2-1832765364
+        - hysteria2-1832765412
+        - hysteria2-1832880276
+        - hysteria2-1853331426
+        - hysteria2-1853331609
+        - hysteria2-1853489128
+        - hysteria2-1853489224
+        - vless-1853976393
+        - vless-1853976410
+        - hysteria2-1854030061
+        - hysteria2-1854030136
+        - vless-1854030146
+        - hysteria2-1854059937
+        - hysteria2-1854131186
+        - vless-1858145906
+        - vless-1871234238
+        - vless-1873593944
+        - vless-1873977195
+        - vless-1874697547
+        - vless-1874737555
+        - hysteria2-1877087157
+        - hysteria2-1877087164
+        - vless-1883377929
+        - vless-1884133492
+        - trojan-1938560229
+        - vless-1940442208
+        - vless-1940442212
+        - vless-1943108707
+        - vless-1944434951
+        - vless-1945975743
+        - vless-1946592259
+        - vless-1947302176
+        - vless-1947501304
+      type: select
+rules:
+    - MATCH,select
