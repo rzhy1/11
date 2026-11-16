@@ -52,8 +52,8 @@ class merge:
         self.readme_file = file_dir.get('readme_file')
         self.format_config = format_config
         self.url_list = self.read_list()
-        self.sub_merge()
-        if self.readme_file:
+        self.merge_succeeded = self.sub_merge()
+        if self.readme_file and self.merge_succeeded:
             self.readme_update()
 
     def read_list(self):
@@ -169,19 +169,56 @@ class merge:
         except Exception:
             return None
 
+    def node_fingerprint(self, link):
+        """完整连接参数指纹；忽略节点备注，保留传输/TLS/Reality 等差异。"""
+        try:
+            protocol, rest = link.strip().split("://", 1)
+            protocol = protocol.lower()
+            if protocol == "hy2":
+                protocol = "hysteria2"
+            raw = rest.split("#", 1)[0]
+            if protocol == "vmess":
+                payload = json.loads(base64_decode(raw.split("?", 1)[0]))
+                if not isinstance(payload, dict):
+                    return None
+                payload = {str(k).lower(): v for k, v in payload.items() if str(k).lower() not in ("ps", "remark", "remarks", "name")}
+                canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+                return protocol + "|" + canonical
+            if protocol == "ssr":
+                return protocol + "|" + raw.strip()
+            if protocol not in ("vless", "trojan", "hysteria2", "ss"):
+                return None
+            parsed = urllib.parse.urlsplit(protocol + "://" + raw)
+            if not parsed.hostname or not parsed.port or not parsed.username:
+                return None
+            username = urllib.parse.unquote(parsed.username)
+            password = urllib.parse.unquote(parsed.password or "")
+            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            # 排序参数但保留重复项；URI fragment 中的名称不参与指纹。
+            normalized_query = sorted((str(k).lower(), str(v)) for k, v in query)
+            payload = {
+                "protocol": protocol,
+                "server": (parsed.hostname or "").lower(),
+                "port": parsed.port,
+                "username": username,
+                "password": password,
+                "query": normalized_query
+            }
+            return json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        except Exception:
+            return None
+
     def deduplicate_nodes(self, nodes):
-        """基于核心指纹的智能去重"""
+        """基于完整连接参数去重，避免误删传输或安全配置不同的节点。"""
         print(f"\n--- Step 2: Performing advanced deduplication on {len(nodes)} nodes ---")
         unique_nodes_dict = {}
         invalid_count = 0
 
         for node_link in nodes:
-            parsed = self.parse_share_link(node_link)
-            if not parsed:
+            fingerprint = self.node_fingerprint(node_link)
+            if not fingerprint:
                 invalid_count += 1
                 continue
-
-            fingerprint = f"{parsed['protocol']}-{parsed['server']}-{parsed['port']}-{parsed['id']}"
             if fingerprint not in unique_nodes_dict:
                 unique_nodes_dict[fingerprint] = node_link
 
@@ -256,6 +293,8 @@ class merge:
                         params['pbk'] = reality_opts.get('public-key', '')
                         if reality_opts.get('short-id'):
                             params['sid'] = reality_opts.get('short-id')
+                        if reality_opts.get('spider-x'):
+                            params['spx'] = reality_opts.get('spider-x')
                 if params['type'] == 'ws':
                     ws_opts = proxy.get('ws-opts') or {}
                     headers = ws_opts.get('headers') or {}
@@ -276,13 +315,21 @@ class merge:
                 params = {'sni': proxy.get('sni') or proxy.get('servername') or server}
                 if proxy.get('skip-cert-verify'):
                     params['allowInsecure'] = 1
-                if proxy.get('network') == 'ws':
+                network = str(proxy.get('network') or 'tcp').lower()
+                if network == 'ws':
                     params['type'] = 'ws'
                     ws_opts = proxy.get('ws-opts') or {}
-                    headers = ws_opts.get('headers') or {}
-                    if headers.get('Host'):
-                        params['host'] = headers.get('Host')
+                    ws_headers = ws_opts.get('headers') or {}
+                    if ws_headers.get('Host'):
+                        params['host'] = ws_headers.get('Host')
                     params['path'] = ws_opts.get('path', '/')
+                elif network == 'grpc':
+                    params['type'] = 'grpc'
+                    grpc_opts = proxy.get('grpc-opts') or {}
+                    if grpc_opts.get('grpc-service-name'):
+                        params['serviceName'] = grpc_opts.get('grpc-service-name')
+                elif network not in ('tcp', 'none', ''):
+                    print(f"  -> Unsupported Trojan transport: {network}")
                 query_string = urllib.parse.urlencode(params)
                 return f"trojan://{urllib.parse.quote(str(password))}@{server}:{port}?{query_string}#{remarks_encoded}"
 
@@ -316,20 +363,43 @@ class merge:
         except Exception:
             return None
 
+    @staticmethod
+    def _provider_headers(provider):
+        raw = provider.get('header') or {}
+        if not isinstance(raw, dict):
+            return {}
+        headers = {}
+        for key, value in raw.items():
+            if isinstance(value, list):
+                value = value[0] if value else ''
+            if value is not None and str(value):
+                headers[str(key)] = str(value)
+        return headers
+
+    @staticmethod
+    def _provider_name_matches(pattern, name):
+        if not pattern:
+            return True
+        try:
+            return re.search(str(pattern), name, re.I) is not None
+        except re.error as exc:
+            print(f"  -> Invalid Provider filter ignored: {exc}")
+            return True
+
     def sub_merge(self):
         url_list = self.url_list
         list_dir, merge_dir = self.list_dir, self.merge_dir
 
+        # 仅清理本程序专用的临时目录；不再删除目录中的未知文件。
         os.makedirs(list_dir, exist_ok=True)
-        for f in os.listdir(list_dir):
-            file_path = os.path.join(list_dir, f)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
         VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://')
         headers = {'User-Agent': 'v2rayN/6.0'}
+        session = requests.Session()
+        unsupported_types = {}
+        conversion_failures = 0
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -337,9 +407,12 @@ class merge:
                 continue
             print(f"Processing [ID: {item_id}] {item_remarks} from {item_url}")
             try:
-                response = requests.get(item_url, headers=headers, timeout=15)
+                request_headers = dict(headers)
+                provider_meta = item.get('_provider') or {}
+                request_headers.update(self._provider_headers(provider_meta))
+                response = session.get(item_url, headers=request_headers, timeout=(5, 25))
                 response.raise_for_status()
-                raw_content = response.content.decode('utf-8', errors='ignore').strip()
+                raw_content = response.content.decode('utf-8-sig', errors='replace').strip()
                 if not raw_content:
                     raise ValueError("Downloaded content is empty.")
 
@@ -352,15 +425,21 @@ class merge:
                     plain_text = raw_content
 
                 yaml_parsed = False
-                if 'proxies:' in plain_text:
-                    try:
-                        data = yaml.safe_load(plain_text)
-                        if isinstance(data, dict) and isinstance(data.get('proxies'), list):
+                try:
+                    data = yaml.safe_load(plain_text)
+                    if isinstance(data, dict) and isinstance(data.get('proxies'), list):
                             print("  -> Content parsed as YAML, converting proxies...")
                             yaml_parsed = True
                             provider_meta = item.get('_provider') or {}
                             exclude_filter = provider_meta.get('exclude_filter')
+                            include_filter = provider_meta.get('filter')
+                            exclude_types = provider_meta.get('exclude_type') or []
+                            if isinstance(exclude_types, str):
+                                exclude_types = [exclude_types]
+                            exclude_types = {str(t).lower() for t in exclude_types}
                             additional_prefix = str(provider_meta.get('additional_prefix') or '')
+                            additional_suffix = str(provider_meta.get('additional_suffix') or '')
+                            proxy_name_rules = provider_meta.get('proxy_name') or {}
 
                             for proxy_dict in data['proxies']:
                                 if not isinstance(proxy_dict, dict):
@@ -369,21 +448,30 @@ class merge:
                                 proxy_data = dict(proxy_dict)
                                 proxy_name = str(proxy_data.get('name') or '')
 
-                                if exclude_filter and proxy_name:
-                                    try:
-                                        if re.search(str(exclude_filter), proxy_name):
-                                            continue
-                                    except re.error as regex_error:
-                                        print(f"  -> Invalid Provider exclude-filter ignored: {regex_error}")
-
-                                if additional_prefix:
-                                    proxy_data['name'] = additional_prefix + proxy_name
-
+                                proxy_type = str(proxy_data.get('type') or '').lower()
+                                if proxy_type in exclude_types:
+                                    continue
+                                if include_filter and not self._provider_name_matches(include_filter, proxy_name):
+                                    continue
+                                if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name):
+                                    continue
+                                if additional_prefix or additional_suffix:
+                                    proxy_data['name'] = additional_prefix + proxy_name + additional_suffix
+                                if isinstance(proxy_name_rules, dict):
+                                    for pattern, replacement in proxy_name_rules.items():
+                                        try:
+                                            proxy_data['name'] = re.sub(str(pattern), str(replacement), str(proxy_data.get('name') or ''))
+                                        except re.error as regex_error:
+                                            print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
                                 share_link = self.clash_to_share_link(proxy_data)
                                 if share_link:
                                     found_nodes.append(share_link)
-                    except yaml.YAMLError:
-                        pass
+                                else:
+                                    conversion_failures += 1
+                                    unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
+                except yaml.YAMLError as yaml_error:
+                    if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
+                        print(f"  -> YAML parse failed: {yaml_error}")
 
                 if not yaml_parsed:
                     found_nodes = [
@@ -403,12 +491,19 @@ class merge:
                 print()
 
         if not all_nodes_raw:
-            print('🔴🔴🔴🔴 Merging failed: No nodes collected.')
-            return
+            print('🔴🔴🔴🔴 Merging failed: No nodes collected; preserving previous output.')
+            return False
 
         unique_nodes = self.deduplicate_nodes(all_nodes_raw)
         final_node_count = len(unique_nodes)
         print(f'\nTotal unique node links after deduplication: {final_node_count}')
+        if final_node_count == 0:
+            print('🔴🔴🔴🔴 Merging failed: All collected nodes were invalid; preserving previous output.')
+            return False
+        if unsupported_types:
+            print("Unsupported/failed Clash proxy conversions: " + ", ".join(f"{k}={v}" for k, v in sorted(unsupported_types.items())))
+        if conversion_failures:
+            print(f"Clash conversion failures: {conversion_failures}")
 
         print('Packaging all collected nodes into a Base64 subscription...')
         final_plain_text = '\n'.join(sorted(unique_nodes))
@@ -416,9 +511,18 @@ class merge:
         print("  -> Packaging successful.")
 
         merge_path_final = os.path.join(self.merge_dir, 'sub_merge_base64.txt')
-        with open(merge_path_final, 'w', encoding='utf-8') as file:
-            file.write(final_b64_content)
+        temp_path = merge_path_final + '.tmp'
+        try:
+            with open(temp_path, 'w', encoding='utf-8', newline='') as file:
+                file.write(final_b64_content)
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(temp_path, merge_path_final)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
+        return True
 
     def readme_update(self):
         print('Updating README...')

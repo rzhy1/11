@@ -131,7 +131,12 @@ class update():
                         'path': provider_config.get('path'),
                         'interval': provider_config.get('interval'),
                         'exclude_filter': provider_config.get('exclude-filter') or provider_config.get('exclude_filter'),
+                        'filter': provider_config.get('filter'),
+                        'exclude_type': provider_config.get('exclude-type') or provider_config.get('exclude_type') or [],
+                        'header': provider_config.get('header') or {},
                         'additional_prefix': override.get('additional-prefix') or override.get('additional_prefix') or '',
+                        'additional_suffix': override.get('additional-suffix') or override.get('additional_suffix') or '',
+                        'proxy_name': override.get('proxy-name') or override.get('proxy_name') or {},
                         'source_url': source_url,
                         'depth': depth
                     })
