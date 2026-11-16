@@ -321,7 +321,7 @@
     "url": "https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/data/output/all.yaml",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 36,
@@ -429,7 +429,7 @@
     "url": "https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/all.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 48,
