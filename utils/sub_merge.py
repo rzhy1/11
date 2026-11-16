@@ -176,6 +176,10 @@ class merge:
             protocol = protocol.lower()
             if protocol == "hy2":
                 protocol = "hysteria2"
+            elif protocol == "hy":
+                protocol = "hysteria"
+            elif protocol == "wg":
+                protocol = "wireguard"
             raw = rest.split("#", 1)[0]
             if protocol == "vmess":
                 payload = json.loads(base64_decode(raw.split("?", 1)[0]))
@@ -200,7 +204,7 @@ class merge:
                     "config": config,
                     "query": query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if protocol not in ("vless", "trojan", "hysteria2", "ss"):
+            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss"):
                 return None
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
             if protocol == "ss" and (not parsed.hostname or not parsed.port or not parsed.username):
@@ -214,17 +218,23 @@ class merge:
                     "port": legacy.get("port", ""),
                     "credentials": legacy.get("id", "")
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if not parsed.hostname or not parsed.port or not parsed.username:
+            if not parsed.hostname:
                 return None
-            username = urllib.parse.unquote(parsed.username)
+            default_ports = {"http": 80, "https": 443, "socks": 1080, "socks5": 1080, "anytls": 443, "hysteria": 443, "tuic": 443, "wireguard": 443}
+            port = parsed.port or default_ports.get(protocol)
+            if not port:
+                return None
+            username = urllib.parse.unquote(parsed.username or "")
             password = urllib.parse.unquote(parsed.password or "")
             query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
             # 排序参数但保留重复项；URI fragment 中的名称不参与指纹。
             normalized_query = sorted((str(k).lower(), str(v)) for k, v in query)
+            if protocol in ("socks", "socks5"):
+                protocol = "socks5"
             payload = {
                 "protocol": protocol,
                 "server": (parsed.hostname or "").lower(),
-                "port": parsed.port,
+                "port": port,
                 "username": username,
                 "password": password,
                 "query": normalized_query
@@ -255,8 +265,15 @@ class merge:
         )
         return final_nodes
 
+    @staticmethod
+    def _uri_host(server):
+        host = str(server).strip()
+        if ':' in host and not (host.startswith('[') and host.endswith(']')):
+            return f'[{host}]'
+        return host
+
     def clash_to_share_link(self, proxy):
-        """将 Clash 节点字典转换为标准分享链接"""
+        """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。""
         try:
             if not isinstance(proxy, dict):
                 return None
@@ -383,7 +400,148 @@ class merge:
                     params['obfs-password'] = proxy.get('obfs-password')
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
-                return f"hysteria2://{urllib.parse.quote(str(password))}@{server}:{port}{query_part}#{remarks_encoded}"
+                return f"hysteria2://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
+
+            elif protocol == 'hysteria':
+                server, port = proxy.get('server'), proxy.get('port')
+                if not server:
+                    return None
+                params = {}
+                auth = proxy.get('auth-str') or proxy.get('auth')
+                if auth:
+                    params['auth'] = auth
+                params['protocol'] = proxy.get('protocol') or 'udp'
+                for source, target in (
+                    ('sni', 'sni'), ('alpn', 'alpn'), ('obfs', 'obfs'),
+                    ('ports', 'mport'), ('up', 'upmbps'), ('down', 'downmbps'),
+                    ('recv-window-conn', 'recv-window-conn'), ('recv-window', 'recv-window'),
+                    ('ca', 'ca'), ('ca-str', 'ca-str'), ('fingerprint', 'fingerprint')
+                ):
+                    value = proxy.get(source)
+                    if value not in (None, ''):
+                        params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                    params['insecure'] = 1
+                if proxy.get('fast-open'):
+                    params['fast-open'] = 1
+                if proxy.get('disable-mtu-discovery'):
+                    params['disable-mtu-discovery'] = 1
+                query_string = urllib.parse.urlencode(params)
+                query_part = f"?{query_string}" if query_string else ""
+                port_part = f":{port}" if port else ""
+                return f"hysteria://{self._uri_host(server)}{port_part}/{query_part}#{remarks_encoded}"
+
+            elif protocol == 'anytls':
+                server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
+                if not all([server, port, password]):
+                    return None
+                params = {}
+                for key in ('sni', 'alpn', 'fingerprint', 'client-fingerprint',
+                            'idle-session-check-interval', 'idle-session-timeout', 'min-idle-session'):
+                    value = proxy.get(key)
+                    if value not in (None, ''):
+                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                    params['insecure'] = 1
+                if 'udp' in proxy:
+                    params['udp'] = str(bool(proxy.get('udp'))).lower()
+                query_string = urllib.parse.urlencode(params)
+                query_part = f"?{query_string}" if query_string else ""
+                return f"anytls://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+            elif protocol == 'tuic':
+                server, port = proxy.get('server'), proxy.get('port')
+                uuid, password = proxy.get('uuid'), proxy.get('password')
+                if not all([server, port, uuid, password]):
+                    return None
+                params = {}
+                for key in ('sni', 'alpn', 'token', 'ip', 'heartbeat-interval',
+                            'disable-sni', 'reduce-rtt', 'request-timeout',
+                            'udp-relay-mode', 'congestion-controller',
+                            'max-udp-relay-packet-size', 'max-open-streams'):
+                    value = proxy.get(key)
+                    if value not in (None, ''):
+                        if isinstance(value, bool):
+                            value = str(value).lower()
+                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+                if proxy.get('skip-cert-verify') or proxy.get('allow-insecure'):
+                    params['skip-cert-verify'] = 1
+                if proxy.get('fast-open'):
+                    params['fast-open'] = 1
+                auth = urllib.parse.quote(str(uuid), safe='') + ':' + urllib.parse.quote(str(password), safe='')
+                query_string = urllib.parse.urlencode(params)
+                query_part = f"?{query_string}" if query_string else ""
+                return f"tuic://{auth}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+            elif protocol in ('http', 'socks5', 'socks'):
+                server, port = proxy.get('server'), proxy.get('port')
+                if not all([server, port]):
+                    return None
+                # Clash Verge Rev 的 URI 解析器不支持这些字段，遇到时不静默丢失。
+                if proxy.get('headers') or proxy.get('alpn'):
+                    return None
+                sni = proxy.get('sni') or proxy.get('servername')
+                if sni and str(sni).lower() != str(server).lower():
+                    return None
+                params = {}
+                if proxy.get('tls'):
+                    params['tls'] = 'true'
+                if proxy.get('skip-cert-verify') or proxy.get('insecure'):
+                    params['skip-cert-verify'] = 'true'
+                for key in ('fingerprint', 'ip-version'):
+                    if proxy.get(key) not in (None, ''):
+                        params[key] = proxy[key]
+                if protocol in ('socks5', 'socks') and 'udp' in proxy:
+                    params['udp'] = str(bool(proxy.get('udp'))).lower()
+                username, password = proxy.get('username'), proxy.get('password')
+                if password is not None and username is None:
+                    return None
+                if username is not None and ':' in str(username):
+                    return None
+                auth = ''
+                if username is not None:
+                    auth = urllib.parse.quote(str(username), safe='')
+                    if password is not None:
+                        auth += ':' + urllib.parse.quote(str(password), safe='')
+                    auth += '@'
+                scheme = 'socks5' if protocol in ('socks5', 'socks') else 'http'
+                query_string = urllib.parse.urlencode(params)
+                query_part = f"?{query_string}" if query_string else ""
+                return f"{scheme}://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+            elif protocol == 'wireguard':
+                private_key = proxy.get('private-key') or proxy.get('private_key')
+                peers = proxy.get('peers') or []
+                if isinstance(peers, list) and len(peers) > 1:
+                    return None
+                peer = peers[0] if isinstance(peers, list) and peers else {}
+                if not isinstance(peer, dict):
+                    return None
+                server = peer.get('server') or proxy.get('server')
+                port = peer.get('port') or proxy.get('port')
+                public_key = peer.get('public-key') or peer.get('public_key') or proxy.get('public-key') or proxy.get('public_key')
+                if not all([private_key, server, port, public_key]):
+                    return None
+                params = {}
+                for key, value in (
+                    ('publickey', public_key),
+                    ('address', proxy.get('ip') or proxy.get('address')),
+                    ('allowed-ips', peer.get('allowed-ips') or proxy.get('allowed-ips')),
+                    ('pre-shared-key', peer.get('pre-shared-key') or proxy.get('pre-shared-key')),
+                    ('reserved', peer.get('reserved') or proxy.get('reserved')),
+                    ('mtu', proxy.get('mtu')),
+                    ('dns', proxy.get('dns')),
+                    ('udp', proxy.get('udp')),
+                    ('remote-dns-resolve', proxy.get('remote-dns-resolve'))
+                ):
+                    if value not in (None, ''):
+                        if isinstance(value, bool):
+                            value = str(value).lower()
+                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+                if proxy.get('ipv6'):
+                    params['address'] = ','.join(filter(None, [str(params.get('address', '')), str(proxy['ipv6'])]))
+                query_string = urllib.parse.urlencode(params)
+                return f"wireguard://{urllib.parse.quote(str(private_key), safe='')}@{self._uri_host(server)}:{port}/?{query_string}#{remarks_encoded}"
 
             return None
         except Exception:
@@ -421,7 +579,7 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://')
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://')
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
