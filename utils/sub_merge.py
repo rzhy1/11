@@ -341,6 +341,7 @@ class merge:
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
                 elif network not in ('tcp', 'none', ''):
                     print(f"  -> Unsupported Trojan transport: {network}")
+                    return None
                 query_string = urllib.parse.urlencode(params)
                 return f"trojan://{urllib.parse.quote(str(password))}@{server}:{port}?{query_string}#{remarks_encoded}"
 
@@ -463,9 +464,9 @@ class merge:
                                             continue
                                     elif self._provider_name_matches(exclude_types, proxy_type):
                                         continue
-                                if include_filter and not self._provider_name_matches(include_filter, proxy_name):
+                                if include_filter and self._provider_name_matches(include_filter, proxy_name) is False:
                                     continue
-                                if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name):
+                                if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name) is True:
                                     continue
                                 if additional_prefix or additional_suffix:
                                     proxy_data['name'] = additional_prefix + proxy_name + additional_suffix
