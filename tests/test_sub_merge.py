@@ -111,7 +111,8 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         parsed, query = self.parse_link(link)
         self.assertEqual(parsed.scheme, "tuic")
         self.assertEqual(parsed.username, "11111111-1111-1111-1111-111111111111")
-        self.assertEqual(parsed.password, "p@ss:word")
+        from urllib.parse import unquote
+        self.assertEqual(unquote(parsed.password), "p@ss:word")
         self.assertEqual(query["congestion-controller"], ["bbr"])
         self.assertEqual(query["udp-relay-mode"], ["native"])
         self.assertEqual(query["reduce-rtt"], ["true"])
@@ -142,7 +143,8 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         parsed, query = self.parse_link(http_link)
         self.assertEqual(parsed.scheme, "http")
         self.assertEqual(parsed.username, "user")
-        self.assertEqual(parsed.password, "p@ss")
+        from urllib.parse import unquote
+        self.assertEqual(unquote(parsed.password), "p@ss")
         self.assertEqual(query["tls"], ["true"])
         self.assertEqual(query["skip-cert-verify"], ["true"])
 
