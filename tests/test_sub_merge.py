@@ -203,6 +203,30 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertIsNone(self.merger.clash_to_share_link(proxy))
         self.assertEqual(self.merger._last_conversion_failure_reason, "unsupported_headers")
 
+    def test_auth_failure_reasons_are_distinguished(self):
+        base = {"type": "http", "server": "proxy.example.com", "port": 8080}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "password": "secret"}))
+        self.assertEqual(self.merger._last_conversion_failure_reason, "password_without_username")
+
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "username": "user:name"}))
+        self.assertEqual(self.merger._last_conversion_failure_reason, "username_contains_colon")
+
+    def test_conversion_failures_are_counted_by_protocol_and_reason(self):
+        protocol_counts = {}
+        reason_counts = {}
+        merge._record_conversion_failure("http", "unsupported_sni", protocol_counts, reason_counts)
+        merge._record_conversion_failure("http", "unsupported_sni", protocol_counts, reason_counts)
+        merge._record_conversion_failure("socks5", "password_without_username", protocol_counts, reason_counts)
+
+        self.assertEqual(protocol_counts, {
+            "http": {"unsupported_sni": 2},
+            "socks5": {"password_without_username": 1}
+        })
+        self.assertEqual(reason_counts, {
+            "unsupported_sni": 2,
+            "password_without_username": 1
+        })
+
     def test_wireguard_single_peer_conversion_keeps_keys_and_network_fields(self):
         link = self.merger.clash_to_share_link({
             "type": "wireguard", "name": "WG", "server": "wg.example.com",
