@@ -439,5 +439,15 @@
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
+  },
+  {
+    "id": 49,
+    "remarks": "MrErrorSan Clash Profile",
+    "site": "https://github.com/MrErrorSan/free-v2ray-clash-verge-config",
+    "url": "https://raw.githubusercontent.com/MrErrorSan/free-v2ray-clash-verge-config/main/clash/profile.yaml",
+    "update_method": "auto",
+    "type": "clash_profile",
+    "enabled": true,
+    "providers": []
   }
 ]
