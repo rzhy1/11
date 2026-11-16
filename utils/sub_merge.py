@@ -65,6 +65,16 @@ class merge:
                 })
                 continue
 
+            # Profile 本身也作为原始 YAML 保存，便于后续程序追溯配置内容。
+            if item.get('url'):
+                sources.append({
+                    'id': item.get('id'),
+                    'remarks': item.get('remarks', 'Clash Profile'),
+                    'url': item.get('url'),
+                    'source_type': 'clash_profile',
+                    'provider': None
+                })
+
             providers = item.get('providers') or []
             print(
                 f"Clash Profile [ID: {item.get('id')}] "
