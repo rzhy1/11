@@ -454,61 +454,61 @@ class merge:
                 try:
                     data = yaml.safe_load(plain_text)
                     if isinstance(data, dict) and isinstance(data.get('proxies'), list):
-                            print("  -> Content parsed as YAML, converting proxies...")
-                            yaml_parsed = True
-                            provider_meta = item.get('_provider') or {}
-                            exclude_filter = provider_meta.get('exclude_filter')
-                            include_filter = provider_meta.get('filter')
-                            exclude_types = provider_meta.get('exclude_type') or []
-                            additional_prefix = str(provider_meta.get('additional_prefix') or '')
-                            additional_suffix = str(provider_meta.get('additional_suffix') or '')
-                            proxy_name_rules = provider_meta.get('proxy_name') or {}
+                        print("  -> Content parsed as YAML, converting proxies...")
+                        yaml_parsed = True
+                        provider_meta = item.get('_provider') or {}
+                        exclude_filter = provider_meta.get('exclude_filter')
+                        include_filter = provider_meta.get('filter')
+                        exclude_types = provider_meta.get('exclude_type') or []
+                        additional_prefix = str(provider_meta.get('additional_prefix') or '')
+                        additional_suffix = str(provider_meta.get('additional_suffix') or '')
+                        proxy_name_rules = provider_meta.get('proxy_name') or {}
 
-                            for proxy_dict in data['proxies']:
-                                if not isinstance(proxy_dict, dict):
-                                    continue
+                        for proxy_dict in data['proxies']:
+                            if not isinstance(proxy_dict, dict):
+                                continue
 
-                                proxy_data = dict(proxy_dict)
-                                proxy_name = str(proxy_data.get('name') or '')
+                            proxy_data = dict(proxy_dict)
+                            proxy_name = str(proxy_data.get('name') or '')
 
-                                proxy_type = str(proxy_data.get('type') or '').lower()
-                                if exclude_types:
-                                    if isinstance(exclude_types, (list, tuple, set)):
-                                        if proxy_type in {str(t).lower() for t in exclude_types}:
-                                            continue
-                                    elif self._provider_name_matches(exclude_types, proxy_type):
+                            proxy_type = str(proxy_data.get('type') or '').lower()
+                            if exclude_types:
+                                if isinstance(exclude_types, (list, tuple, set)):
+                                    if proxy_type in {str(t).lower() for t in exclude_types}:
                                         continue
-                                if include_filter and self._provider_name_matches(include_filter, proxy_name) is False:
+                                elif self._provider_name_matches(exclude_types, proxy_type):
                                     continue
-                                if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name) is True:
-                                    continue
-                                if additional_prefix or additional_suffix:
-                                    proxy_data['name'] = additional_prefix + proxy_name + additional_suffix
-                                if isinstance(proxy_name_rules, list):
-                                    for rule in proxy_name_rules:
-                                        if not isinstance(rule, dict) or 'pattern' not in rule:
-                                            continue
-                                        try:
-                                            proxy_data['name'] = re.sub(
-                                                str(rule.get('pattern', '')),
-                                                str(rule.get('target', '')),
-                                                str(proxy_data.get('name') or '')
-                                            )
-                                        except re.error as regex_error:
-                                            print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
-                                elif isinstance(proxy_name_rules, dict):
-                                    # 兼容旧缓存中以 pattern: target 表示的映射。
-                                    for pattern, replacement in proxy_name_rules.items():
-                                        try:
-                                            proxy_data['name'] = re.sub(str(pattern), str(replacement), str(proxy_data.get('name') or ''))
-                                        except re.error as regex_error:
-                                            print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
-                                share_link = self.clash_to_share_link(proxy_data)
-                                if share_link:
-                                    found_nodes.append(share_link)
-                                else:
-                                    conversion_failures += 1
-                                    unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
+                            if include_filter and self._provider_name_matches(include_filter, proxy_name) is False:
+                                continue
+                            if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name) is True:
+                                continue
+                            if additional_prefix or additional_suffix:
+                                proxy_data['name'] = additional_prefix + proxy_name + additional_suffix
+                            if isinstance(proxy_name_rules, list):
+                                for rule in proxy_name_rules:
+                                    if not isinstance(rule, dict) or 'pattern' not in rule:
+                                        continue
+                                    try:
+                                        proxy_data['name'] = re.sub(
+                                            str(rule.get('pattern', '')),
+                                            str(rule.get('target', '')),
+                                            str(proxy_data.get('name') or '')
+                                        )
+                                    except re.error as regex_error:
+                                        print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
+                            elif isinstance(proxy_name_rules, dict):
+                                # 兼容旧缓存中以 pattern: target 表示的映射。
+                                for pattern, replacement in proxy_name_rules.items():
+                                    try:
+                                        proxy_data['name'] = re.sub(str(pattern), str(replacement), str(proxy_data.get('name') or ''))
+                                    except re.error as regex_error:
+                                        print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
+                            share_link = self.clash_to_share_link(proxy_data)
+                            if share_link:
+                                found_nodes.append(share_link)
+                            else:
+                                conversion_failures += 1
+                                unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
