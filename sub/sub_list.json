@@ -370,9 +370,63 @@
   },
   {
     "id": 41,
-    "remarks": "lhttps://radarhub.top",
-    "site": "hhttps://radarhub.top/v2ray.txt",
-    "url": "https://radarhub.top/v2ray.txt",
+    "remarks": "radarhub.top",
+    "site": "https://radarhub.top/all_base64.txt",
+    "url": "https://radarhub.top/all_base64.txt",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 42,
+    "remarks": "wzmwayne/proxy-node",
+    "site": "https://github.com/wzmwayne/proxy-node",
+    "url": "https://raw.githubusercontent.com/wzmwayne/proxy-node/main/output/aio-all/clash.yaml",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 43,
+    "remarks": "share-daily/node",
+    "site": "https://github.com/share-daily/node",
+    "url": "https://raw.githubusercontent.com/share-daily/node/refs/heads/main/clash.yaml",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 44,
+    "remarks": "github.com",
+    "site": "https://github.com/chenzhihan1751-cyber/node-sub-zixf",
+    "url": "https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/base64.txt",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 45,
+    "remarks": "github.com",
+    "site": "https://github.com/sakazxc1400-creator/free-vpn-sub/data",
+    "url": "https://raw.githubusercontent.com/sakazxc1400-creator/free-vpn-sub/data/output/sub-full.txt",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 46,
+    "remarks": "leidahub.top",
+    "site": "https://leidahub.top",
+    "url": "https://leidahub.top/clash.yaml",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
+  },
+  {
+    "id": 47,
+    "remarks": "github.com 约7万",
+    "site": "https://github.com/morpheusadam/v2ray-config",
+    "url": "https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/all.txt",
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
