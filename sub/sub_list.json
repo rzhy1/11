@@ -370,7 +370,7 @@
   },
   {
     "id": 41,
-    "remarks": "radarhub.top",
+    "remarks": "radarhub.top约2.6万",
     "site": "https://radarhub.top/all_base64.txt",
     "url": "https://radarhub.top/all_base64.txt",
     "update_method": "auto",
@@ -420,7 +420,7 @@
     "url": "https://leidahub.top/all_base64.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 47,

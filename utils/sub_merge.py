@@ -309,9 +309,9 @@ class merge:
                 elif (proxy.get('sni') or proxy.get('servername')) and str(proxy.get('sni') or proxy.get('servername')).lower() != str(server).lower():
                     reason = 'unsupported_sni'
                 elif proxy.get('password') is not None and proxy.get('username') is None:
-                    reason = 'invalid_auth'
+                    reason = 'password_without_username'
                 elif proxy.get('username') is not None and ':' in str(proxy.get('username')):
-                    reason = 'invalid_auth'
+                    reason = 'username_contains_colon'
                 else:
                     reason = 'unsupported_option_or_invalid_value'
             elif protocol == 'ssr':
@@ -320,6 +320,13 @@ class merge:
                 reason = 'missing_required_field_or_unsupported_option'
         self._last_conversion_failure_reason = reason
         return None
+
+    @staticmethod
+    def _record_conversion_failure(protocol, reason, protocol_reason_counts, reason_counts):
+        protocol = str(protocol or 'unknown').lower()
+        protocol_reasons = protocol_reason_counts.setdefault(protocol, {})
+        protocol_reasons[reason] = protocol_reasons.get(reason, 0) + 1
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
 
     def _clash_to_share_link_impl(self, proxy):
         """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。"""
@@ -636,6 +643,7 @@ class merge:
         unsupported_types = {}
         conversion_failures = 0
         conversion_failure_reasons = {}
+        conversion_failures_by_protocol = {}
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -725,7 +733,11 @@ class merge:
                                 conversion_failures += 1
                                 unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
                                 reason = getattr(self, '_last_conversion_failure_reason', None) or 'conversion_failed'
-                                conversion_failure_reasons[reason] = conversion_failure_reasons.get(reason, 0) + 1
+                                self._record_conversion_failure(
+                                    proxy_type, reason,
+                                    conversion_failures_by_protocol,
+                                    conversion_failure_reasons
+                                )
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
@@ -764,6 +776,11 @@ class merge:
             print("Clash conversion failure reasons: " + ", ".join(
                 f"{reason}={count}" for reason, count in sorted(conversion_failure_reasons.items())
             ))
+            print("Clash conversion failures by protocol and reason:")
+            for protocol, reasons in sorted(conversion_failures_by_protocol.items()):
+                print("  " + protocol + ": " + ", ".join(
+                    f"{reason}={count}" for reason, count in sorted(reasons.items())
+                ))
 
         print('Packaging all collected nodes into a Base64 subscription...')
         final_plain_text = '\n'.join(sorted(unique_nodes))
