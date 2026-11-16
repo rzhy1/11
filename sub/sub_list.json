@@ -15,7 +15,7 @@
     "url": "https://jiang.netlify.app/",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 2,
@@ -24,7 +24,7 @@
     "url": "https://raw.githubusercontent.com/xiyaowong/freeFQ/main/v2ray",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 3,
@@ -33,7 +33,7 @@
     "url": "https://raw.githubusercontent.com/freefq/free/master/v2",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 4,
@@ -60,7 +60,7 @@
     "url": "https://raw.githubusercontent.com/xiaomike2024/changfeng_subscribe/main/mySubscribes/mySubscribeLinks.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 7,
@@ -78,7 +78,7 @@
     "url": "https://raw.githubusercontent.com/free18/v2ray/refs/heads/main/v.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": true
+    "enabled": false
   },
   {
     "id": 9,
@@ -120,7 +120,7 @@
     "id": 13,
     "remarks": "⭐github.com",
     "site": "https://github.com/Huibq/TrojanLinks",
-    "url": "https://raw.githubusercontent.com/Huibq/TrojanLinks/master/links/vmess",
+    "url": "https://raw.githubusercontent.com/Huibq/TrojanLinks/master/links/ssr",
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
@@ -317,7 +317,7 @@
   {
     "id": 35,
     "remarks": "⭐github.com⭐ 约2.7万",
-    "site": "https://github.com/Flikify/LeilaoMi/AutoMergePublicNodes-Optimized",
+    "site": "https://github.com/LeilaoMi/AutoMergePublicNodes-Optimized",
     "url": "https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/data/output/all.yaml",
     "update_method": "auto",
     "type": "subscription",
@@ -415,9 +415,9 @@
   },
   {
     "id": 46,
-    "remarks": "leidahub.top",
+    "remarks": "leidahub.top 约2.6万",
     "site": "https://leidahub.top",
-    "url": "https://leidahub.top/clash.yaml",
+    "url": "https://leidahub.top/all_base64.txt",
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
