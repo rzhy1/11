@@ -273,7 +273,7 @@ class merge:
         return host
 
     def clash_to_share_link(self, proxy):
-        """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。""
+        """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。"""
         try:
             if not isinstance(proxy, dict):
                 return None
