@@ -51,6 +51,12 @@ class MergeFingerprintTests(unittest.TestCase):
         link = "ss://" + legacy + "#legacy"
         self.assertIsNotNone(self.merger.node_fingerprint(link))
 
+    def test_ssr_remark_does_not_affect_fingerprint(self):
+        config = "example.com:443:origin:aes-256-cfb:plain:" + base64_encode("secret")
+        a = "ssr://" + base64_encode(config + "/?remarks=" + base64_encode("A"))
+        b = "ssr://" + base64_encode(config + "/?remarks=" + base64_encode("B"))
+        self.assertEqual(self.merger.node_fingerprint(a), self.merger.node_fingerprint(b))
+
     def test_invalid_provider_regex_is_ignored(self):
         self.assertIsNone(self.merger._provider_name_matches("[", "node"))
         self.assertTrue(self.merger._provider_name_matches("HK|Hong Kong", "HK-01"))
