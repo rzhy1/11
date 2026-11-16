@@ -208,21 +208,21 @@
   },
   {
     "id": 23,
-    "remarks": "changfengoss",
-    "site": "https://github.com/ronghuaxueleng/get_v2",
-    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/combine.yaml",
+    "remarks": "chaishpish/free_server_v2ray",
+    "site": "https://github.com/ronghuaxueleng/chaishpish/free_server_v2ray",
+    "url": "https://raw.githubusercontent.com/chaishpish/free_server_v2ray/main/@TFMTProto",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 24,
-    "remarks": "anaer/Sub",
-    "site": "https://github.com/anaer/Sub",
-    "url": "https://raw.githubusercontent.com/anaer/Sub/main/clash.yaml",
+    "remarks": "kooker/FreeSubsCheck",
+    "site": "https://github.com/anaer/kooker/FreeSubsCheck",
+    "url": "https://raw.githubusercontent.com/kooker/FreeSubsCheck/main/base64.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 25,
@@ -235,21 +235,21 @@
   },
   {
     "id": 26,
-    "remarks": "learnhard-cn/free_proxy_ss重复",
-    "site": "https://github.com/learnhard-cn/free_proxy_ss",
-    "url": "https://raw.githubusercontent.com/learnhard-cn/free_proxy_ss/main/clash/clash.provider.yaml|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/ssr/ssrsub|https://raw.fastgit.org/learnhard-cn/free_proxy_ss/main/v2ray/v2raysub",
+    "remarks": "Au1rxx/free-vpn-subscriptions",
+    "site": "https://github.com/learnhard-cn/Au1rxx",
+    "url": "https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/v2ray-base64.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 27,
-    "remarks": "changfengoss",
-    "site": "https://github.com/ronghuaxueleng/get_v2",
-    "url": "https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/changfengoss.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/jiang.yaml|https://raw.githubusercontent.com/ronghuaxueleng/get_v2/main/pub/cfmem.yaml",
+    "remarks": "zhuhaiuk/free-nodes",
+    "site": "https://github.com/ronghuaxueleng/zhuhaiuk",
+    "url": "https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/nodes.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 28,
@@ -334,9 +334,9 @@
   },
   {
     "id": 37,
-    "remarks": "mai19950/free_nodes",
-    "site": "https://github.com/mai19950/free_nodes",
-    "url": "https://raw.githubusercontent.com/mai19950/free_nodes/refs/heads/main/sub/v2ray/base64",
+    "remarks": "lanzm/MetaFetch",
+    "site": "https://github.com/lanzm/MetaFetch",
+    "url": "https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.txt",
     "update_method": "auto",
     "type": "subscription",
     "enabled": false
