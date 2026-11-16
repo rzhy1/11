@@ -73,5 +73,140 @@ class MergeFingerprintTests(unittest.TestCase):
         })
 
 
+class ClashVergeProtocolConversionTests(unittest.TestCase):
+    def setUp(self):
+        self.merger = merge.__new__(merge)
+
+    def parse_link(self, link):
+        from urllib.parse import urlsplit, parse_qs
+        parsed = urlsplit(link)
+        return parsed, parse_qs(parsed.query)
+
+    def test_hysteria_v1_conversion_keeps_auth_and_transport_options(self):
+        link = self.merger.clash_to_share_link({
+            "type": "hysteria", "name": "HY1", "server": "hy.example.com",
+            "port": 443, "auth-str": "secret token", "protocol": "udp",
+            "sni": "sni.example.com", "up": "30 Mbps", "down": "100 Mbps",
+            "obfs": "obfs-key", "ports": "20000-30000", "alpn": ["h3"]
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "hysteria")
+        self.assertEqual(parsed.hostname, "hy.example.com")
+        self.assertEqual(query["auth"], ["secret token"])
+        self.assertEqual(query["protocol"], ["udp"])
+        self.assertEqual(query["sni"], ["sni.example.com"])
+        self.assertEqual(query["upmbps"], ["30 Mbps"])
+        self.assertEqual(query["downmbps"], ["100 Mbps"])
+        self.assertEqual(query["mport"], ["20000-30000"])
+        self.assertEqual(query["alpn"], ["h3"])
+
+    def test_tuic_conversion_keeps_credentials_and_options(self):
+        link = self.merger.clash_to_share_link({
+            "type": "tuic", "name": "TUIC", "server": "tuic.example.com",
+            "port": 443, "uuid": "11111111-1111-1111-1111-111111111111",
+            "password": "p@ss:word", "sni": "sni.example.com",
+            "congestion-controller": "bbr", "udp-relay-mode": "native",
+            "reduce-rtt": True, "alpn": ["h3"], "skip-cert-verify": True
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "tuic")
+        self.assertEqual(parsed.username, "11111111-1111-1111-1111-111111111111")
+        self.assertEqual(parsed.password, "p@ss:word")
+        self.assertEqual(query["congestion-controller"], ["bbr"])
+        self.assertEqual(query["udp-relay-mode"], ["native"])
+        self.assertEqual(query["reduce-rtt"], ["true"])
+        self.assertEqual(query["skip-cert-verify"], ["1"])
+
+    def test_anytls_conversion_keeps_tls_options(self):
+        link = self.merger.clash_to_share_link({
+            "type": "anytls", "name": "AnyTLS", "server": "any.example.com",
+            "port": 443, "password": "secret", "sni": "sni.example.com",
+            "client-fingerprint": "chrome", "alpn": ["h2", "http/1.1"],
+            "skip-cert-verify": True, "idle-session-timeout": 45
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "anytls")
+        self.assertEqual(parsed.username, "secret")
+        self.assertEqual(query["sni"], ["sni.example.com"])
+        self.assertEqual(query["client-fingerprint"], ["chrome"])
+        self.assertEqual(query["alpn"], ["h2,http/1.1"])
+        self.assertEqual(query["insecure"], ["1"])
+        self.assertEqual(query["idle-session-timeout"], ["45"])
+
+    def test_http_and_socks5_conversion_keep_auth_and_supported_options(self):
+        http_link = self.merger.clash_to_share_link({
+            "type": "http", "name": "HTTP", "server": "proxy.example.com",
+            "port": 8080, "username": "user", "password": "p@ss",
+            "tls": True, "skip-cert-verify": True
+        })
+        parsed, query = self.parse_link(http_link)
+        self.assertEqual(parsed.scheme, "http")
+        self.assertEqual(parsed.username, "user")
+        self.assertEqual(parsed.password, "p@ss")
+        self.assertEqual(query["tls"], ["true"])
+        self.assertEqual(query["skip-cert-verify"], ["true"])
+
+        socks_link = self.merger.clash_to_share_link({
+            "type": "socks5", "name": "SOCKS", "server": "proxy.example.com",
+            "port": 1080, "username": "user", "password": "pass", "udp": True
+        })
+        parsed, query = self.parse_link(socks_link)
+        self.assertEqual(parsed.scheme, "socks5")
+        self.assertEqual(parsed.username, "user")
+        self.assertEqual(parsed.password, "pass")
+        self.assertEqual(query["udp"], ["true"])
+
+    def test_http_does_not_silently_drop_custom_headers_or_sni(self):
+        base = {"type": "http", "name": "HTTP", "server": "proxy.example.com", "port": 8080}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "headers": {"Host": ["alt.example.com"]}}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "sni": "alt.example.com"}))
+
+    def test_wireguard_single_peer_conversion_keeps_keys_and_network_fields(self):
+        link = self.merger.clash_to_share_link({
+            "type": "wireguard", "name": "WG", "server": "wg.example.com",
+            "port": 51820, "private-key": "client-private", "ip": "10.0.0.2/32",
+            "ipv6": "fd00::2/128", "mtu": 1420, "dns": ["1.1.1.1"],
+            "peers": [{
+                "public-key": "server-public", "allowed-ips": ["0.0.0.0/0"],
+                "pre-shared-key": "psk", "reserved": [1, 2, 3]
+            }]
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "wireguard")
+        self.assertEqual(parsed.username, "client-private")
+        self.assertEqual(parsed.hostname, "wg.example.com")
+        self.assertEqual(parsed.port, 51820)
+        self.assertEqual(query["publickey"], ["server-public"])
+        self.assertEqual(query["address"], ["10.0.0.2/32,fd00::2/128"])
+        self.assertEqual(query["allowed-ips"], ["0.0.0.0/0"])
+        self.assertEqual(query["pre-shared-key"], ["psk"])
+        self.assertEqual(query["reserved"], ["1,2,3"])
+        self.assertEqual(query["mtu"], ["1420"])
+
+    def test_wireguard_multiple_peers_are_rejected_instead_of_losing_peers(self):
+        self.assertIsNone(self.merger.clash_to_share_link({
+            "type": "wireguard", "server": "wg.example.com", "port": 51820,
+            "private-key": "client-private",
+            "peers": [{"public-key": "one"}, {"public-key": "two"}]
+        }))
+
+    def test_new_protocol_links_have_stable_fingerprints(self):
+        links = [
+            "hysteria://hy.example.com:443/?auth=secret&protocol=udp#A",
+            "tuic://11111111-1111-1111-1111-111111111111:secret@tuic.example.com:443/?sni=a.example#A",
+            "anytls://secret@any.example.com:443/?sni=a.example#A",
+            "http://user:pass@proxy.example.com:8080/?tls=true#A",
+            "socks5://user:pass@proxy.example.com:1080/?udp=true#A",
+            "wireguard://private-key@wg.example.com:51820/?publickey=public-key&address=10.0.0.2/32#A",
+        ]
+        for link in links:
+            with self.subTest(link=link):
+                self.assertIsNotNone(self.merger.node_fingerprint(link))
+                renamed = link.rsplit("#", 1)[0] + "#renamed"
+                self.assertEqual(self.merger.node_fingerprint(link),
+                                 self.merger.node_fingerprint(renamed))
+
+
+
 if __name__ == "__main__":
     unittest.main()
