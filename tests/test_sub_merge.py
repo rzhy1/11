@@ -62,11 +62,11 @@ class MergeFingerprintTests(unittest.TestCase):
         self.assertTrue(self.merger._provider_name_matches("HK|Hong Kong", "HK-01"))
 
     def test_provider_header_array_is_normalized(self):
-        headers = self.merger._provider_headers({
+        headers = self.merger._provider_headers({"header": {
             "Authorization": ["Bearer token", "ignored"],
             "X-Empty": [],
             "X-Number": 123
-        })
+        }})
         self.assertEqual(headers, {
             "Authorization": "Bearer token",
             "X-Number": "123"
@@ -162,6 +162,46 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         base = {"type": "http", "name": "HTTP", "server": "proxy.example.com", "port": 8080}
         self.assertIsNone(self.merger.clash_to_share_link({**base, "headers": {"Host": ["alt.example.com"]}}))
         self.assertIsNone(self.merger.clash_to_share_link({**base, "sni": "alt.example.com"}))
+
+    def test_ipv6_hosts_are_bracketed_for_vless_trojan_and_ss(self):
+        cases = [
+            ({"type": "vless", "name": "V6", "server": "2001:db8::1", "port": 443,
+              "uuid": "11111111-1111-1111-1111-111111111111"}, "vless://", "@[2001:db8::1]:443"),
+            ({"type": "trojan", "name": "V6", "server": "2001:db8::1", "port": 443,
+              "password": "secret"}, "trojan://", "@[2001:db8::1]:443"),
+            ({"type": "ss", "name": "V6", "server": "2001:db8::1", "port": 8388,
+              "password": "secret", "cipher": "aes-128-gcm"}, "ss://", "@[2001:db8::1]:8388"),
+        ]
+        for proxy, prefix, host_port in cases:
+            with self.subTest(protocol=proxy["type"]):
+                link = self.merger.clash_to_share_link(proxy)
+                self.assertTrue(link.startswith(prefix))
+                self.assertIn(host_port, link)
+                self.assertIsNotNone(self.merger.node_fingerprint(link))
+
+    def test_string_false_is_false_for_anytls_and_socks_udp(self):
+        anytls = self.merger.clash_to_share_link({
+            "type": "anytls", "server": "any.example.com", "port": 443,
+            "password": "secret", "udp": "false"
+        })
+        socks = self.merger.clash_to_share_link({
+            "type": "socks5", "server": "proxy.example.com", "port": 1080,
+            "udp": "false"
+        })
+        self.assertIn("udp=false", anytls)
+        self.assertIn("udp=false", socks)
+
+    def test_ss_plugin_options_are_rejected_to_prevent_loss(self):
+        base = {"type": "ss", "server": "ss.example.com", "port": 8388,
+                "password": "secret", "cipher": "aes-128-gcm"}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "plugin": "obfs-local"}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "plugin-opts": {"mode": "tls"}}))
+
+    def test_conversion_failure_reason_is_recorded(self):
+        proxy = {"type": "http", "server": "proxy.example.com", "port": 8080,
+                 "headers": {"Host": ["alt.example.com"]}}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason, "unsupported_headers")
 
     def test_wireguard_single_peer_conversion_keeps_keys_and_network_fields(self):
         link = self.merger.clash_to_share_link({

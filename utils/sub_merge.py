@@ -272,7 +272,56 @@ class merge:
             return f'[{host}]'
         return host
 
+    @staticmethod
+    def _as_bool(value):
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, (int, float)):
+            return value != 0
+        return str(value).strip().lower() in ('1', 'true', 'yes', 'on', 'enabled')
+
     def clash_to_share_link(self, proxy):
+        """转换节点，并记录无法转换的具体原因。"""
+        self._last_conversion_failure_reason = None
+        link = self._clash_to_share_link_impl(proxy)
+        if link:
+            return link
+        if not isinstance(proxy, dict):
+            reason = 'invalid_proxy'
+        else:
+            protocol = str(proxy.get('type', '')).lower()
+            server, port = proxy.get('server'), proxy.get('port')
+            if not protocol:
+                reason = 'missing_protocol'
+            elif not server:
+                reason = 'missing_server'
+            elif not port:
+                reason = 'missing_port'
+            elif protocol == 'ss' and (proxy.get('plugin') or proxy.get('plugin-opts')):
+                reason = 'unsupported_plugin_options'
+            elif protocol in ('http', 'socks5', 'socks'):
+                if proxy.get('headers'):
+                    reason = 'unsupported_headers'
+                elif proxy.get('alpn'):
+                    reason = 'unsupported_alpn'
+                elif (proxy.get('sni') or proxy.get('servername')) and str(proxy.get('sni') or proxy.get('servername')).lower() != str(server).lower():
+                    reason = 'unsupported_sni'
+                elif proxy.get('password') is not None and proxy.get('username') is None:
+                    reason = 'invalid_auth'
+                elif proxy.get('username') is not None and ':' in str(proxy.get('username')):
+                    reason = 'invalid_auth'
+                else:
+                    reason = 'unsupported_option_or_invalid_value'
+            elif protocol == 'ssr':
+                reason = 'unsupported_protocol'
+            else:
+                reason = 'missing_required_field_or_unsupported_option'
+        self._last_conversion_failure_reason = reason
+        return None
+
+    def _clash_to_share_link_impl(self, proxy):
         """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。"""
         try:
             if not isinstance(proxy, dict):
@@ -348,7 +397,7 @@ class merge:
                     if grpc_opts.get('grpc-service-name'):
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
                 query_string = urllib.parse.urlencode(params)
-                return f"vless://{uuid}@{server}:{port}?{query_string}#{remarks_encoded}"
+                return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
 
             elif protocol == 'trojan':
                 server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
@@ -374,15 +423,17 @@ class merge:
                     print(f"  -> Unsupported Trojan transport: {network}")
                     return None
                 query_string = urllib.parse.urlencode(params)
-                return f"trojan://{urllib.parse.quote(str(password))}@{server}:{port}?{query_string}#{remarks_encoded}"
+                return f"trojan://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
 
             elif protocol == 'ss':
                 server, port = proxy.get('server'), proxy.get('port')
                 password, cipher = proxy.get('password'), proxy.get('cipher')
                 if not all([server, port, password, cipher]):
                     return None
+                if proxy.get('plugin') or proxy.get('plugin-opts'):
+                    return None
                 creds = f"{cipher}:{password}"
-                return f"ss://{base64_encode(creds)}@{server}:{port}#{remarks_encoded}"
+                return f"ss://{base64_encode(creds)}@{self._uri_host(server)}:{port}#{remarks_encoded}"
 
             elif protocol in ['hysteria2', 'hy2']:
                 server, port = proxy.get('server'), proxy.get('port')
@@ -444,7 +495,7 @@ class merge:
                 if proxy.get('insecure') or proxy.get('skip-cert-verify'):
                     params['insecure'] = 1
                 if 'udp' in proxy:
-                    params['udp'] = str(bool(proxy.get('udp'))).lower()
+                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
                 return f"anytls://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
@@ -492,7 +543,7 @@ class merge:
                     if proxy.get(key) not in (None, ''):
                         params[key] = proxy[key]
                 if protocol in ('socks5', 'socks') and 'udp' in proxy:
-                    params['udp'] = str(bool(proxy.get('udp'))).lower()
+                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
                 username, password = proxy.get('username'), proxy.get('password')
                 if password is not None and username is None:
                     return None
@@ -584,6 +635,7 @@ class merge:
         session = requests.Session()
         unsupported_types = {}
         conversion_failures = 0
+        conversion_failure_reasons = {}
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -672,6 +724,8 @@ class merge:
                             else:
                                 conversion_failures += 1
                                 unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
+                                reason = getattr(self, '_last_conversion_failure_reason', None) or 'conversion_failed'
+                                conversion_failure_reasons[reason] = conversion_failure_reasons.get(reason, 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
@@ -707,6 +761,9 @@ class merge:
             print("Unsupported/failed Clash proxy conversions: " + ", ".join(f"{k}={v}" for k, v in sorted(unsupported_types.items())))
         if conversion_failures:
             print(f"Clash conversion failures: {conversion_failures}")
+            print("Clash conversion failure reasons: " + ", ".join(
+                f"{reason}={count}" for reason, count in sorted(conversion_failure_reasons.items())
+            ))
 
         print('Packaging all collected nodes into a Base64 subscription...')
         final_plain_text = '\n'.join(sorted(unique_nodes))
