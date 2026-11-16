@@ -316,9 +316,9 @@
   },
   {
     "id": 35,
-    "remarks": "Flikify/getNode",
-    "site": "https://github.com/Flikify/getNode",
-    "url": "https://raw.githubusercontent.com/Flikify/getNode/refs/heads/main/clash.yaml",
+    "remarks": "LeilaoMi/AutoMergePublicNodes-Optimized 约2.7万",
+    "site": "https://github.com/Flikify/LeilaoMi/AutoMergePublicNodes-Optimized",
+    "url": "https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/data/output/all.yaml",
     "update_method": "auto",
     "type": "subscription",
     "enabled": true
@@ -339,7 +339,7 @@
     "url": "https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.txt",
     "update_method": "auto",
     "type": "subscription",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": 38,
@@ -367,5 +367,14 @@
     "update_method": "change_date",
     "type": "subscription",
     "enabled": false
+  },
+  {
+    "id": 41,
+    "remarks": "lhttps://radarhub.top",
+    "site": "hhttps://radarhub.top/v2ray.txt",
+    "url": "https://radarhub.top/v2ray.txt",
+    "update_method": "auto",
+    "type": "subscription",
+    "enabled": true
   }
 ]
