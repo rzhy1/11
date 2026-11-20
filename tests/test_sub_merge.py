@@ -285,8 +285,8 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(query["auth"], ["secret token"])
         self.assertEqual(query["protocol"], ["udp"])
         self.assertEqual(query["peer"], ["sni.example.com"])
-        self.assertEqual(query["upmbps"], ["30 Mbps"])
-        self.assertEqual(query["downmbps"], ["100 Mbps"])
+        self.assertEqual(query["upmbps"], ["30"])
+        self.assertEqual(query["downmbps"], ["100"])
         self.assertEqual(query["obfs"], ["xplus"])
         self.assertEqual(query["obfsParam"], ["obfs-key"])
         self.assertNotIn("sni", query)
@@ -821,8 +821,8 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(query["peer"], ["sni.example.com"])
         self.assertEqual(query["obfs"], ["xplus"])
         self.assertEqual(query["obfsParam"], ["secret-obfs"])
-        self.assertEqual(query["upmbps"], ["30 Mbps"])
-        self.assertEqual(query["downmbps"], ["100 Mbps"])
+        self.assertEqual(query["upmbps"], ["30"])
+        self.assertEqual(query["downmbps"], ["100"])
         self.assertNotIn("sni", query)
 
     def test_hysteria_v1_rejects_nonstandard_fields_and_missing_bandwidth(self):
@@ -830,6 +830,21 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                 "up": "30", "down": "100"}
         self.assertIsNone(self.merger.clash_to_share_link({**base, "recv-window-conn": 1024}))
         self.assertIsNone(self.merger.clash_to_share_link({**base, "up": None}))
+
+
+    def test_hysteria_v1_normalizes_bandwidth_units_and_rejects_invalid_rates(self):
+        link = self.merger.clash_to_share_link({
+            "type": "hysteria", "server": "hy.example.com", "port": 443,
+            "up": "1 Gbps", "down": "800 Mbps"
+        })
+        from urllib.parse import parse_qs, urlsplit
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["upmbps"], ["1000"])
+        self.assertEqual(query["downmbps"], ["800"])
+        self.assertIsNone(self.merger.clash_to_share_link({
+            "type": "hysteria", "server": "hy.example.com", "port": 443,
+            "up": "100 Kbps", "down": "800 Mbps"
+        }))
 
     def test_anytls_client_fingerprint_uses_fp_parameter(self):
         link = self.merger.clash_to_share_link({
