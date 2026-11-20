@@ -592,6 +592,8 @@ class merge:
                 params = {}
                 plugin = proxy.get('plugin')
                 plugin_opts = proxy.get('plugin-opts') or {}
+                if plugin_opts and not plugin:
+                    return None
                 if plugin:
                     if not isinstance(plugin_opts, dict):
                         return None
