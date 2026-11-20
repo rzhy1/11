@@ -249,23 +249,115 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(query["mport"], ["20000-30000"])
         self.assertEqual(query["alpn"], ["h3"])
 
-    def test_tuic_conversion_keeps_credentials_and_options(self):
+    def test_tuic_conversion_keeps_credentials_and_standard_uri_options(self):
         link = self.merger.clash_to_share_link({
             "type": "tuic", "name": "TUIC", "server": "tuic.example.com",
             "port": 443, "uuid": "11111111-1111-1111-1111-111111111111",
             "password": "p@ss:word", "sni": "sni.example.com",
             "congestion-controller": "bbr", "udp-relay-mode": "native",
-            "reduce-rtt": True, "alpn": ["h3"], "skip-cert-verify": True
+            "reduce-rtt": True, "alpn": ["h3"], "skip-cert-verify": True,
+            "disable-sni": True, "heartbeat-interval": 10000,
+            "fast-open": True, "max-open-streams": 32
         })
         parsed, query = self.parse_link(link)
         self.assertEqual(parsed.scheme, "tuic")
         self.assertEqual(parsed.username, "11111111-1111-1111-1111-111111111111")
         from urllib.parse import unquote
         self.assertEqual(unquote(parsed.password), "p@ss:word")
-        self.assertEqual(query["congestion-controller"], ["bbr"])
-        self.assertEqual(query["udp-relay-mode"], ["native"])
-        self.assertEqual(query["reduce-rtt"], ["true"])
-        self.assertEqual(query["skip-cert-verify"], ["1"])
+        self.assertEqual(query["congestion_control"], ["bbr"])
+        self.assertEqual(query["udp_relay_mode"], ["native"])
+        self.assertEqual(query["reduce_rtt"], ["true"])
+        self.assertEqual(query["allow_insecure"], ["1"])
+        self.assertEqual(query["disable_sni"], ["true"])
+        self.assertEqual(query["heartbeat_interval"], ["10000"])
+        self.assertEqual(query["fast_open"], ["true"])
+        self.assertEqual(query["max_open_streams"], ["32"])
+
+    def test_tuic_v4_token_auth_is_supported_and_mixed_auth_is_rejected(self):
+        link = self.merger.clash_to_share_link({
+            "type": "tuic", "name": "TUIC v4", "server": "tuic.example.com",
+            "port": 443, "token": "legacy-token"
+        })
+        parsed, _ = self.parse_link(link)
+        self.assertEqual(parsed.username, "legacy-token")
+        self.assertIsNone(self.merger.clash_to_share_link({
+            "type": "tuic", "server": "tuic.example.com", "port": 443,
+            "token": "token", "uuid": "uuid", "password": "password"
+        }))
+
+    def test_snell_conversion_keeps_portable_fields(self):
+        link = self.merger.clash_to_share_link({
+            "type": "snell", "name": "Snell", "server": "snell.example.com",
+            "port": 44046, "psk": "p@ss word", "version": 4,
+            "obfs-opts": {"mode": "http", "host": "cdn.example.com"}
+        })
+        parsed, query = self.parse_link(link)
+        from urllib.parse import unquote
+        self.assertEqual(parsed.scheme, "snell")
+        self.assertEqual(unquote(parsed.username), "p@ss word")
+        self.assertEqual(parsed.port, 44046)
+        self.assertEqual(query["version"], ["4"])
+        self.assertEqual(query["obfs"], ["http"])
+        self.assertEqual(query["obfs-host"], ["cdn.example.com"])
+
+    def test_snell_rejects_unrepresentable_or_invalid_options(self):
+        base = {"type": "snell", "server": "snell.example.com",
+                "port": 44046, "psk": "secret", "version": 4}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "udp": True}))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "obfs-opts": {"mode": "shadow-tls", "host": "cdn.example.com"}
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "obfs-opts": {"mode": "tls"}
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "version": 7}))
+
+    def test_snell_auth_version_and_obfs_are_part_of_fingerprint(self):
+        base = "snell://secret@snell.example.com:44046?version=4&obfs=http&obfs-host=cdn.example.com"
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(base.replace("secret@", "other@")))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(base.replace("version=4", "version=5")))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(base.replace("obfs=http", "obfs=tls")))
+
+    def test_hysteria2_port_hopping_and_tls_pin_are_preserved(self):
+        link = self.merger.clash_to_share_link({
+            "type": "hysteria2", "name": "HY2", "server": "hy2.example.com",
+            "ports": "443,20000-20010", "password": "secret",
+            "sni": "sni.example.com", "fingerprint": "sha256-pin",
+            "obfs": "gecko", "obfs-password": "obfs-secret",
+            "skip-cert-verify": True, "alpn": ["h3"]
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "hysteria2")
+        self.assertEqual(parsed.netloc.split("@", 1)[1], "hy2.example.com:443,20000-20010")
+        self.assertEqual(query["pinSHA256"], ["sha256-pin"])
+        self.assertEqual(query["obfs"], ["gecko"])
+        self.assertEqual(query["insecure"], ["1"])
+        self.assertEqual(query["sni"], ["sni.example.com"])
+
+    def test_hysteria2_port_hopping_fingerprint_is_stable_and_distinct(self):
+        a = "hysteria2://secret@hy2.example.com:443,20000-20010/?sni=hy2.example.com"
+        b = "hysteria2://secret@hy2.example.com:443,20000-20020/?sni=hy2.example.com"
+        self.assertNotEqual(self.merger.node_fingerprint(a), self.merger.node_fingerprint(b))
+        self.assertEqual(self.merger.node_fingerprint(a),
+                         self.merger.node_fingerprint(a.replace("443,20000-20010", "443,20000-20010")))
+
+    def test_hysteria2_rejects_unrepresentable_tuning_and_invalid_ports(self):
+        base = {"type": "hysteria2", "server": "hy2.example.com",
+                "port": 443, "password": "secret"}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "hop-interval": 15}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "up": "30 Mbps"}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "ports": "0,443"}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "ports": "443,70000"}))
+
+    def test_ssh_yaml_conversion_is_explicitly_rejected(self):
+        proxy = {"type": "ssh", "server": "ssh.example.com", "port": 22,
+                 "username": "root", "private-key": "PRIVATE KEY"}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "ssh_share_link_not_portable")
 
     def test_anytls_conversion_keeps_tls_options(self):
         link = self.merger.clash_to_share_link({
