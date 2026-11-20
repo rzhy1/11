@@ -18,7 +18,8 @@ def base64_decode(s):
         missing_padding = len(s) % 4
         if missing_padding:
             s += '=' * (4 - missing_padding)
-        return base64.b64decode(s).decode('utf-8', 'ignore')
+        decoded = base64.b64decode(s, validate=True)
+        return decoded.decode('utf-8', 'strict')
     except Exception:
         return ""
 
@@ -217,8 +218,7 @@ class merge:
                 parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
                 if not parsed_naive.hostname:
                     return None
-                return json.dumps({
-                    "protocol": "naive",
+                return json.dumps({                    "protocol": "naive",
                     "scheme": parsed_naive.scheme.lower(),
                     "server": parsed_naive.hostname.lower(),
                     "port": parsed_naive.port or (443 if parsed_naive.scheme.endswith("https") else 80),
@@ -257,6 +257,8 @@ class merge:
                 "port": port,
                 "username": username,
                 "password": password,
+                # 路径可能承载协议配置（例如 SSH/Mieru/custom URI），必须参与指纹。
+                "path": parsed.path or "",
                 "query": normalized_query
             }
             return json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
@@ -267,21 +269,27 @@ class merge:
         """基于完整连接参数去重，避免误删传输或安全配置不同的节点。"""
         print(f"\n--- Step 2: Performing advanced deduplication on {len(nodes)} nodes ---")
         unique_nodes_dict = {}
-        invalid_count = 0
+        unparseable_preserved = 0
 
         for node_link in nodes:
-            fingerprint = self.node_fingerprint(node_link)
-            if not fingerprint:
-                invalid_count += 1
+            raw_link = str(node_link).strip()
+            if not raw_link:
                 continue
+            fingerprint = self.node_fingerprint(raw_link)
+            if not fingerprint:
+                # 未知协议或暂不支持的 URI 不应因指纹解析失败而被丢弃。
+                # 对无法安全规范化的链接采用完整原文精确去重，避免误合并。
+                fingerprint = "raw|" + raw_link
+                unparseable_preserved += 1
             if fingerprint not in unique_nodes_dict:
-                unique_nodes_dict[fingerprint] = node_link
+                unique_nodes_dict[fingerprint] = raw_link
 
         final_nodes = list(unique_nodes_dict.values())
-        removed_count = len(nodes) - len(final_nodes) - invalid_count
+        removed_count = len(nodes) - len(final_nodes)
         print(
-            f"Deduplication complete. Removed {removed_count} duplicate nodes, "
-            f"skipped {invalid_count} invalid/unparseable nodes."
+            f"Deduplication complete. Removed {removed_count} duplicate nodes; "
+            f"preserved {unparseable_preserved} unique unparseable/unknown links "
+            f"using exact-text deduplication."
         )
         return final_nodes
 
@@ -437,8 +445,7 @@ class merge:
                     if paths:
                         params['path'] = paths[0]
                 elif params['type'] in ('xhttp', 'splithttp'):
-                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
-                    if xhttp_opts.get('path'):
+                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}                    if xhttp_opts.get('path'):
                         params['path'] = xhttp_opts['path']
                     if xhttp_opts.get('host'):
                         params['host'] = xhttp_opts['host']
@@ -697,8 +704,7 @@ class merge:
         if not pattern:
             return True
         try:
-            return re.search(str(pattern), name) is not None
-        except re.error as exc:
+            return re.search(str(pattern), name) is not None        except re.error as exc:
             print(f"  -> Invalid Provider filter ignored: {exc}")
             return None
 
