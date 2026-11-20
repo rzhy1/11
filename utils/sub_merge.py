@@ -1165,6 +1165,63 @@ class merge:
             print(f"  -> Invalid Provider filter ignored: {exc}")
             return None
 
+    def _provider_proxy_allowed(self, proxy, provider):
+        """按 Provider 的名称、协议包含/排除规则判断节点是否保留。"""
+        name = str(proxy.get('name') or '')
+        proxy_type = str(proxy.get('type') or '').lower()
+
+        exclude_types = provider.get('exclude_type') or []
+        if isinstance(exclude_types, (list, tuple, set)):
+            if proxy_type in {str(item).lower() for item in exclude_types}:
+                return False
+        elif exclude_types and self._provider_name_matches(exclude_types, proxy_type) is True:
+            return False
+
+        include_filter = provider.get('filter')
+        if include_filter and self._provider_name_matches(include_filter, name) is False:
+            return False
+
+        exclude_filter = provider.get('exclude_filter')
+        if exclude_filter and self._provider_name_matches(exclude_filter, name) is True:
+            return False
+        return True
+
+    @staticmethod
+    def _provider_node_name(name, provider):
+        """先执行正则改名，再添加前后缀，避免前缀破坏 ^ 锚点规则。"""
+        result = str(name or '')
+        rules = provider.get('proxy_name') or {}
+
+        def replacement_text(value):
+            return re.sub(
+                r'\$(\d+)',
+                lambda match: r'\g<' + match.group(1) + '>',
+                str(value)
+            )
+
+        if isinstance(rules, list):
+            for rule in rules:
+                if not isinstance(rule, dict) or 'pattern' not in rule:
+                    continue
+                try:
+                    result = re.sub(
+                        str(rule.get('pattern', '')),
+                        replacement_text(rule.get('target', '')),
+                        result
+                    )
+                except re.error as exc:
+                    print(f"  -> Invalid Provider proxy-name rule ignored: {exc}")
+        elif isinstance(rules, dict):
+            for pattern, target in rules.items():
+                try:
+                    result = re.sub(str(pattern), replacement_text(target), result)
+                except re.error as exc:
+                    print(f"  -> Invalid Provider proxy-name rule ignored: {exc}")
+
+        prefix = str(provider.get('additional_prefix') or '')
+        suffix = str(provider.get('additional_suffix') or '')
+        return prefix + result + suffix
+
     def sub_merge(self):
         url_list = self.url_list
         list_dir, merge_dir = self.list_dir, self.merge_dir
@@ -1224,45 +1281,11 @@ class merge:
                                 continue
 
                             proxy_data = dict(proxy_dict)
-                            proxy_name = str(proxy_data.get('name') or '')
-
-                            proxy_type = str(proxy_data.get('type') or '').lower()
-                            if exclude_types:
-                                if isinstance(exclude_types, (list, tuple, set)):
-                                    if proxy_type in {str(t).lower() for t in exclude_types}:
-                                        continue
-                                elif self._provider_name_matches(exclude_types, proxy_type):
-                                    continue
-                            if include_filter and self._provider_name_matches(include_filter, proxy_name) is False:
+                            if not self._provider_proxy_allowed(proxy_data, provider_meta):
                                 continue
-                            if exclude_filter and self._provider_name_matches(exclude_filter, proxy_name) is True:
-                                continue
-                            if additional_prefix or additional_suffix:
-                                proxy_data['name'] = additional_prefix + proxy_name + additional_suffix
-                            if isinstance(proxy_name_rules, list):
-                                for rule in proxy_name_rules:
-                                    if not isinstance(rule, dict) or 'pattern' not in rule:
-                                        continue
-                                    try:
-                                        replacement = re.sub(
-                                            r'\$(\d+)',
-                                            lambda match: r'\g<' + match.group(1) + '>',
-                                            str(rule.get('target', ''))
-                                        )
-                                        proxy_data['name'] = re.sub(
-                                            str(rule.get('pattern', '')),
-                                            replacement,
-                                            str(proxy_data.get('name') or '')
-                                        )
-                                    except re.error as regex_error:
-                                        print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
-                            elif isinstance(proxy_name_rules, dict):
-                                # 兼容旧缓存中以 pattern: target 表示的映射。
-                                for pattern, replacement in proxy_name_rules.items():
-                                    try:
-                                        proxy_data['name'] = re.sub(str(pattern), str(replacement), str(proxy_data.get('name') or ''))
-                                    except re.error as regex_error:
-                                        print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
+                            proxy_data['name'] = self._provider_node_name(
+                                proxy_data.get('name'), provider_meta
+                            )
                             share_link = self.clash_to_share_link(proxy_data)
                             if share_link:
                                 expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard', 'socks': 'socks5', 'naive': 'naive+https', 'mieru': 'mierus'}.get(proxy_type, proxy_type)
