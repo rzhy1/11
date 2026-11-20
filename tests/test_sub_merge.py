@@ -359,6 +359,73 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(self.merger._last_conversion_failure_reason,
                          "ssh_share_link_not_portable")
 
+    def test_naive_https_and_quic_links_preserve_supported_options(self):
+        https = self.merger.clash_to_share_link({
+            "type": "naive", "name": "Naive HTTPS", "server": "naive.example.com",
+            "port": 443, "username": "user", "password": "p@ss",
+            "padding": True, "extra-headers": "X-Test: value"
+        })
+        parsed, query = self.parse_link(https)
+        from urllib.parse import unquote
+        self.assertEqual(parsed.scheme, "naive+https")
+        self.assertEqual(unquote(parsed.username), "user")
+        self.assertEqual(unquote(parsed.password), "p@ss")
+        self.assertEqual(query["padding"], ["true"])
+        self.assertEqual(query["extra-headers"], ["X-Test: value"])
+
+        quic = self.merger.clash_to_share_link({
+            "type": "naive", "name": "Naive QUIC", "server": "naive.example.com",
+            "port": 443, "quic": True
+        })
+        parsed, _ = self.parse_link(quic)
+        self.assertEqual(parsed.scheme, "naive+quic")
+
+    def test_naive_rejects_incomplete_auth_and_nonportable_options(self):
+        base = {"type": "naive", "server": "naive.example.com", "port": 443}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "username": "user"}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "sni": "other.example.com"}))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "extra-headers": "X-Test: one\\r\\nX-Evil: two"
+        }))
+
+    def test_naive_quic_raw_link_is_fingerprinted(self):
+        link = "naive+quic://user:pass@naive.example.com:443?padding=true#Naive"
+        self.assertIsNotNone(self.merger.node_fingerprint(link))
+        self.assertNotEqual(self.merger.node_fingerprint(link),
+                            self.merger.node_fingerprint(link.replace("padding=true", "padding=false")))
+
+    def test_mieru_simple_link_preserves_all_supported_options(self):
+        link = self.merger.clash_to_share_link({
+            "type": "mieru", "name": "Mieru", "server": "mieru.example.com",
+            "port-range": "20000-20010", "transport": "UDP",
+            "username": "user", "password": "p@ss", "profile": "work",
+            "mtu": 1400, "multiplexing": "MULTIPLEXING_HIGH",
+            "handshake-mode": "HANDSHAKE_NO_WAIT", "traffic-pattern": "AQID"
+        })
+        parsed, query = self.parse_link(link)
+        from urllib.parse import unquote
+        self.assertEqual(parsed.scheme, "mierus")
+        self.assertEqual(unquote(parsed.username), "user")
+        self.assertEqual(unquote(parsed.password), "p@ss")
+        self.assertEqual(query["profile"], ["work"])
+        self.assertEqual(query["port"], ["20000-20010"])
+        self.assertEqual(query["protocol"], ["UDP"])
+        self.assertEqual(query["mtu"], ["1400"])
+        self.assertEqual(query["multiplexing"], ["MULTIPLEXING_HIGH"])
+        self.assertEqual(query["handshake-mode"], ["HANDSHAKE_NO_WAIT"])
+        self.assertEqual(query["traffic-pattern"], ["AQID"])
+
+    def test_mieru_rejects_invalid_multiplexing_handshake_and_mtu(self):
+        base = {"type": "mieru", "server": "mieru.example.com",
+                "port": 2999, "username": "user", "password": "pass"}
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "multiplexing": "MULTIPLEXING_UNKNOWN"
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "handshake-mode": "HANDSHAKE_FAST"
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "mtu": 1500}))
+
     def test_anytls_conversion_keeps_tls_options(self):
         link = self.merger.clash_to_share_link({
             "type": "anytls", "name": "AnyTLS", "server": "any.example.com",
