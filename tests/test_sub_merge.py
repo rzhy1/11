@@ -1057,10 +1057,6 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vmess: vmess_unsupported_network=2", output)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class FirstStageLosslessTransportTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)
@@ -1166,3 +1162,7 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
         ))
         self.assertIsNone(rejected)
 
+
+
+if __name__ == "__main__":
+    unittest.main()
