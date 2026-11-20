@@ -342,7 +342,7 @@ class merge:
                 reason = 'missing_protocol'
             elif not server:
                 reason = 'missing_server'
-            elif not port:
+            elif not port and not (protocol == 'mieru' and proxy.get('port-range')):
                 reason = 'missing_port'
             elif protocol == 'ss' and (proxy.get('plugin') or proxy.get('plugin-opts')):
                 reason = 'unsupported_plugin_options'
