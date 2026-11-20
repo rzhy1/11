@@ -250,10 +250,12 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(parsed.password, "pass")
         self.assertEqual(query["udp"], ["true"])
 
-    def test_http_does_not_silently_drop_custom_headers_or_sni(self):
+    def test_http_rejects_unrepresentable_headers_and_keeps_sni(self):
         base = {"type": "http", "name": "HTTP", "server": "proxy.example.com", "port": 8080}
         self.assertIsNone(self.merger.clash_to_share_link({**base, "headers": {"Host": ["alt.example.com"]}}))
-        self.assertIsNone(self.merger.clash_to_share_link({**base, "sni": "alt.example.com"}))
+        link = self.merger.clash_to_share_link({**base, "sni": "alt.example.com"})
+        self.assertIn("tls=true", link)
+        self.assertIn("sni=alt.example.com", link)
 
     def test_ipv6_hosts_are_bracketed_for_vless_trojan_and_ss(self):
         cases = [
@@ -283,11 +285,19 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertIn("udp=false", anytls)
         self.assertIn("udp=false", socks)
 
-    def test_ss_plugin_options_are_rejected_to_prevent_loss(self):
+    def test_ss_plugin_options_are_preserved_or_rejected(self):
         base = {"type": "ss", "server": "ss.example.com", "port": 8388,
                 "password": "secret", "cipher": "aes-128-gcm"}
-        self.assertIsNone(self.merger.clash_to_share_link({**base, "plugin": "obfs-local"}))
-        self.assertIsNone(self.merger.clash_to_share_link({**base, "plugin-opts": {"mode": "tls"}}))
+        link = self.merger.clash_to_share_link({
+            **base, "plugin": "obfs-local",
+            "plugin-opts": {"mode": "tls", "host": "cdn.example.com"}
+        })
+        from urllib.parse import parse_qs, urlsplit
+        plugin = parse_qs(urlsplit(link).query)["plugin"][0]
+        self.assertEqual(plugin, "obfs-local;mode=tls;host=cdn.example.com")
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "plugin-opts": {"mode": "tls"}
+        }))
 
     def test_conversion_failure_reason_is_recorded(self):
         proxy = {"type": "http", "server": "proxy.example.com", "port": 8080,
@@ -295,13 +305,15 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertIsNone(self.merger.clash_to_share_link(proxy))
         self.assertEqual(self.merger._last_conversion_failure_reason, "unsupported_headers")
 
-    def test_auth_failure_reasons_are_distinguished(self):
+    def test_http_basic_auth_preserves_empty_username_and_escapes_colon(self):
         base = {"type": "http", "server": "proxy.example.com", "port": 8080}
-        self.assertIsNone(self.merger.clash_to_share_link({**base, "password": "secret"}))
-        self.assertEqual(self.merger._last_conversion_failure_reason, "password_without_username")
+        password_only = self.merger.clash_to_share_link({**base, "password": "secret"})
+        self.assertIn("://:secret@", password_only)
 
-        self.assertIsNone(self.merger.clash_to_share_link({**base, "username": "user:name"}))
-        self.assertEqual(self.merger._last_conversion_failure_reason, "username_contains_colon")
+        colon_username = self.merger.clash_to_share_link({
+            **base, "username": "user:name", "password": "secret"
+        })
+        self.assertIn("user%3Aname:secret@", colon_username)
 
     def test_conversion_failures_are_counted_by_protocol_and_reason(self):
         protocol_counts = {}
