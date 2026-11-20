@@ -978,8 +978,6 @@ class merge:
                 params = {}
                 sni = proxy.get('sni') or proxy.get('servername')
                 tls_enabled = self._as_bool(proxy.get('tls')) or bool(sni)
-                if tls_enabled:
-                    params['tls'] = 'true'
                 if sni:
                     params['sni'] = str(sni)
                 if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('insecure')):
