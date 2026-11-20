@@ -218,7 +218,8 @@ class merge:
                 parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
                 if not parsed_naive.hostname:
                     return None
-                return json.dumps({                    "protocol": "naive",
+                return json.dumps({
+                    "protocol": "naive",
                     "scheme": parsed_naive.scheme.lower(),
                     "server": parsed_naive.hostname.lower(),
                     "port": parsed_naive.port or (443 if parsed_naive.scheme.endswith("https") else 80),
