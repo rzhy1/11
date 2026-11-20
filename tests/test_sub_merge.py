@@ -3,6 +3,10 @@ import json
 import os
 import sys
 import unittest
+import tempfile
+from unittest.mock import Mock, patch
+
+import sub_merge
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "utils"))
 from sub_merge import merge, base64_encode
@@ -716,6 +720,42 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                 self.assertEqual(self.merger.node_fingerprint(link),
                                  self.merger.node_fingerprint(renamed))
 
+
+
+class ClashYamlMergeRegressionTests(unittest.TestCase):
+    def test_yaml_proxy_conversion_does_not_raise_undefined_proxy_type(self):
+        yaml_text = """proxies:
+  - name: regression-vless
+    type: vless
+    server: example.com
+    port: 443
+    uuid: 11111111-1111-1111-1111-111111111111
+"""
+        response = Mock()
+        response.content = yaml_text.encode("utf-8")
+        response.raise_for_status = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            merger = merge.__new__(merge)
+            merger.list_dir = os.path.join(temp_dir, "list")
+            merger.merge_dir = temp_dir
+            merger.url_list = [{
+                "id": 1,
+                "remarks": "regression-test",
+                "url": "https://example.invalid/proxies.yaml"
+            }]
+
+            session = Mock()
+            session.get.return_value = response
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                self.assertTrue(merger.sub_merge())
+
+            output_path = os.path.join(temp_dir, "sub_merge_base64.txt")
+            with open(output_path, "r", encoding="utf-8") as output_file:
+                merged_text = sub_merge.base64_decode(output_file.read())
+
+        self.assertIn("vless://", merged_text)
+        self.assertIn("example.com:443", merged_text)
 
 
 if __name__ == "__main__":
