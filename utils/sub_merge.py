@@ -1282,6 +1282,7 @@ class merge:
                                 continue
 
                             proxy_data = dict(proxy_dict)
+                            proxy_type = str(proxy_data.get('type') or '').lower()
                             if not self._provider_proxy_allowed(proxy_data, provider_meta):
                                 continue
                             proxy_data['name'] = self._provider_node_name(
