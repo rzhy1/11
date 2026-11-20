@@ -350,6 +350,11 @@ class merge:
         else:
             protocol = str(proxy.get('type', '')).lower()
             server, port = proxy.get('server'), proxy.get('port')
+            if protocol == 'wireguard':
+                peers = proxy.get('peers') or []
+                peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
+                server = peer.get('server') or server
+                port = peer.get('port') or port
             if not protocol:
                 reason = 'missing_protocol'
             elif not server:
@@ -422,10 +427,16 @@ class merge:
             if not protocol:
                 return None
 
-            # Hysteria 允许省略端口；Mieru 使用 port 或 port-range，
-            # 其余协议统一要求合法单端口，避免输出无法解析的 URI。
+            # Hysteria 允许省略端口；Mieru 使用 port 或 port-range；
+            # WireGuard 的端点通常定义在第一个 peer 中，其余协议使用顶层 port。
             port = proxy.get('port')
-            if protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+            if protocol == 'wireguard':
+                peers = proxy.get('peers') or []
+                peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
+                port = peer.get('port') or port
+            elif protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+                return None
+            if protocol == 'wireguard' and not self._valid_port(port):
                 return None
             if protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 return None
