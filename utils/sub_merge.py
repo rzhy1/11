@@ -1064,7 +1064,7 @@ class merge:
                     params['padding'] = str(self._as_bool(proxy.get('padding'))).lower()
                 extra_headers = proxy.get('extra-headers')
                 if extra_headers not in (None, ''):
-                    if not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\\x00', '\\r', '\\n')):
+                    if not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\x00', '\r', '\n')):
                         return None
                     params['extra-headers'] = extra_headers
                 query = urllib.parse.urlencode(params)
