@@ -779,11 +779,11 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
 
     def test_vmess_failure_diagnostics_identify_invalid_transport_shapes(self):
         cases = [
-            {"network": "ws", "ws-opts": []},
-            {"network": "h2", "h2-opts": {"headers": []}},
-            {"network": "grpc", "grpc-opts": []},
-            {"network": "httpupgrade", "http-upgrade-opts": []},
-            {"network": "tcp", "tcp-opts": {"header": []}},
+            {"network": "ws", "ws-opts": ["bad"]},
+            {"network": "h2", "h2-opts": {"headers": ["bad"]}},
+            {"network": "grpc", "grpc-opts": ["bad"]},
+            {"network": "httpupgrade", "http-upgrade-opts": ["bad"]},
+            {"network": "tcp", "tcp-opts": {"header": ["bad"]}},
         ]
         base = {"type": "vmess", "server": "example.com", "port": 443,
                 "uuid": "11111111-1111-1111-1111-111111111111"}
