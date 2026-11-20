@@ -543,6 +543,8 @@ class merge:
             return 'vmess_missing_uuid'
 
         network = str(proxy.get('network') or 'tcp').lower()
+        if network in ('raw', 'none'):
+            network = 'tcp'
         supported_networks = ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade')
         if network not in supported_networks:
             safe_network = network[:32]
@@ -804,6 +806,8 @@ class merge:
                 if not all([server, port, uuid]):
                     return None
                 network = str(proxy.get('network') or 'tcp').lower()
+                if network in ('raw', 'none'):
+                    network = 'tcp'
                 if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
                     return None
                 vmess_config = {
@@ -1019,6 +1023,20 @@ class merge:
                             return None
                         params['host'] = host
                     params['path'] = ws_opts.get('path', '/')
+                    max_early_data = ws_opts.get('max-early-data')
+                    if max_early_data not in (None, '', 0, '0'):
+                        try:
+                            early_data_size = int(max_early_data)
+                        except (TypeError, ValueError):
+                            return None
+                        if early_data_size <= 0:
+                            return None
+                        params['ed'] = str(early_data_size)
+                    early_data_header = ws_opts.get('early-data-header-name')
+                    if early_data_header not in (None, ''):
+                        if not isinstance(early_data_header, str):
+                            return None
+                        params['eh'] = early_data_header
                 elif network == 'httpupgrade':
                     upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
                     if not isinstance(upgrade_opts, dict):
