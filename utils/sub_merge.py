@@ -578,59 +578,85 @@ class merge:
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
                 if not all([server, port, uuid]):
                     return None
+                network = str(proxy.get('network') or 'tcp').lower()
+                reality_opts = proxy.get('reality-opts')
+                reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
+                tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
                 params = {
-                    'type': proxy.get('network', 'tcp'),
-                    'security': 'tls' if proxy.get('tls') else 'none'
+                    'type': network,
+                    'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')
                 }
                 if proxy.get('flow'):
                     params['flow'] = proxy.get('flow')
-                if params['security'] == 'tls':
+                if tls_enabled:
                     sni = proxy.get('servername') or proxy.get('sni', '')
                     if sni:
                         params['sni'] = sni
                     if proxy.get('client-fingerprint'):
                         params['fp'] = proxy.get('client-fingerprint')
-                    reality_opts = proxy.get('reality-opts')
-                    if isinstance(reality_opts, dict):
-                        params['security'] = 'reality'
-                        params['pbk'] = reality_opts.get('public-key', '')
-                        if reality_opts.get('short-id'):
-                            params['sid'] = reality_opts.get('short-id')
-                        if reality_opts.get('spider-x'):
-                            params['spx'] = reality_opts.get('spider-x')
-                if params['type'] == 'ws':
+                    alpn = proxy.get('alpn')
+                    if alpn not in (None, ''):
+                        params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else str(alpn)
+                    if self._as_bool(proxy.get('skip-cert-verify')):
+                        params['allowInsecure'] = 1
+                if reality_enabled:
+                    public_key = reality_opts.get('public-key')
+                    if not public_key:
+                        return None
+                    params['pbk'] = public_key
+                    if reality_opts.get('short-id'):
+                        params['sid'] = reality_opts.get('short-id')
+                    if reality_opts.get('spider-x'):
+                        params['spx'] = reality_opts.get('spider-x')
+
+                if network == 'ws':
                     ws_opts = proxy.get('ws-opts') or {}
                     headers = ws_opts.get('headers') or {}
                     if headers.get('Host'):
                         params['host'] = headers.get('Host')
                     params['path'] = ws_opts.get('path', '/')
-                elif params['type'] == 'grpc':
+                    if ws_opts.get('max-early-data') not in (None, ''):
+                        params['ed'] = ws_opts.get('max-early-data')
+                    if ws_opts.get('early-data-header-name'):
+                        params['eh'] = ws_opts.get('early-data-header-name')
+                elif network == 'grpc':
                     grpc_opts = proxy.get('grpc-opts') or {}
                     if grpc_opts.get('grpc-service-name'):
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
-                elif params['type'] in ('http', 'h2'):
-                    http_opts = proxy.get('http-opts') or {}
+                elif network in ('http', 'h2'):
+                    http_opts = proxy.get('http-opts') or proxy.get('h2-opts') or {}
                     headers = http_opts.get('headers') or {}
-                    hosts = headers.get('Host') or headers.get('host') or []
+                    hosts = headers.get('Host') or headers.get('host') or http_opts.get('host') or []
                     paths = http_opts.get('path') or ['/']
                     if isinstance(hosts, str):
                         hosts = [hosts]
                     if isinstance(paths, str):
                         paths = [paths]
+                    if len(hosts) > 1 or len(paths) > 1:
+                        return None
                     if hosts:
                         params['host'] = hosts[0]
                     if paths:
                         params['path'] = paths[0]
-                elif params['type'] in ('xhttp', 'splithttp'):
+                    if http_opts.get('method'):
+                        params['method'] = http_opts['method']
+                elif network in ('xhttp', 'splithttp'):
                     xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
-                    if xhttp_opts.get('path'):
-                        params['path'] = xhttp_opts['path']
-                    if xhttp_opts.get('host'):
-                        params['host'] = xhttp_opts['host']
-                    if xhttp_opts.get('mode'):
-                        params['mode'] = xhttp_opts['mode']
-                    if xhttp_opts.get('extra'):
-                        params['extra'] = json.dumps(xhttp_opts['extra'], ensure_ascii=False, separators=(',', ':'))
+                    if not isinstance(xhttp_opts, dict):
+                        return None
+                    for key in ('path', 'host', 'mode'):
+                        value = xhttp_opts.get(key)
+                        if value not in (None, ''):
+                            if not isinstance(value, str):
+                                return None
+                            params[key] = value
+                    extra = xhttp_opts.get('extra')
+                    if extra not in (None, ''):
+                        if not isinstance(extra, dict):
+                            return None
+                        params['extra'] = json.dumps(extra, ensure_ascii=False, separators=(',', ':'))
+                    if xhttp_opts.get('x-padding-bytes') not in (None, ''):
+                        params['x_padding_bytes'] = xhttp_opts['x-padding-bytes']
                 query_string = urllib.parse.urlencode(params)
                 return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
 
