@@ -177,13 +177,17 @@ class merge:
         try:
             protocol, rest = link.strip().split("://", 1)
             protocol = protocol.lower()
+            if protocol in ("naive+https", "naive+http"):
+                protocol = "naive"
+                raw = link.strip().split("#", 1)[0]
+            else:
+                raw = rest.split("#", 1)[0]
             if protocol == "hy2":
                 protocol = "hysteria2"
             elif protocol == "hy":
                 protocol = "hysteria"
             elif protocol == "wg":
                 protocol = "wireguard"
-            raw = rest.split("#", 1)[0]
             if protocol == "vmess":
                 payload = json.loads(base64_decode(raw.split("?", 1)[0]))
                 if not isinstance(payload, dict):
