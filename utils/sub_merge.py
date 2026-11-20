@@ -281,7 +281,8 @@ class merge:
                 # 未知协议或暂不支持的 URI 不应因指纹解析失败而被丢弃。
                 # 对无法安全规范化的链接采用完整原文精确去重，避免误合并。
                 fingerprint = "raw|" + raw_link
-                unparseable_preserved += 1
+                if fingerprint not in unique_nodes_dict:
+                    unparseable_preserved += 1
             if fingerprint not in unique_nodes_dict:
                 unique_nodes_dict[fingerprint] = raw_link
 
