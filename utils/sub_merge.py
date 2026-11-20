@@ -372,7 +372,7 @@ class merge:
                     reason = 'invalid_mieru_port_configuration'
                 elif transport not in ('TCP', 'UDP'):
                     reason = 'unsupported_mieru_transport'
-                elif port_range and not re.fullmatch(r'\\d{1,5}-\\d{1,5}', str(port_range)):
+                elif port_range and not re.fullmatch(r'\d{1,5}-\d{1,5}', str(port_range)):
                     reason = 'invalid_mieru_port_range'
                 elif port_range and not (
                     1 <= int(str(port_range).split('-', 1)[0]) <=
