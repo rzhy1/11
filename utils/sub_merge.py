@@ -285,7 +285,7 @@ class merge:
             password = urllib.parse.unquote(parsed.password or "")
             query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
             # 排序参数但保留重复项；URI fragment 中的名称不参与指纹。
-            normalized_query = sorted((str(k).lower(), str(v)) for k, v in query)
+            normalized_query = sorted((str(k), str(v)) for k, v in query)
             if protocol in ("socks", "socks5"):
                 protocol = "socks5"
             payload = {
