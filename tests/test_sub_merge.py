@@ -77,6 +77,43 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)
 
+    def test_valid_port_accepts_only_decimal_range_without_whitespace(self):
+        valid = [1, 443, 65535, "1", "443", "65535"]
+        invalid = [None, True, False, 0, 65536, -1, 1.0, "0", "65536",
+                   " 443", "443 ", "44 3", "+443", "4.43", ""]
+        for value in valid:
+            with self.subTest(value=value):
+                self.assertTrue(self.merger._valid_port(value))
+        for value in invalid:
+            with self.subTest(value=value):
+                self.assertFalse(self.merger._valid_port(value))
+
+    def test_wireguard_peer_level_endpoint_is_converted_and_validated(self):
+        link = self.merger.clash_to_share_link({
+            "type": "wireguard", "name": "WG peer endpoint",
+            "private-key": "client-private", "ip": "10.0.0.2/32",
+            "peers": [{
+                "server": "wg-peer.example.com", "port": 51820,
+                "public-key": "server-public", "allowed-ips": ["0.0.0.0/0"]
+            }]
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.hostname, "wg-peer.example.com")
+        self.assertEqual(parsed.port, 51820)
+        self.assertEqual(query["publickey"], ["server-public"])
+
+    def test_wireguard_invalid_peer_port_is_classified(self):
+        proxy = {
+            "type": "wireguard", "name": "WG invalid port",
+            "private-key": "client-private",
+            "peers": [{
+                "server": "wg-peer.example.com", "port": " 51820",
+                "public-key": "server-public"
+            }]
+        }
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason, "invalid_port")
+
     def parse_link(self, link):
         from urllib.parse import urlsplit, parse_qs
         parsed = urlsplit(link)
