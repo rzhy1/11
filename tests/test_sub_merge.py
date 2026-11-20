@@ -1150,17 +1150,15 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
         self.assertEqual(query["host"], ["cdn.example.com"])
         self.assertEqual(query["path"], ["/upgrade"])
 
-    def test_vless_encryption_is_preserved_and_packet_encoding_is_rejected(self):
+    def test_vless_encryption_and_packet_encoding_are_preserved(self):
         from urllib.parse import parse_qs, urlsplit
         link = self.merger.clash_to_share_link(self.base_proxy(
-            "vless", encryption="mlkem768x25519plus.native"
+            "vless", encryption="mlkem768x25519plus.native",
+            **{"packet-encoding": "packetaddr"}
         ))
-        self.assertEqual(parse_qs(urlsplit(link).query)["encryption"],
-                         ["mlkem768x25519plus.native"])
-        rejected = self.merger.clash_to_share_link(self.base_proxy(
-            "vless", **{"packet-encoding": "packetaddr"}
-        ))
-        self.assertIsNone(rejected)
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["encryption"], ["mlkem768x25519plus.native"])
+        self.assertEqual(query["packetEncoding"], ["packet"])
 
 
     def test_httpupgrade_rejects_unrepresentable_request_headers(self):
