@@ -178,7 +178,7 @@ class merge:
         try:
             protocol, rest = link.strip().split("://", 1)
             protocol = protocol.lower()
-            if protocol in ("naive+https", "naive+http"):
+            if protocol in ("naive+https", "naive+http", "naive+quic"):
                 protocol = "naive"
                 raw = link.strip().split("#", 1)[0]
             else:
@@ -222,7 +222,7 @@ class merge:
                     "protocol": "naive",
                     "scheme": parsed_naive.scheme.lower(),
                     "server": parsed_naive.hostname.lower(),
-                    "port": parsed_naive.port if parsed_naive.port is not None else (443 if parsed_naive.scheme.endswith("https") else 80),
+                    "port": parsed_naive.port if parsed_naive.port is not None else (443 if parsed_naive.scheme.endswith(("https", "quic")) else 80),
                     "username": urllib.parse.unquote(parsed_naive.username or ""),
                     "password": urllib.parse.unquote(parsed_naive.password or ""),
                     "query": sorted(urllib.parse.parse_qsl(parsed_naive.query, keep_blank_values=True))
@@ -948,6 +948,24 @@ class merge:
                 if transport not in ('TCP', 'UDP'):
                     return None
 
+                multiplexing = str(proxy.get('multiplexing') or '').upper()
+                if multiplexing and multiplexing not in (
+                        'MULTIPLEXING_OFF', 'MULTIPLEXING_LOW',
+                        'MULTIPLEXING_MIDDLE', 'MULTIPLEXING_HIGH'):
+                    return None
+                handshake_mode = str(proxy.get('handshake-mode') or '').upper()
+                if handshake_mode and handshake_mode not in (
+                        'HANDSHAKE_STANDARD', 'HANDSHAKE_NO_WAIT'):
+                    return None
+                mtu = proxy.get('mtu')
+                if mtu not in (None, ''):
+                    try:
+                        mtu = int(mtu)
+                    except (TypeError, ValueError):
+                        return None
+                    if not 1280 <= mtu <= 1400:
+                        return None
+
                 port_value = port_range if port_range else port
                 if port_range:
                     if not re.fullmatch(r'\d{1,5}-\d{1,5}', str(port_range)):
@@ -1028,16 +1046,37 @@ class merge:
             elif protocol == 'naive':
                 server, port = proxy.get('server'), proxy.get('port')
                 username, password = proxy.get('username'), proxy.get('password')
-                if not all([server, port, username, password]):
+                if not server or not self._valid_port(port):
+                    return None
+                has_username = username not in (None, '')
+                has_password = password not in (None, '')
+                if has_username != has_password:
+                    return None
+
+                # Naive's portable URI supports HTTPS/QUIC, Basic auth,
+                # padding and extra-headers. It has no standard SNI/insecure field.
+                if (proxy.get('servername') or proxy.get('sni') or
+                        proxy.get('insecure') or proxy.get('skip-cert-verify') or
+                        proxy.get('headers')):
                     return None
                 params = {}
-                sni = proxy.get('servername') or proxy.get('sni')
-                if sni:
-                    params['sni'] = sni
-                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
-                    params['insecure'] = '1'
+                if 'padding' in proxy:
+                    params['padding'] = str(self._as_bool(proxy.get('padding'))).lower()
+                extra_headers = proxy.get('extra-headers')
+                if extra_headers not in (None, ''):
+                    if not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\\x00', '\\r', '\\n')):
+                        return None
+                    params['extra-headers'] = extra_headers
                 query = urllib.parse.urlencode(params)
-                return f"naive+https://{urllib.parse.quote(str(username), safe='')}:{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
+
+                auth = ''
+                if has_username and has_password:
+                    auth = (
+                        urllib.parse.quote(str(username), safe='') + ':' +
+                        urllib.parse.quote(str(password), safe='') + '@'
+                    )
+                scheme = 'naive+quic' if self._as_bool(proxy.get('quic')) else 'naive+https'
+                return f"{scheme}://{auth}{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
 
             elif protocol == 'wireguard':
                 private_key = proxy.get('private-key') or proxy.get('private_key')
@@ -1109,7 +1148,7 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'mierus://', 'ssh://', 'snell://')
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'naive+quic://', 'mieru://', 'mierus://', 'ssh://', 'snell://')
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
