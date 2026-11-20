@@ -810,6 +810,32 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                 output = sub_merge.base64_decode(f.read())
         self.assertIn("naive+quic://", output)
 
+
+    def test_https_http_proxy_survives_yaml_scheme_validation(self):
+        yaml_text = """proxies:
+  - name: https-proxy
+    type: http
+    server: proxy.example.com
+    port: 443
+    tls: true
+"""
+        response = Mock()
+        response.content = yaml_text.encode("utf-8")
+        response.raise_for_status = Mock()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            merger = merge.__new__(merge)
+            merger.list_dir = os.path.join(temp_dir, "list")
+            merger.merge_dir = temp_dir
+            merger.url_list = [{"id": 2, "remarks": "https-test", "url": "https://example.invalid/http.yaml"}]
+            session = Mock()
+            session.get.return_value = response
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                self.assertTrue(merger.sub_merge())
+            with open(os.path.join(temp_dir, "sub_merge_base64.txt"), "r", encoding="utf-8") as f:
+                output = sub_merge.base64_decode(f.read())
+        self.assertIn("https://proxy.example.com:443", output)
+
+
     def test_hysteria_v1_uri_uses_standard_peer_and_obfs_param(self):
         link = self.merger.clash_to_share_link({
             "type": "hysteria", "server": "hy.example.com", "port": 443,
