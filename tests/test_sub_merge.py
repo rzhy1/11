@@ -1249,7 +1249,7 @@ class VlessPacketEncodingAndDiagnosticsTests(unittest.TestCase):
                     "network": network,
                 })
                 self.assertIsNotNone(link)
-                payload = json.loads(sub_merge.base64_decode(urlsplit(link).netloc))
+                payload = json.loads(sub_merge.base64_decode(link.split("://", 1)[1].split("#", 1)[0]))
                 self.assertEqual(payload["net"], "tcp")
 
 
