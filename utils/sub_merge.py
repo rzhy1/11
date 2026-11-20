@@ -717,7 +717,9 @@ class merge:
                                 ws_opts.get('max-early-data') not in (None, '', 0, '0') or
                                 ws_opts.get('early-data-header-name') not in (None, '')):
                             return None
-                        vmess_config['httpupgrade'] = 'true'
+                        # Mihomo's legacy VMess QR parser recognizes net=httpupgrade
+                        # and reconstructs ws-opts.v2ray-http-upgrade from that value.
+                        vmess_config['net'] = 'httpupgrade'
                     host = headers.get('Host') or headers.get('host') or ''
                     if isinstance(host, (list, tuple)):
                         if len(host) > 1:
