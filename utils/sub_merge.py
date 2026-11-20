@@ -713,7 +713,9 @@ class merge:
                     if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
                         return None
                     if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
-                        if ws_opts.get('max-early-data') not in (None, '', 0, '0') or ws_opts.get('early-data-header-name') not in (None, ''):
+                        if (any(str(key).lower() != 'host' for key in headers) or
+                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                                ws_opts.get('early-data-header-name') not in (None, '')):
                             return None
                         vmess_config['httpupgrade'] = 'true'
                     host = headers.get('Host') or headers.get('host') or ''
@@ -870,7 +872,9 @@ class merge:
                     if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
                         return None
                     if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
-                        if ws_opts.get('max-early-data') not in (None, '', 0, '0') or ws_opts.get('early-data-header-name') not in (None, ''):
+                        if (any(str(key).lower() != 'host' for key in headers) or
+                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                                ws_opts.get('early-data-header-name') not in (None, '')):
                             return None
                         params['type'] = 'httpupgrade'
                     host = headers.get('Host') or headers.get('host')
@@ -963,6 +967,7 @@ class merge:
                         return None
                     params['type'] = 'httpupgrade' if self._as_bool(ws_opts.get('v2ray-http-upgrade')) else 'ws'
                     if self._as_bool(ws_opts.get('v2ray-http-upgrade')) and (
+                            any(str(key).lower() != 'host' for key in ws_headers) or
                             ws_opts.get('max-early-data') not in (None, '', 0, '0') or
                             ws_opts.get('early-data-header-name') not in (None, '')):
                         return None
