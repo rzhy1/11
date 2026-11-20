@@ -57,6 +57,61 @@ class MergeFingerprintTests(unittest.TestCase):
         b = "ssr://" + base64_encode(config + "/?remarks=" + base64_encode("B"))
         self.assertEqual(self.merger.node_fingerprint(a), self.merger.node_fingerprint(b))
 
+    def test_ss_base64_userinfo_and_plain_credentials_are_equivalent(self):
+        encoded = base64.b64encode(b"aes-128-gcm:secret").decode("ascii")
+        encoded_link = f"ss://{encoded}@ss.example.com:8388#A"
+        plain_link = "ss://aes-128-gcm:secret@ss.example.com:8388#B"
+        self.assertEqual(self.merger.node_fingerprint(encoded_link),
+                         self.merger.node_fingerprint(plain_link))
+
+    def test_ss_plugin_options_are_part_of_fingerprint(self):
+        base = "ss://aes-128-gcm:secret@ss.example.com:8388"
+        a = base + "?plugin=obfs-local%3Bmode%3Dhttp#A"
+        b = base + "?plugin=obfs-local%3Bmode%3Dtls#B"
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
+    def test_ssr_protocol_parameters_are_part_of_fingerprint(self):
+        config = "example.com:443:origin:aes-256-cfb:plain:" + base64_encode("secret")
+        a = "ssr://" + base64_encode(config + "/?obfsparam=" + base64_encode("a.example"))
+        b = "ssr://" + base64_encode(config + "/?obfsparam=" + base64_encode("b.example"))
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
+    def test_query_parameter_names_preserve_case(self):
+        a = "vless://11111111-1111-1111-1111-111111111111@example.com:443?Foo=1"
+        b = "vless://11111111-1111-1111-1111-111111111111@example.com:443?foo=1"
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
+    def test_explicit_default_port_equals_omitted_port(self):
+        a = "https://proxy.example.com/"
+        b = "https://proxy.example.com:443/"
+        self.assertEqual(self.merger.node_fingerprint(a),
+                         self.merger.node_fingerprint(b))
+
+    def test_zero_port_does_not_alias_default_port(self):
+        a = "https://proxy.example.com:0/"
+        b = "https://proxy.example.com:443/"
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
+    def test_wireguard_peer_key_and_allowed_ips_are_part_of_fingerprint(self):
+        base = "wireguard://private@wg.example.com:51820/?publickey=server&address=10.0.0.2%2F32"
+        allowed_a = base + "&allowed-ips=0.0.0.0%2F0"
+        allowed_b = base + "&allowed-ips=10.0.0.0%2F8"
+        key_b = base.replace("publickey=server", "publickey=other")
+        self.assertNotEqual(self.merger.node_fingerprint(allowed_a),
+                            self.merger.node_fingerprint(allowed_b))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(key_b))
+
+    def test_socks5_credentials_are_part_of_fingerprint(self):
+        a = "socks5://user:pass@proxy.example.com:1080"
+        b = "socks5://user:other@proxy.example.com:1080"
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
     def test_invalid_provider_regex_is_ignored(self):
         self.assertIsNone(self.merger._provider_name_matches("[", "node"))
         self.assertTrue(self.merger._provider_name_matches("HK|Hong Kong", "HK-01"))
