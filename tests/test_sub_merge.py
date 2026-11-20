@@ -720,6 +720,135 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                                  self.merger.node_fingerprint(renamed))
 
 
+    def test_vmess_rejects_unrepresented_transports(self):
+        base = {"type": "vmess", "server": "example.com", "port": 443,
+                "uuid": "11111111-1111-1111-1111-111111111111"}
+        for network in ("xhttp", "splithttp", "kcp", "quic"):
+            with self.subTest(network=network):
+                self.assertIsNone(self.merger.clash_to_share_link({**base, "network": network}))
+
+    def test_vmess_preserves_tls_security_parameters(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vmess", "server": "example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": "ws", "tls": True, "skip-cert-verify": "false",
+            "servername": "sni.example.com", "client-fingerprint": "chrome",
+            "alpn": ["h2", "http/1.1"]
+        })
+        payload = json.loads(sub_merge.base64_decode(link.split("://", 1)[1]))
+        self.assertEqual(payload["sni"], "sni.example.com")
+        self.assertEqual(payload["fp"], "chrome")
+        self.assertEqual(payload["alpn"], "h2,http/1.1")
+        self.assertNotIn("insecure", payload)
+
+    def test_vmess_string_true_skip_cert_verify_is_preserved(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vmess", "server": "example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            "tls": True, "skip-cert-verify": "true"
+        })
+        payload = json.loads(sub_merge.base64_decode(link.split("://", 1)[1]))
+        self.assertEqual(payload["insecure"], "1")
+
+    def test_trojan_and_http_string_false_do_not_disable_verification(self):
+        trojan = self.merger.clash_to_share_link({
+            "type": "trojan", "server": "example.com", "port": 443,
+            "password": "secret", "skip-cert-verify": "false"
+        })
+        self.assertNotIn("allowInsecure=1", trojan)
+        http = self.merger.clash_to_share_link({
+            "type": "http", "server": "proxy.example.com", "port": 443,
+            "tls": True, "skip-cert-verify": "false"
+        })
+        self.assertTrue(http.startswith("https://"))
+        self.assertNotIn("skip-cert-verify=true", http)
+
+    def test_http_tls_uses_https_uri_scheme(self):
+        link = self.merger.clash_to_share_link({
+            "type": "http", "server": "proxy.example.com", "port": 443, "tls": True
+        })
+        self.assertTrue(link.startswith("https://"))
+
+    def test_vless_h2_uses_xray_http_transport_name(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vless", "server": "example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": "h2", "tls": True,
+            "h2-opts": {"host": ["cdn.example.com"], "path": ["/h2"]}
+        })
+        from urllib.parse import parse_qs, urlsplit
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["type"], ["http"])
+        self.assertEqual(query["host"], ["cdn.example.com"])
+        self.assertEqual(query["path"], ["/h2"])
+
+    def test_naive_quic_scheme_is_not_rejected_by_scheme_validation(self):
+        yaml_text = """proxies:
+  - name: naive-quic
+    type: naive
+    server: example.com
+    port: 443
+    quic: true
+"""
+        response = Mock()
+        response.content = yaml_text.encode("utf-8")
+        response.raise_for_status = Mock()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            merger = merge.__new__(merge)
+            merger.list_dir = os.path.join(temp_dir, "list")
+            merger.merge_dir = temp_dir
+            merger.url_list = [{"id": 1, "remarks": "naive-test", "url": "https://example.invalid/naive.yaml"}]
+            session = Mock()
+            session.get.return_value = response
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                self.assertTrue(merger.sub_merge())
+            with open(os.path.join(temp_dir, "sub_merge_base64.txt"), "r", encoding="utf-8") as f:
+                output = sub_merge.base64_decode(f.read())
+        self.assertIn("naive+quic://", output)
+
+    def test_hysteria_v1_uri_uses_standard_peer_and_obfs_param(self):
+        link = self.merger.clash_to_share_link({
+            "type": "hysteria", "server": "hy.example.com", "port": 443,
+            "up": "30 Mbps", "down": "100 Mbps", "sni": "sni.example.com",
+            "obfs": "secret-obfs", "protocol": "udp"
+        })
+        from urllib.parse import parse_qs, urlsplit
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["peer"], ["sni.example.com"])
+        self.assertEqual(query["obfs"], ["xplus"])
+        self.assertEqual(query["obfsParam"], ["secret-obfs"])
+        self.assertEqual(query["upmbps"], ["30 Mbps"])
+        self.assertEqual(query["downmbps"], ["100 Mbps"])
+        self.assertNotIn("sni", query)
+
+    def test_hysteria_v1_rejects_nonstandard_fields_and_missing_bandwidth(self):
+        base = {"type": "hysteria", "server": "hy.example.com", "port": 443,
+                "up": "30", "down": "100"}
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "recv-window-conn": 1024}))
+        self.assertIsNone(self.merger.clash_to_share_link({**base, "up": None}))
+
+    def test_anytls_client_fingerprint_uses_fp_parameter(self):
+        link = self.merger.clash_to_share_link({
+            "type": "anytls", "server": "any.example.com", "port": 443,
+            "password": "secret", "client-fingerprint": "chrome"
+        })
+        from urllib.parse import parse_qs, urlsplit
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["fp"], ["chrome"])
+        self.assertNotIn("client-fingerprint", query)
+
+    def test_ss_userinfo_uses_urlsafe_base64_without_padding(self):
+        link = self.merger.clash_to_share_link({
+            "type": "ss", "server": "ss.example.com", "port": 8388,
+            "password": "?+/=secret", "cipher": "aes-128-gcm"
+        })
+        userinfo = link.split("://", 1)[1].split("@", 1)[0]
+        self.assertNotIn("+", userinfo)
+        self.assertNotIn("/", userinfo)
+        self.assertNotIn("=", userinfo)
+        self.assertEqual(base64.urlsafe_b64decode(userinfo + "=" * (-len(userinfo) % 4)).decode(),
+                         "aes-128-gcm:?+/=secret")
+
 
 class ClashYamlMergeRegressionTests(unittest.TestCase):
     def test_yaml_proxy_conversion_does_not_raise_undefined_proxy_type(self):
