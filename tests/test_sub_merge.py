@@ -1183,5 +1183,75 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
                 self.assertIsNone(self.merger.clash_to_share_link(proxy))
 
 
+class VlessPacketEncodingAndDiagnosticsTests(unittest.TestCase):
+    def setUp(self):
+        self.merger = merge.__new__(merge)
+
+    def base_proxy(self, **extra):
+        return {
+            "type": "vless", "name": "VLESS regression",
+            "server": "vless.example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            **extra,
+        }
+
+    def test_vless_empty_encryption_is_accepted_and_omitted(self):
+        from urllib.parse import parse_qs, urlsplit
+        link = self.merger.clash_to_share_link(self.base_proxy(encryption=""))
+        self.assertIsNotNone(link)
+        self.assertNotIn("encryption", parse_qs(urlsplit(link).query))
+
+    def test_vless_nonempty_encryption_is_preserved_in_uri(self):
+        from urllib.parse import parse_qs, urlsplit
+        value = "mlkem768x25519plus.native"
+        link = self.merger.clash_to_share_link(self.base_proxy(encryption=value))
+        self.assertEqual(parse_qs(urlsplit(link).query)["encryption"], [value])
+
+    def test_vless_packet_encoding_maps_to_mihomo_v_share_tokens(self):
+        from urllib.parse import parse_qs, urlsplit
+        cases = {"xudp": "xudp", "packetaddr": "packet", "": "none"}
+        for yaml_value, uri_value in cases.items():
+            with self.subTest(packet_encoding=yaml_value):
+                link = self.merger.clash_to_share_link(
+                    self.base_proxy(**{"packet-encoding": yaml_value})
+                )
+                self.assertIsNotNone(link)
+                self.assertEqual(parse_qs(urlsplit(link).query)["packetEncoding"], [uri_value])
+
+    def test_vless_invalid_packet_encoding_is_rejected_with_specific_reason(self):
+        proxy = self.base_proxy(**{"packet-encoding": "unknown"})
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vless_unsupported_packet_encoding")
+
+    def test_vless_diagnostics_distinguish_common_failure_classes(self):
+        cases = [
+            ({"uuid": ""}, "vless_missing_uuid"),
+            ({"network": "mkcp"}, "vless_unsupported_network"),
+            ({"encryption": None}, "vless_invalid_encryption"),
+            ({"reality-opts": {"short-id": "abcd"}}, "vless_missing_reality_public_key"),
+            ({"tls": False, "servername": "sni.example.com"}, "vless_tls_options_without_tls"),
+            ({"network": "ws", "ws-opts": ["bad"]}, "vless_invalid_ws_options"),
+            ({"network": "xhttp", "xhttp-opts": {"extra": "bad"}}, "vless_invalid_xhttp_extra"),
+        ]
+        for extra, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertIsNone(self.merger.clash_to_share_link(self.base_proxy(**extra)))
+                self.assertEqual(self.merger._last_conversion_failure_reason, expected)
+
+    def test_vmess_raw_and_none_networks_normalize_to_tcp(self):
+        from urllib.parse import urlsplit
+        for network in ("raw", "none"):
+            with self.subTest(network=network):
+                link = self.merger.clash_to_share_link({
+                    "type": "vmess", "server": "vmess.example.com", "port": 443,
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "network": network,
+                })
+                self.assertIsNotNone(link)
+                payload = json.loads(sub_merge.base64_decode(urlsplit(link).netloc))
+                self.assertEqual(payload["net"], "tcp")
+
+
 if __name__ == "__main__":
     unittest.main()
