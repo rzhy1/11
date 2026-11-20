@@ -38,8 +38,9 @@ def is_base64(s):
         missing_padding = len(s_std) % 4
         if missing_padding:
             s_std += '=' * (4 - missing_padding)
-        base64.b64decode(s_std, validate=True)
-        return True
+        decoded = base64.b64decode(s_std, validate=True)
+        decoded.decode('utf-8', 'strict')
+        return bool(decoded)
     except Exception:
         return False
 
@@ -132,6 +133,8 @@ class merge:
                         creds = creds_unquoted
                     else:
                         creds = base64_decode(credentials_part)
+                        if not creds or ':' not in creds:
+                            return None
                 else:
                     decoded = base64_decode(main_part.split('?', 1)[0])
                     if '@' in decoded:
@@ -204,8 +207,21 @@ class merge:
                     "config": config,
                     "query": query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss"):
+            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive"):
                 return None
+            if protocol == "naive":
+                parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
+                if not parsed_naive.hostname:
+                    return None
+                return json.dumps({
+                    "protocol": "naive",
+                    "scheme": parsed_naive.scheme.lower(),
+                    "server": parsed_naive.hostname.lower(),
+                    "port": parsed_naive.port or (443 if parsed_naive.scheme.endswith("https") else 80),
+                    "username": urllib.parse.unquote(parsed_naive.username or ""),
+                    "password": urllib.parse.unquote(parsed_naive.password or ""),
+                    "query": sorted(urllib.parse.parse_qsl(parsed_naive.query, keep_blank_values=True))
+                }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
             if protocol == "ss" and (not parsed.hostname or not parsed.port or not parsed.username):
                 # 兼容旧式 ss://base64(method:password@server:port) 链接。
@@ -403,6 +419,29 @@ class merge:
                     grpc_opts = proxy.get('grpc-opts') or {}
                     if grpc_opts.get('grpc-service-name'):
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
+                elif params['type'] in ('http', 'h2'):
+                    http_opts = proxy.get('http-opts') or {}
+                    headers = http_opts.get('headers') or {}
+                    hosts = headers.get('Host') or headers.get('host') or []
+                    paths = http_opts.get('path') or ['/']
+                    if isinstance(hosts, str):
+                        hosts = [hosts]
+                    if isinstance(paths, str):
+                        paths = [paths]
+                    if hosts:
+                        params['host'] = hosts[0]
+                    if paths:
+                        params['path'] = paths[0]
+                elif params['type'] in ('xhttp', 'splithttp'):
+                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
+                    if xhttp_opts.get('path'):
+                        params['path'] = xhttp_opts['path']
+                    if xhttp_opts.get('host'):
+                        params['host'] = xhttp_opts['host']
+                    if xhttp_opts.get('mode'):
+                        params['mode'] = xhttp_opts['mode']
+                    if xhttp_opts.get('extra'):
+                        params['extra'] = json.dumps(xhttp_opts['extra'], ensure_ascii=False, separators=(',', ':'))
                 query_string = urllib.parse.urlencode(params)
                 return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
 
@@ -438,6 +477,9 @@ class merge:
                 if not all([server, port, password, cipher]):
                     return None
                 if proxy.get('plugin') or proxy.get('plugin-opts'):
+                    return None
+                cipher = str(cipher).strip()
+                if not re.fullmatch(r'[A-Za-z0-9._-]{2,64}', cipher):
                     return None
                 creds = f"{cipher}:{password}"
                 return f"ss://{base64_encode(creds)}@{self._uri_host(server)}:{port}#{remarks_encoded}"
@@ -728,6 +770,11 @@ class merge:
                                         print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
                             share_link = self.clash_to_share_link(proxy_data)
                             if share_link:
+                                if share_link.split('://', 1)[0].lower() not in (proxy_type, 'hy2' if proxy_type == 'hysteria2' else proxy_type, 'wg' if proxy_type == 'wireguard' else proxy_type):
+                                    conversion_failures += 1
+                                    unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
+                                    self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failure_reasons, conversion_failures_by_protocol)
+                                    continue
                                 found_nodes.append(share_link)
                             else:
                                 conversion_failures += 1
