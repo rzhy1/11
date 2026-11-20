@@ -385,7 +385,7 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertIsNone(self.merger.clash_to_share_link({**base, "username": "user"}))
         self.assertIsNone(self.merger.clash_to_share_link({**base, "sni": "other.example.com"}))
         self.assertIsNone(self.merger.clash_to_share_link({
-            **base, "extra-headers": "X-Test: one\\r\\nX-Evil: two"
+            **base, "extra-headers": "X-Test: one\r\nX-Evil: two"
         }))
 
     def test_naive_quic_raw_link_is_fingerprinted(self):
