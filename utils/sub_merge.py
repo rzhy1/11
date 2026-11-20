@@ -212,7 +212,7 @@ class merge:
                     "config": config,
                     "query": query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive", "mieru", "ssh"):
+            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive", "mieru", "mierus", "ssh"):
                 return None
             if protocol == "naive":
                 parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
@@ -238,6 +238,21 @@ class merge:
                     "server": legacy.get("server", "").lower(),
                     "port": legacy.get("port", ""),
                     "credentials": legacy.get("id", "")
+                }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+            if protocol == "mierus":
+                # Official Mieru simple links carry the server port and transport in
+                # repeated query parameters rather than the URL authority.
+                if not parsed.hostname or not parsed.username or not parsed.password:
+                    return None
+                query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+                normalized_query = sorted((str(k).lower(), str(v)) for k, v in query)
+                return json.dumps({
+                    "protocol": "mieru",
+                    "server": parsed.hostname.lower(),
+                    "username": urllib.parse.unquote(parsed.username),
+                    "password": urllib.parse.unquote(parsed.password),
+                    "path": parsed.path or "",
+                    "query": normalized_query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             if not parsed.hostname:
                 return None
@@ -337,9 +352,7 @@ class merge:
                     reason = 'unsupported_headers'
                 elif proxy.get('alpn'):
                     reason = 'unsupported_alpn'
-                elif protocol in ('socks5', 'socks') and (username is None) != (password is None):
-                    reason = 'incomplete_socks5_auth'
-                elif protocol in ('socks5', 'socks') and (username == '' or password == ''):
+                elif protocol in ('socks5', 'socks') and ((username not in (None, '')) != (password not in (None, ''))):
                     reason = 'incomplete_socks5_auth'
                 elif protocol in ('socks5', 'socks') and (proxy.get('sni') or proxy.get('servername')):
                     reason = 'unsupported_sni'
@@ -681,22 +694,74 @@ class merge:
                 if proxy.get('headers') or proxy.get('alpn') or proxy.get('sni') or proxy.get('servername'):
                     return None
                 username, password = proxy.get('username'), proxy.get('password')
-                # SOCKS5 username/password authentication (RFC 1929) requires both non-empty fields.
-                if (username is None) != (password is None):
-                    return None
-                if username is not None and (str(username) == '' or str(password) == ''):
+                # Treat two absent/blank credentials as unauthenticated SOCKS5.
+                # RFC 1929 authentication is only emitted when both fields are non-empty.
+                has_username = username not in (None, '')
+                has_password = password not in (None, '')
+                if has_username != has_password:
                     return None
                 params = {}
                 if 'udp' in proxy:
                     params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
                 auth = ''
-                if username is not None:
+                if has_username and has_password:
                     auth = urllib.parse.quote(str(username), safe='')
                     auth += ':' + urllib.parse.quote(str(password), safe='')
                     auth += '@'
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
                 return f"socks5://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+            elif protocol == 'mieru':
+                server = proxy.get('server')
+                username, password = proxy.get('username'), proxy.get('password')
+                if not all([server, username, password]):
+                    return None
+
+                # Mieru simple links require a profile and one or more port/protocol
+                # pairs. Mihomo's single port/port-range plus transport maps to one pair.
+                port = proxy.get('port')
+                port_range = proxy.get('port-range')
+                if bool(port) == bool(port_range):
+                    return None
+                transport = str(proxy.get('transport') or 'TCP').upper()
+                if transport not in ('TCP', 'UDP'):
+                    return None
+
+                port_value = port_range if port_range else port
+                if port_range:
+                    if not re.fullmatch(r'\d{1,5}-\d{1,5}', str(port_range)):
+                        return None
+                    start_port, end_port = (int(part) for part in str(port_range).split('-', 1))
+                    if not (1 <= start_port <= end_port <= 65535):
+                        return None
+                else:
+                    try:
+                        port_value = int(port)
+                    except (TypeError, ValueError):
+                        return None
+                    if not 1 <= port_value <= 65535:
+                        return None
+
+                params = [('profile', str(proxy.get('profile') or 'default'))]
+                for source, target in (
+                    ('mtu', 'mtu'),
+                    ('multiplexing', 'multiplexing'),
+                    ('handshake-mode', 'handshake-mode'),
+                    ('traffic-pattern', 'traffic-pattern')
+                ):
+                    value = proxy.get(source)
+                    if value not in (None, ''):
+                        params.append((target, str(value)))
+                params.append(('port', str(port_value)))
+                params.append(('protocol', transport))
+
+                auth = (
+                    urllib.parse.quote(str(username), safe='') + ':' +
+                    urllib.parse.quote(str(password), safe='')
+                )
+                query_string = urllib.parse.urlencode(params)
+                return f"mierus://{auth}@{self._uri_host(server)}?{query_string}#{remarks_encoded}"
 
             elif protocol == 'naive':
                 server, port = proxy.get('server'), proxy.get('port')
@@ -782,7 +847,7 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'ssh://')
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'mierus://', 'ssh://')
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
@@ -873,7 +938,7 @@ class merge:
                                         print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
                             share_link = self.clash_to_share_link(proxy_data)
                             if share_link:
-                                expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard', 'socks': 'socks5', 'naive': 'naive+https'}.get(proxy_type, proxy_type)
+                                expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard', 'socks': 'socks5', 'naive': 'naive+https', 'mieru': 'mierus'}.get(proxy_type, proxy_type)
                                 if share_link.split('://', 1)[0].lower() != expected_scheme:
                                     conversion_failures += 1
                                     unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
