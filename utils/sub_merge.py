@@ -337,7 +337,7 @@ class merge:
         if not isinstance(value, str):
             return False
         value = value.strip()
-        return bool(re.fullmatch(r'\\d{1,5}', value)) and 1 <= int(value) <= 65535
+        return bool(re.fullmatch(r'\d{1,5}', value)) and 1 <= int(value) <= 65535
 
     def clash_to_share_link(self, proxy):
         """转换节点，并记录无法转换的具体原因。"""
