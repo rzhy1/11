@@ -1383,7 +1383,8 @@ class merge:
                                 expected_schemes = {
                                     'hy2': {'hysteria2'}, 'hysteria2': {'hysteria2'},
                                     'wg': {'wireguard'}, 'wireguard': {'wireguard'},
-                                    'socks': {'socks5'}, 'naive': {'naive+https', 'naive+quic', 'naive+http'},
+                                    'socks': {'socks5'}, 'http': {'http', 'https'},
+                                    'naive': {'naive+https', 'naive+quic', 'naive+http'},
                                     'mieru': {'mierus'}
                                 }
                                 actual_scheme = share_link.split('://', 1)[0].lower()
