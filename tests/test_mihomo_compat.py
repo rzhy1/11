@@ -63,6 +63,26 @@ class MihomoShareLinkCompatibilityTests(unittest.TestCase):
                 "password": "mieru-secret",
             },
         ]
+        fixtures.extend([
+            {
+                "type": "vless", "name": "VLESS XUDP compatibility",
+                "server": "xudp.example.com", "port": 443,
+                "uuid": "11111111-1111-1111-1111-111111111111",
+                "network": "tcp", "tls": True, "packet-encoding": "xudp",
+            },
+            {
+                "type": "vless", "name": "VLESS PacketAddr compatibility",
+                "server": "packetaddr.example.com", "port": 443,
+                "uuid": "22222222-2222-2222-2222-222222222222",
+                "network": "tcp", "tls": True, "packet-encoding": "packetaddr",
+            },
+            {
+                "type": "vless", "name": "VLESS Raw compatibility",
+                "server": "raw.example.com", "port": 443,
+                "uuid": "33333333-3333-3333-3333-333333333333",
+                "network": "tcp", "tls": True, "packet-encoding": "",
+            },
+        ])
         cls.links = []
         cls.expected_names = []
         for proxy in fixtures:
@@ -140,6 +160,9 @@ class MihomoShareLinkCompatibilityTests(unittest.TestCase):
                     "Hysteria2 compatibility",
                     "TUIC compatibility",
                     "VLESS XHTTP compatibility",
+                    "VLESS XUDP compatibility",
+                    "VLESS PacketAddr compatibility",
+                    "VLESS Raw compatibility",
                 }
                 self.assertTrue(
                     mihomo_supported_names.issubset(actual_names),
