@@ -327,6 +327,18 @@ class merge:
             return value != 0
         return str(value).strip().lower() in ('1', 'true', 'yes', 'on', 'enabled')
 
+    @staticmethod
+    def _valid_port(value):
+        """验证单端口是否为 1-65535 的十进制整数，不接受 bool/浮点/空白混淆值。"""
+        if isinstance(value, bool) or value is None:
+            return False
+        if isinstance(value, int):
+            return 1 <= value <= 65535
+        if not isinstance(value, str):
+            return False
+        value = value.strip()
+        return bool(re.fullmatch(r'\\d{1,5}', value)) and 1 <= int(value) <= 65535
+
     def clash_to_share_link(self, proxy):
         """转换节点，并记录无法转换的具体原因。"""
         self._last_conversion_failure_reason = None
@@ -342,8 +354,12 @@ class merge:
                 reason = 'missing_protocol'
             elif not server:
                 reason = 'missing_server'
-            elif not port and not (protocol == 'mieru' and proxy.get('port-range')):
+            elif not port and not (protocol == 'mieru' and proxy.get('port-range')) and protocol != 'hysteria':
                 reason = 'missing_port'
+            elif protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+                reason = 'invalid_port'
+            elif protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
+                reason = 'invalid_port'
             elif protocol == 'ss' and (proxy.get('plugin') or proxy.get('plugin-opts')):
                 reason = 'unsupported_plugin_options'
             elif protocol in ('http', 'socks5', 'socks'):
@@ -404,6 +420,14 @@ class merge:
                 return None
             protocol = str(proxy.get('type', '')).lower()
             if not protocol:
+                return None
+
+            # Hysteria 允许省略端口；Mieru 使用 port 或 port-range，
+            # 其余协议统一要求合法单端口，避免输出无法解析的 URI。
+            port = proxy.get('port')
+            if protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+                return None
+            if protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 return None
 
             remarks = str(proxy.get('name', ''))
