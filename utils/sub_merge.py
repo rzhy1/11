@@ -212,7 +212,7 @@ class merge:
                     "config": config,
                     "query": query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive", "mieru", "mierus", "ssh"):
+            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive", "mieru", "mierus", "ssh", "snell"):
                 return None
             if protocol == "naive":
                 parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
@@ -226,6 +226,29 @@ class merge:
                     "username": urllib.parse.unquote(parsed_naive.username or ""),
                     "password": urllib.parse.unquote(parsed_naive.password or ""),
                     "query": sorted(urllib.parse.parse_qsl(parsed_naive.query, keep_blank_values=True))
+                }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+            if protocol == "hysteria2":
+                parsed_hy2 = urllib.parse.urlsplit("hysteria2://" + raw)
+                if not parsed_hy2.hostname:
+                    return None
+                authority = parsed_hy2.netloc.rsplit("@", 1)[-1]
+                if authority.startswith('['):
+                    closing = authority.find(']')
+                    if closing < 0:
+                        return None
+                    port_text = authority[closing + 2:] if authority[closing + 1:closing + 2] == ':' else '443'
+                else:
+                    port_text = authority.rsplit(':', 1)[-1] if ':' in authority else '443'
+                if not port_text or not self._valid_port_list(port_text):
+                    return None
+                return json.dumps({
+                    "protocol": protocol,
+                    "server": parsed_hy2.hostname.lower(),
+                    "port": port_text,
+                    "username": urllib.parse.unquote(parsed_hy2.username or ""),
+                    "password": urllib.parse.unquote(parsed_hy2.password or ""),
+                    "path": parsed_hy2.path or "",
+                    "query": sorted((str(k), str(v)) for k, v in urllib.parse.parse_qsl(parsed_hy2.query, keep_blank_values=True))
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
             if protocol == "ss":
@@ -360,6 +383,27 @@ class merge:
         # 不自动清理首尾空白，避免校验通过后仍把带空格的原值写入分享 URI。
         return bool(re.fullmatch(r'\d{1,5}', value)) and 1 <= int(value) <= 65535
 
+    @staticmethod
+    def _valid_port_list(value):
+        """验证 Hysteria 2 多端口地址：逗号分隔的端口或闭区间。"""
+        if isinstance(value, bool) or value is None:
+            return False
+        text = str(value)
+        if not text or text != text.strip():
+            return False
+        for item in text.split(','):
+            if re.fullmatch(r'\d{1,5}', item):
+                port = int(item)
+                if not 1 <= port <= 65535:
+                    return False
+            elif re.fullmatch(r'\d{1,5}-\d{1,5}', item):
+                start, end = (int(part) for part in item.split('-', 1))
+                if not 1 <= start <= end <= 65535:
+                    return False
+            else:
+                return False
+        return True
+
     def clash_to_share_link(self, proxy):
         """转换节点，并记录无法转换的具体原因。"""
         self._last_conversion_failure_reason = None
@@ -400,6 +444,30 @@ class merge:
                     reason = 'unsupported_sni'
                 else:
                     reason = 'unsupported_option_or_invalid_value'
+            elif protocol == 'snell':
+                obfs_opts = proxy.get('obfs-opts') or {}
+                version = proxy.get('version', 1)
+                try:
+                    version = int(version)
+                except (TypeError, ValueError):
+                    version = 0
+                if proxy.get('psk') in (None, ''):
+                    reason = 'missing_snell_psk'
+                elif version not in range(1, 7):
+                    reason = 'invalid_snell_version'
+                elif not isinstance(obfs_opts, dict):
+                    reason = 'invalid_snell_obfs_options'
+                elif str(obfs_opts.get('mode') or '').lower() not in ('', 'http', 'tls'):
+                    reason = 'unsupported_snell_obfs_mode'
+                elif any(key not in ('mode', 'host') for key in obfs_opts):
+                    reason = 'unsupported_snell_obfs_option'
+                elif (proxy.get('udp') or proxy.get('reuse') or proxy.get('userkey')
+                      or proxy.get('mode') or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
+                    reason = 'unsupported_snell_uri_option'
+                else:
+                    reason = 'snell_conversion_failed'
+            elif protocol == 'ssh':
+                reason = 'ssh_share_link_not_portable'
             elif protocol == 'ssr':
                 required = ('password', 'cipher', 'protocol', 'obfs')
                 missing = [key for key in required if proxy.get(key) in (None, '')]
@@ -455,12 +523,18 @@ class merge:
                 peers = proxy.get('peers') or []
                 peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
                 port = peer.get('port') or port
-            elif protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+            elif protocol not in ('hysteria', 'mieru', 'hysteria2', 'hy2') and not self._valid_port(port):
                 return None
             if protocol == 'wireguard' and not self._valid_port(port):
                 return None
             if protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 return None
+            if protocol in ('hysteria2', 'hy2'):
+                if proxy.get('ports') not in (None, ''):
+                    if not self._valid_port_list(proxy.get('ports')):
+                        return None
+                elif not self._valid_port(port):
+                    return None
 
             remarks = str(proxy.get('name', ''))
             remarks_encoded = urllib.parse.quote(remarks)
@@ -648,20 +722,58 @@ class merge:
             elif protocol in ['hysteria2', 'hy2']:
                 server, port = proxy.get('server'), proxy.get('port')
                 password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
-                if not all([server, port, password]):
+                ports = proxy.get('ports')
+                if not server or not password:
                     return None
+                if ports not in (None, ''):
+                    if not self._valid_port_list(ports):
+                        return None
+                    port_text = str(ports)
+                else:
+                    if not self._valid_port(port):
+                        return None
+                    port_text = str(port)
+
+                # The standard Hysteria 2 URI has no fields for these client-only
+                # tuning / custom certificate options. Refuse rather than lose them.
+                if any(proxy.get(key) not in (None, '', False, [], {})
+                       for key in ('up', 'down', 'bbr-profile', 'name-cert-verify',
+                                   'ca', 'ca-str', 'certificate', 'private-key',
+                                   'obfs-min-packet-size', 'obfs-max-packet-size',
+                                   'realm-opts', 'handshake-timeout')):
+                    return None
+                hop_interval = proxy.get('hop-interval')
+                if hop_interval not in (None, '', 30, '30', '30s'):
+                    return None
+                alpn = proxy.get('alpn')
+                if alpn not in (None, '', ['h3'], 'h3'):
+                    return None
+
                 params = {}
                 if proxy.get('sni'):
                     params['sni'] = proxy.get('sni')
                 if proxy.get('insecure') or proxy.get('skip-cert-verify'):
                     params['insecure'] = 1
                 if proxy.get('obfs'):
-                    params['obfs'] = proxy.get('obfs')
+                    obfs = str(proxy.get('obfs')).lower()
+                    if obfs not in ('salamander', 'gecko'):
+                        return None
+                    params['obfs'] = obfs
                 if proxy.get('obfs-password'):
                     params['obfs-password'] = proxy.get('obfs-password')
+                if proxy.get('fingerprint'):
+                    params['pinSHA256'] = proxy.get('fingerprint')
+                ech_opts = proxy.get('ech-opts') or {}
+                if ech_opts:
+                    if not isinstance(ech_opts, dict) or not self._as_bool(ech_opts.get('enable')):
+                        return None
+                    ech_config = ech_opts.get('config')
+                    if not ech_config:
+                        return None
+                    params['ech'] = ech_config
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
-                return f"hysteria2://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
+                return f"hysteria2://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port_text}/{query_part}#{remarks_encoded}"
 
             elif protocol == 'hysteria':
                 server, port = proxy.get('server'), proxy.get('port')
@@ -712,27 +824,52 @@ class merge:
 
             elif protocol == 'tuic':
                 server, port = proxy.get('server'), proxy.get('port')
+                token = proxy.get('token')
                 uuid, password = proxy.get('uuid'), proxy.get('password')
-                if not all([server, port, uuid, password]):
+                if not server or not self._valid_port(port):
                     return None
+                if token not in (None, ''):
+                    if uuid not in (None, '') or password not in (None, ''):
+                        return None
+                    auth = urllib.parse.quote(str(token), safe='')
+                else:
+                    if not uuid or password in (None, ''):
+                        return None
+                    auth = urllib.parse.quote(str(uuid), safe='') + ':' + urllib.parse.quote(str(password), safe='')
+
+                # DNS override and custom certificate identity/material cannot be
+                # represented by the portable TUIC share-link convention.
+                if any(proxy.get(key) not in (None, '', False)
+                       for key in ('ip', 'name-cert-verify', 'fingerprint',
+                                   'client-fingerprint', 'certificate', 'private-key',
+                                   'bbr-profile')):
+                    return None
+
                 params = {}
-                for key in ('sni', 'alpn', 'token', 'ip', 'heartbeat-interval',
-                            'disable-sni', 'reduce-rtt', 'request-timeout',
-                            'udp-relay-mode', 'congestion-controller',
-                            'max-udp-relay-packet-size', 'max-open-streams'):
-                    value = proxy.get(key)
+                uri_names = {
+                    'sni': 'sni',
+                    'alpn': 'alpn',
+                    'heartbeat-interval': 'heartbeat_interval',
+                    'disable-sni': 'disable_sni',
+                    'reduce-rtt': 'reduce_rtt',
+                    'request-timeout': 'request_timeout',
+                    'udp-relay-mode': 'udp_relay_mode',
+                    'congestion-controller': 'congestion_control',
+                    'max-udp-relay-packet-size': 'max_udp_relay_packet_size',
+                    'max-open-streams': 'max_open_streams',
+                    'fast-open': 'fast_open'
+                }
+                for source, target in uri_names.items():
+                    value = proxy.get(source)
                     if value not in (None, ''):
                         if isinstance(value, bool):
                             value = str(value).lower()
-                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+                        params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
                 if proxy.get('skip-cert-verify') or proxy.get('allow-insecure'):
-                    params['skip-cert-verify'] = 1
-                if proxy.get('fast-open'):
-                    params['fast-open'] = 1
-                auth = urllib.parse.quote(str(uuid), safe='') + ':' + urllib.parse.quote(str(password), safe='')
+                    params['allow_insecure'] = 1
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
-                return f"tuic://{auth}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+                return f"tuic://{auth}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
 
             elif protocol == 'http':
                 server, port = proxy.get('server'), proxy.get('port')
@@ -840,6 +977,48 @@ class merge:
                 query_string = urllib.parse.urlencode(params)
                 return f"mierus://{auth}@{self._uri_host(server)}?{query_string}#{remarks_encoded}"
 
+            elif protocol == 'snell':
+                server, port, psk = proxy.get('server'), proxy.get('port'), proxy.get('psk')
+                if not all([server, port, psk]):
+                    return None
+                try:
+                    version = int(proxy.get('version', 1))
+                except (TypeError, ValueError):
+                    return None
+                if version not in range(1, 7):
+                    return None
+
+                obfs_opts = proxy.get('obfs-opts') or {}
+                if not isinstance(obfs_opts, dict):
+                    return None
+                obfs_mode = str(obfs_opts.get('mode') or '').lower()
+                obfs_host = obfs_opts.get('host')
+                if obfs_mode not in ('', 'http', 'tls'):
+                    return None
+                if obfs_mode == 'tls' and version not in (1, 2, 3):
+                    return None
+                if obfs_mode == 'http' and version == 6:
+                    return None
+                if any(key not in ('mode', 'host') for key in obfs_opts):
+                    return None
+
+                # These Mihomo settings have no portable representation in the
+                # commonly used snell:// URI format; never silently discard them.
+                if (proxy.get('udp') or proxy.get('reuse') or proxy.get('userkey')
+                        or proxy.get('mode') or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
+                    return None
+
+                params = [('version', str(version))]
+                if obfs_mode:
+                    params.append(('obfs', obfs_mode))
+                if obfs_host not in (None, ''):
+                    params.append(('obfs-host', str(obfs_host)))
+                query = urllib.parse.urlencode(params)
+                return (
+                    f"snell://{urllib.parse.quote(str(psk), safe='')}@"
+                    f"{self._uri_host(server)}:{port}?{query}#{remarks_encoded}"
+                )
+
             elif protocol == 'naive':
                 server, port = proxy.get('server'), proxy.get('port')
                 username, password = proxy.get('username'), proxy.get('password')
@@ -924,7 +1103,7 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'mierus://', 'ssh://')
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'mierus://', 'ssh://', 'snell://')
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
