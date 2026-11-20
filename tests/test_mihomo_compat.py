@@ -134,10 +134,31 @@ class MihomoShareLinkCompatibilityTests(unittest.TestCase):
                     item.get("name") for item in loaded.get("proxies", [])
                     if isinstance(item, dict)
                 }
+                # Mihomo's URI provider parser does not import Snell share links;
+                # Snell remains a client-specific link format (for example Potatso).
+                mihomo_supported_names = {
+                    "Hysteria2 compatibility",
+                    "TUIC compatibility",
+                    "VLESS XHTTP compatibility",
+                }
+                self.assertTrue(
+                    mihomo_supported_names.issubset(actual_names),
+                    "Mihomo failed to load supported generated URIs. "
+                    f"Loaded={sorted(actual_names)}",
+                )
+                mieru_names = {
+                    name for name in actual_names
+                    if isinstance(name, str) and name.startswith("Mieru compatibility:")
+                }
                 self.assertEqual(
-                    actual_names, set(self.expected_names),
-                    "Mihomo did not load every generated URI. "
-                    f"Loaded={sorted(actual_names)}; expected={self.expected_names}",
+                    len(mieru_names), 1,
+                    "Mihomo should load Mieru and derive its displayed name from "
+                    f"the port range/transport; loaded={sorted(actual_names)}",
+                )
+                self.assertFalse(
+                    "Snell compatibility" in actual_names,
+                    "Mihomo unexpectedly accepted Snell URI; review the parser "
+                    "compatibility expectation if support has been added.",
                 )
             finally:
                 process.terminate()
