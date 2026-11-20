@@ -435,7 +435,7 @@ class merge:
             return 'vmess_missing_uuid'
 
         network = str(proxy.get('network') or 'tcp').lower()
-        supported_networks = ('tcp', 'ws', 'h2', 'grpc', 'httpupgrade')
+        supported_networks = ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade')
         if network not in supported_networks:
             safe_network = network[:32]
             if not re.fullmatch(r'[a-z0-9_-]{1,32}', safe_network):
@@ -460,6 +460,28 @@ class merge:
             options = proxy.get('ws-opts') or {}
             if not is_mapping(options) or not is_mapping(options.get('headers') or {}):
                 return 'vmess_invalid_transport_options'
+            if merge._as_bool(options.get('v2ray-http-upgrade-fast-open')):
+                return 'vmess_unrepresentable_httpupgrade_fast_open'
+            if merge._as_bool(options.get('v2ray-http-upgrade')) and (
+                    options.get('max-early-data') not in (None, '', 0, '0') or
+                    options.get('early-data-header-name') not in (None, '')):
+                return 'vmess_unrepresentable_httpupgrade_early_data'
+        elif network == 'http':
+            options = proxy.get('http-opts') or {}
+            if not is_mapping(options):
+                return 'vmess_invalid_transport_options'
+            if str(options.get('method') or 'GET').upper() != 'GET':
+                return 'vmess_unrepresentable_http_method'
+            headers = options.get('headers') or {}
+            if not is_mapping(headers):
+                return 'vmess_invalid_transport_options'
+            if any(str(key).lower() != 'host' for key in headers):
+                return 'vmess_unrepresentable_http_headers'
+            hosts = headers.get('Host') or headers.get('host') or []
+            paths = options.get('path') or ['/']
+            failure = single_value_failure(hosts, paths)
+            if failure:
+                return failure
         elif network == 'h2':
             options = proxy.get('h2-opts') or proxy.get('http-opts') or {}
             if not is_mapping(options):
@@ -672,19 +694,70 @@ class merge:
                 if not all([server, port, uuid]):
                     return None
                 network = str(proxy.get('network') or 'tcp').lower()
-                if network not in ('tcp', 'ws', 'h2', 'grpc', 'httpupgrade'):
+                if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
                     return None
                 vmess_config = {
                     "v": "2", "ps": remarks, "add": server, "port": str(port),
                     "id": uuid, "aid": str(proxy.get('alterId', 0)),
-                    "scy": proxy.get('cipher') or 'auto', "net": network,
+                    "scy": proxy.get('cipher') or 'auto',
+                    "net": 'tcp' if network == 'http' else network,
                     "type": "none", "host": "", "path": "", "tls": "", "sni": ""
                 }
                 if network == 'ws':
                     ws_opts = proxy.get('ws-opts') or {}
+                    if not isinstance(ws_opts, dict):
+                        return None
                     headers = ws_opts.get('headers') or {}
-                    vmess_config['host'] = headers.get('Host', '')
+                    if not isinstance(headers, dict):
+                        return None
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                        return None
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
+                        if (any(str(key).lower() != 'host' for key in headers) or
+                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                                ws_opts.get('early-data-header-name') not in (None, '')):
+                            return None
+                        # Mihomo's legacy VMess QR parser recognizes net=httpupgrade
+                        # and reconstructs ws-opts.v2ray-http-upgrade from that value.
+                        vmess_config['net'] = 'httpupgrade'
+                    host = headers.get('Host') or headers.get('host') or ''
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if not isinstance(host, str):
+                        return None
+                    vmess_config['host'] = host
                     vmess_config['path'] = ws_opts.get('path', '/')
+                elif network == 'http':
+                    http_opts = proxy.get('http-opts') or {}
+                    if not isinstance(http_opts, dict):
+                        return None
+                    method = str(http_opts.get('method') or 'GET').upper()
+                    if method != 'GET':
+                        return None
+                    headers = http_opts.get('headers') or {}
+                    if not isinstance(headers, dict):
+                        return None
+                    if any(str(key).lower() != 'host' for key in headers):
+                        return None
+                    hosts = headers.get('Host') or headers.get('host') or []
+                    paths = http_opts.get('path') or ['/']
+                    if isinstance(hosts, str):
+                        hosts = [hosts]
+                    if isinstance(paths, str):
+                        paths = [paths]
+                    if (not isinstance(hosts, (list, tuple)) or
+                            not isinstance(paths, (list, tuple)) or
+                            len(hosts) > 1 or len(paths) > 1):
+                        return None
+                    if hosts and not isinstance(hosts[0], str):
+                        return None
+                    if paths and not isinstance(paths[0], str):
+                        return None
+                    vmess_config['type'] = 'http'
+                    vmess_config['host'] = hosts[0] if hosts else ''
+                    vmess_config['path'] = paths[0] if paths else '/'
                 elif network == 'h2':
                     h2_opts = proxy.get('h2-opts') or proxy.get('http-opts') or {}
                     headers = h2_opts.get('headers') or {}
@@ -761,6 +834,15 @@ class merge:
                 }
                 if proxy.get('flow'):
                     params['flow'] = proxy.get('flow')
+                if 'encryption' in proxy:
+                    encryption = proxy.get('encryption')
+                    if not isinstance(encryption, str) or not encryption:
+                        return None
+                    params['encryption'] = encryption
+                if proxy.get('packet-encoding') not in (None, ''):
+                    # Xray's VLESS share-link format has no packet-encoding parameter.
+                    # Refuse instead of silently changing the UDP packet framing.
+                    return None
                 if tls_enabled:
                     sni = proxy.get('servername') or proxy.get('sni', '')
                     if sni:
@@ -784,14 +866,49 @@ class merge:
 
                 if network == 'ws':
                     ws_opts = proxy.get('ws-opts') or {}
+                    if not isinstance(ws_opts, dict):
+                        return None
                     headers = ws_opts.get('headers') or {}
-                    if headers.get('Host'):
-                        params['host'] = headers.get('Host')
+                    if not isinstance(headers, dict):
+                        return None
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                        return None
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
+                        if (any(str(key).lower() != 'host' for key in headers) or
+                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                                ws_opts.get('early-data-header-name') not in (None, '')):
+                            return None
+                        params['type'] = 'httpupgrade'
+                    host = headers.get('Host') or headers.get('host')
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if host not in (None, ''):
+                        if not isinstance(host, str):
+                            return None
+                        params['host'] = host
                     params['path'] = ws_opts.get('path', '/')
-                    if ws_opts.get('max-early-data') not in (None, ''):
-                        params['ed'] = ws_opts.get('max-early-data')
-                    if ws_opts.get('early-data-header-name'):
-                        params['eh'] = ws_opts.get('early-data-header-name')
+                elif network == 'httpupgrade':
+                    upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+                    if not isinstance(upgrade_opts, dict):
+                        return None
+                    headers = upgrade_opts.get('headers') or {}
+                    if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
+                        return None
+                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if host not in (None, ''):
+                        if not isinstance(host, str):
+                            return None
+                        params['host'] = host
+                    path = upgrade_opts.get('path', '/')
+                    if not isinstance(path, str) or not path:
+                        return None
+                    params['path'] = path
                 elif network == 'grpc':
                     grpc_opts = proxy.get('grpc-opts') or {}
                     if grpc_opts.get('grpc-service-name'):
@@ -842,12 +959,51 @@ class merge:
                     params['allowInsecure'] = 1
                 network = str(proxy.get('network') or 'tcp').lower()
                 if network == 'ws':
-                    params['type'] = 'ws'
                     ws_opts = proxy.get('ws-opts') or {}
+                    if not isinstance(ws_opts, dict):
+                        return None
                     ws_headers = ws_opts.get('headers') or {}
-                    if ws_headers.get('Host'):
-                        params['host'] = ws_headers.get('Host')
+                    if not isinstance(ws_headers, dict):
+                        return None
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                        return None
+                    params['type'] = 'httpupgrade' if self._as_bool(ws_opts.get('v2ray-http-upgrade')) else 'ws'
+                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')) and (
+                            any(str(key).lower() != 'host' for key in ws_headers) or
+                            ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                            ws_opts.get('early-data-header-name') not in (None, '')):
+                        return None
+                    host = ws_headers.get('Host') or ws_headers.get('host')
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if host not in (None, ''):
+                        if not isinstance(host, str):
+                            return None
+                        params['host'] = host
                     params['path'] = ws_opts.get('path', '/')
+                elif network == 'httpupgrade':
+                    params['type'] = 'httpupgrade'
+                    upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+                    if not isinstance(upgrade_opts, dict):
+                        return None
+                    headers = upgrade_opts.get('headers') or {}
+                    if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
+                        return None
+                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if host not in (None, ''):
+                        if not isinstance(host, str):
+                            return None
+                        params['host'] = host
+                    path = upgrade_opts.get('path', '/')
+                    if not isinstance(path, str) or not path:
+                        return None
+                    params['path'] = path
                 elif network == 'grpc':
                     params['type'] = 'grpc'
                     grpc_opts = proxy.get('grpc-opts') or {}

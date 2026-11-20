@@ -1057,5 +1057,131 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vmess: vmess_unsupported_network=2", output)
 
 
+class FirstStageLosslessTransportTests(unittest.TestCase):
+    def setUp(self):
+        self.merger = merge.__new__(merge)
+
+    def vmess_payload(self, proxy):
+        link = self.merger.clash_to_share_link(proxy)
+        self.assertIsNotNone(link)
+        self.assertTrue(link.startswith("vmess://"))
+        return json.loads(sub_merge.base64_decode(link.split("://", 1)[1]))
+
+    def base_proxy(self, protocol, **extra):
+        return {
+            "type": protocol,
+            "name": "regression",
+            "server": "example.com",
+            "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            **extra,
+        }
+
+    def test_vmess_http_network_maps_to_tcp_http_header_without_loss(self):
+        payload = self.vmess_payload(self.base_proxy(
+            "vmess", network="http", **{"http-opts": {
+                "method": "GET",
+                "path": ["/legacy"],
+                "headers": {"Host": ["cdn.example.com"]},
+            }}
+        ))
+        self.assertEqual(payload["net"], "tcp")
+        self.assertEqual(payload["type"], "http")
+        self.assertEqual(payload["host"], "cdn.example.com")
+        self.assertEqual(payload["path"], "/legacy")
+
+    def test_vmess_http_network_rejects_unrepresentable_http_options(self):
+        cases = [
+            {"method": "POST", "path": ["/"], "headers": {}},
+            {"method": "GET", "path": ["/"], "headers": {"Connection": ["keep-alive"]}},
+            {"method": "GET", "path": ["/a", "/b"], "headers": {}},
+            {"method": "GET", "path": ["/"], "headers": {"Host": ["a.example.com", "b.example.com"]}},
+        ]
+        for options in cases:
+            with self.subTest(options=options):
+                proxy = self.base_proxy("vmess", network="http", **{"http-opts": options})
+                self.assertIsNone(self.merger.clash_to_share_link(proxy))
+                self.assertTrue(self.merger._last_conversion_failure_reason.startswith("vmess_"))
+
+    def test_vmess_ws_httpupgrade_flag_is_preserved(self):
+        payload = self.vmess_payload(self.base_proxy(
+            "vmess", network="ws",
+            **{"ws-opts": {
+                "path": "/upgrade",
+                "headers": {"Host": "cdn.example.com"},
+                "v2ray-http-upgrade": True,
+            }}
+        ))
+        self.assertEqual(payload["net"], "httpupgrade")
+        self.assertNotIn("httpupgrade", payload)
+        self.assertEqual(payload["host"], "cdn.example.com")
+        self.assertEqual(payload["path"], "/upgrade")
+
+    def test_vmess_ws_httpupgrade_fast_open_is_rejected(self):
+        proxy = self.base_proxy("vmess", network="ws", **{"ws-opts": {
+            "v2ray-http-upgrade": True,
+            "v2ray-http-upgrade-fast-open": True,
+        }})
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_unrepresentable_httpupgrade_fast_open")
+
+    def test_vless_ws_httpupgrade_maps_to_httpupgrade_uri(self):
+        from urllib.parse import parse_qs, urlsplit
+        link = self.merger.clash_to_share_link(self.base_proxy(
+            "vless", network="ws",
+            **{"ws-opts": {"path": "/upgrade", "headers": {"Host": "cdn.example.com"},
+                           "v2ray-http-upgrade": True}}
+        ))
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["type"], ["httpupgrade"])
+        self.assertEqual(query["host"], ["cdn.example.com"])
+        self.assertEqual(query["path"], ["/upgrade"])
+
+    def test_trojan_ws_httpupgrade_maps_to_httpupgrade_uri(self):
+        from urllib.parse import parse_qs, urlsplit
+        link = self.merger.clash_to_share_link(self.base_proxy(
+            "trojan", password="secret", network="ws",
+            **{"ws-opts": {"path": "/upgrade", "headers": {"Host": "cdn.example.com"},
+                           "v2ray-http-upgrade": True}}
+        ))
+        query = parse_qs(urlsplit(link).query)
+        self.assertEqual(query["type"], ["httpupgrade"])
+        self.assertEqual(query["host"], ["cdn.example.com"])
+        self.assertEqual(query["path"], ["/upgrade"])
+
+    def test_vless_encryption_is_preserved_and_packet_encoding_is_rejected(self):
+        from urllib.parse import parse_qs, urlsplit
+        link = self.merger.clash_to_share_link(self.base_proxy(
+            "vless", encryption="mlkem768x25519plus.native"
+        ))
+        self.assertEqual(parse_qs(urlsplit(link).query)["encryption"],
+                         ["mlkem768x25519plus.native"])
+        rejected = self.merger.clash_to_share_link(self.base_proxy(
+            "vless", **{"packet-encoding": "packetaddr"}
+        ))
+        self.assertIsNone(rejected)
+
+
+    def test_httpupgrade_rejects_unrepresentable_request_headers(self):
+        cases = [
+            self.base_proxy("vmess", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+            self.base_proxy("vless", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+            self.base_proxy("trojan", password="secret", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+        ]
+        for proxy in cases:
+            with self.subTest(protocol=proxy["type"]):
+                self.assertIsNone(self.merger.clash_to_share_link(proxy))
+
+
 if __name__ == "__main__":
     unittest.main()
