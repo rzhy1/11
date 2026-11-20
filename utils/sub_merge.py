@@ -785,7 +785,7 @@ class merge:
                 params = {}
                 if proxy.get('sni'):
                     params['sni'] = proxy.get('sni')
-                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
                     params['insecure'] = 1
                 if proxy.get('obfs'):
                     obfs = str(proxy.get('obfs')).lower()
@@ -826,7 +826,7 @@ class merge:
                     value = proxy.get(source)
                     if value not in (None, ''):
                         params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
                     params['insecure'] = 1
                 if proxy.get('fast-open'):
                     params['fast-open'] = 1
@@ -847,7 +847,7 @@ class merge:
                     value = proxy.get(key)
                     if value not in (None, ''):
                         params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
                     params['insecure'] = 1
                 if 'udp' in proxy:
                     params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
@@ -898,7 +898,7 @@ class merge:
                         if isinstance(value, bool):
                             value = str(value).lower()
                         params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if proxy.get('skip-cert-verify') or proxy.get('allow-insecure'):
+                if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('allow-insecure')):
                     params['allow_insecure'] = 1
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
@@ -1090,7 +1090,7 @@ class merge:
                 # Naive's portable URI supports HTTPS/QUIC, Basic auth,
                 # padding and extra-headers. It has no standard SNI/insecure field.
                 if (proxy.get('servername') or proxy.get('sni') or
-                        proxy.get('insecure') or proxy.get('skip-cert-verify') or
+                        self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')) or
                         proxy.get('headers')):
                     return None
                 params = {}
