@@ -770,10 +770,11 @@ class merge:
                                         print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
                             share_link = self.clash_to_share_link(proxy_data)
                             if share_link:
-                                if share_link.split('://', 1)[0].lower() not in (proxy_type, 'hy2' if proxy_type == 'hysteria2' else proxy_type, 'wg' if proxy_type == 'wireguard' else proxy_type):
+                                expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard'}.get(proxy_type, proxy_type)
+                                if share_link.split('://', 1)[0].lower() != expected_scheme:
                                     conversion_failures += 1
                                     unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
-                                    self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failure_reasons, conversion_failures_by_protocol)
+                                    self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failures_by_protocol, conversion_failure_reasons)
                                     continue
                                 found_nodes.append(share_link)
                             else:
