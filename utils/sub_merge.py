@@ -363,9 +363,28 @@ class merge:
                 missing = [key for key in required if proxy.get(key) in (None, '')]
                 reason = 'missing_required_field' if missing else 'unsupported_protocol'
             elif protocol == 'mieru':
-                # Mieru share links require the official serialized client-config format;
-                # do not fabricate a partial URI from a subset of Clash fields.
-                reason = 'unsupported_protocol'
+                username, password = proxy.get('username'), proxy.get('password')
+                port_range = proxy.get('port-range')
+                transport = str(proxy.get('transport') or 'TCP').upper()
+                if username in (None, '') or password in (None, ''):
+                    reason = 'missing_mieru_auth'
+                elif bool(port) == bool(port_range):
+                    reason = 'invalid_mieru_port_configuration'
+                elif transport not in ('TCP', 'UDP'):
+                    reason = 'unsupported_mieru_transport'
+                elif port_range and not re.fullmatch(r'\\d{1,5}-\\d{1,5}', str(port_range)):
+                    reason = 'invalid_mieru_port_range'
+                elif port_range and not (
+                    1 <= int(str(port_range).split('-', 1)[0]) <=
+                    int(str(port_range).split('-', 1)[1]) <= 65535
+                ):
+                    reason = 'invalid_mieru_port_range'
+                elif not port_range and (
+                    not str(port).isdigit() or not 1 <= int(port) <= 65535
+                ):
+                    reason = 'invalid_mieru_port'
+                else:
+                    reason = 'mieru_conversion_failed'
             else:
                 reason = 'missing_required_field_or_unsupported_option'
         self._last_conversion_failure_reason = reason
