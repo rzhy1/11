@@ -173,6 +173,44 @@ class MergeFingerprintTests(unittest.TestCase):
         self.assertIsNone(self.merger._provider_name_matches("[", "node"))
         self.assertTrue(self.merger._provider_name_matches("HK|Hong Kong", "HK-01"))
 
+    def test_provider_filters_apply_include_exclude_and_protocol_rules(self):
+        provider = {
+            "filter": "(?i)HK|SG",
+            "exclude_filter": "(?i)test|expire",
+            "exclude_type": ["ss", "ssr"]
+        }
+        self.assertTrue(self.merger._provider_proxy_allowed(
+            {"name": "HK-01", "type": "vless"}, provider
+        ))
+        self.assertFalse(self.merger._provider_proxy_allowed(
+            {"name": "US-01", "type": "vless"}, provider
+        ))
+        self.assertFalse(self.merger._provider_proxy_allowed(
+            {"name": "HK-test", "type": "vless"}, provider
+        ))
+        self.assertFalse(self.merger._provider_proxy_allowed(
+            {"name": "HK-02", "type": "ss"}, provider
+        ))
+
+    def test_provider_rename_rules_run_before_prefix_and_suffix(self):
+        provider = {
+            "proxy_name": [
+                {"pattern": "^(HK)-(\\d+)$", "target": "$2-$1"}
+            ],
+            "additional_prefix": "P-",
+            "additional_suffix": "-S"
+        }
+        self.assertEqual(
+            self.merger._provider_node_name("HK-01", provider),
+            "P-01-HK-S"
+        )
+
+    def test_provider_invalid_filter_regex_does_not_drop_nodes(self):
+        provider = {"filter": "[", "exclude_filter": "["}
+        self.assertTrue(self.merger._provider_proxy_allowed(
+            {"name": "HK-01", "type": "vless"}, provider
+        ))
+
     def test_provider_header_array_is_normalized(self):
         headers = self.merger._provider_headers({"header": {
             "Authorization": ["Bearer token", "ignored"],
