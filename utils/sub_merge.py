@@ -429,6 +429,114 @@ class merge:
         return True
 
     @staticmethod
+    def _vless_conversion_failure_reason(proxy):
+        """诊断 VLESS 转换失败原因；与实际 URI 生成逻辑保持同一组约束。"""
+        if proxy.get('uuid') in (None, ''):
+            return 'vless_missing_uuid'
+
+        network = str(proxy.get('network') or 'tcp').lower()
+        if network == 'h2':
+            network = 'http'
+        if network == 'splithttp':
+            network = 'xhttp'
+        supported_networks = ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade')
+        if network not in supported_networks:
+            return 'vless_unsupported_network'
+
+        reality_opts = proxy.get('reality-opts')
+        if reality_opts not in (None, '', {}) and not isinstance(reality_opts, dict):
+            return 'vless_invalid_reality_options'
+        reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
+        if reality_enabled and not reality_opts.get('public-key'):
+            return 'vless_missing_reality_public_key'
+
+        if 'encryption' in proxy and not isinstance(proxy.get('encryption'), str):
+            return 'vless_invalid_encryption'
+        packet_encoding = proxy.get('packet-encoding')
+        if packet_encoding not in (None, '') and packet_encoding not in ('xudp', 'packetaddr'):
+            return 'vless_unsupported_packet_encoding'
+
+        tls_enabled = merge._as_bool(proxy.get('tls')) or reality_enabled
+        tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
+        if not tls_enabled and (
+            any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
+            merge._as_bool(proxy.get('skip-cert-verify'))
+        ):
+            return 'vless_tls_options_without_tls'
+
+        def mapping(value):
+            return isinstance(value, dict)
+
+        if network == 'ws':
+            options = proxy.get('ws-opts') or {}
+            if not mapping(options) or not mapping(options.get('headers') or {}):
+                return 'vless_invalid_ws_options'
+            headers = options.get('headers') or {}
+            if merge._as_bool(options.get('v2ray-http-upgrade-fast-open')):
+                return 'vless_unrepresentable_httpupgrade_fast_open'
+            if merge._as_bool(options.get('v2ray-http-upgrade')) and (
+                any(str(key).lower() != 'host' for key in headers) or
+                options.get('max-early-data') not in (None, '', 0, '0') or
+                options.get('early-data-header-name') not in (None, '')
+            ):
+                return 'vless_unrepresentable_httpupgrade_options'
+            host = headers.get('Host') or headers.get('host')
+            if isinstance(host, (list, tuple)) and len(host) > 1:
+                return 'vless_multiple_transport_hosts'
+            if host not in (None, '') and not isinstance(host, (str, list, tuple)):
+                return 'vless_invalid_transport_host'
+        elif network == 'httpupgrade':
+            options = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+            if not mapping(options):
+                return 'vless_invalid_httpupgrade_options'
+            headers = options.get('headers') or {}
+            if not mapping(headers) or any(str(key).lower() != 'host' for key in headers):
+                return 'vless_unrepresentable_httpupgrade_headers'
+            host = headers.get('Host') or headers.get('host') or options.get('host')
+            if isinstance(host, (list, tuple)) and len(host) > 1:
+                return 'vless_multiple_transport_hosts'
+            if host not in (None, '') and not isinstance(host, (str, list, tuple)):
+                return 'vless_invalid_transport_host'
+            path = options.get('path', '/')
+            if not isinstance(path, str) or not path:
+                return 'vless_invalid_httpupgrade_path'
+        elif network == 'grpc':
+            options = proxy.get('grpc-opts') or {}
+            if not mapping(options):
+                return 'vless_invalid_grpc_options'
+        elif network == 'http':
+            options = proxy.get('http-opts') or proxy.get('h2-opts') or {}
+            if not mapping(options):
+                return 'vless_invalid_http_options'
+            headers = options.get('headers') or {}
+            if not mapping(headers):
+                return 'vless_invalid_http_headers'
+            hosts = headers.get('Host') or headers.get('host') or options.get('host') or []
+            paths = options.get('path') or ['/']
+            if isinstance(hosts, str):
+                hosts = [hosts]
+            if isinstance(paths, str):
+                paths = [paths]
+            if not isinstance(hosts, (list, tuple)) or not isinstance(paths, (list, tuple)):
+                return 'vless_invalid_http_host_or_path'
+            if len(hosts) > 1 or len(paths) > 1:
+                return 'vless_multiple_transport_hosts_or_paths'
+            if any(not isinstance(value, str) for value in list(hosts) + list(paths)):
+                return 'vless_invalid_http_host_or_path'
+        elif network == 'xhttp':
+            options = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
+            if not mapping(options):
+                return 'vless_invalid_xhttp_options'
+            for key in ('path', 'host', 'mode', 'x-padding-bytes'):
+                value = options.get(key)
+                if value not in (None, '') and not isinstance(value, str):
+                    return 'vless_invalid_xhttp_' + key.replace('-', '_')
+            if options.get('extra') not in (None, '') and not mapping(options.get('extra')):
+                return 'vless_invalid_xhttp_extra'
+
+        return 'vless_conversion_failed'
+
+    @staticmethod
     def _vmess_conversion_failure_reason(proxy):
         """仅诊断 VMess 转换失败原因；不参与或改变实际转换规则。"""
         if proxy.get('uuid') in (None, ''):
@@ -575,6 +683,8 @@ class merge:
                 reason = 'invalid_hysteria2_ports'
             elif protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 reason = 'invalid_port'
+            elif protocol == 'vless':
+                reason = self._vless_conversion_failure_reason(proxy)
             elif protocol == 'vmess':
                 diagnostic = self._vmess_conversion_failure_reason(proxy)
                 if isinstance(diagnostic, tuple):
@@ -823,11 +933,21 @@ class merge:
                 if not all([server, port, uuid]):
                     return None
                 network = str(proxy.get('network') or 'tcp').lower()
-                if network == 'h2':
-                    network = 'http'
+                if network in ('h2', 'splithttp'):
+                    network = 'http' if network == 'h2' else 'xhttp'
+                if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
+                    return None
                 reality_opts = proxy.get('reality-opts')
+                if reality_opts not in (None, '', {}) and not isinstance(reality_opts, dict):
+                    return None
                 reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
                 tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
+                tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
+                if not tls_enabled and (
+                    any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
+                    self._as_bool(proxy.get('skip-cert-verify'))
+                ):
+                    return None
                 params = {
                     'type': network,
                     'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')
@@ -836,13 +956,23 @@ class merge:
                     params['flow'] = proxy.get('flow')
                 if 'encryption' in proxy:
                     encryption = proxy.get('encryption')
-                    if not isinstance(encryption, str) or not encryption:
+                    if not isinstance(encryption, str):
                         return None
-                    params['encryption'] = encryption
-                if proxy.get('packet-encoding') not in (None, ''):
-                    # Xray's VLESS share-link format has no packet-encoding parameter.
-                    # Refuse instead of silently changing the UDP packet framing.
-                    return None
+                    # Empty encryption is Mihomo's default and need not be encoded.
+                    if encryption:
+                        params['encryption'] = encryption
+
+                if 'packet-encoding' in proxy:
+                    packet_encoding = proxy.get('packet-encoding')
+                    if packet_encoding == '':
+                        params['packetEncoding'] = 'none'
+                    elif packet_encoding == 'xudp':
+                        params['packetEncoding'] = 'xudp'
+                    elif packet_encoding == 'packetaddr':
+                        # Mihomo's V-share parser maps "packet" to packet-addr.
+                        params['packetEncoding'] = 'packet'
+                    elif packet_encoding is not None:
+                        return None
                 if tls_enabled:
                     sni = proxy.get('servername') or proxy.get('sni', '')
                     if sni:
