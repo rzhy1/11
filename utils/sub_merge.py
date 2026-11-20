@@ -336,7 +336,7 @@ class merge:
             return 1 <= value <= 65535
         if not isinstance(value, str):
             return False
-        value = value.strip()
+        # 不自动清理首尾空白，避免校验通过后仍把带空格的原值写入分享 URI。
         return bool(re.fullmatch(r'\d{1,5}', value)) and 1 <= int(value) <= 65535
 
     def clash_to_share_link(self, proxy):
