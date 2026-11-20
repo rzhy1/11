@@ -1163,6 +1163,25 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
         self.assertIsNone(rejected)
 
 
+    def test_httpupgrade_rejects_unrepresentable_request_headers(self):
+        cases = [
+            self.base_proxy("vmess", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+            self.base_proxy("vless", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+            self.base_proxy("trojan", password="secret", network="ws", **{"ws-opts": {
+                "v2ray-http-upgrade": True,
+                "headers": {"Host": "cdn.example.com", "Connection": "keep-alive"},
+            }}),
+        ]
+        for proxy in cases:
+            with self.subTest(protocol=proxy["type"]):
+                self.assertIsNone(self.merger.clash_to_share_link(proxy))
+
 
 if __name__ == "__main__":
     unittest.main()
