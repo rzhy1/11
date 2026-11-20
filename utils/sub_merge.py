@@ -384,6 +384,30 @@ class merge:
         return bool(re.fullmatch(r'\d{1,5}', value)) and 1 <= int(value) <= 65535
 
     @staticmethod
+    def _hysteria_mbps(value):
+        """将 Mihomo 带单位的速率规范为 Hysteria v1 URI 所需的整数 Mbps。"""
+        if isinstance(value, bool) or value is None:
+            return None
+        match = re.fullmatch(
+            r'\s*(\d+(?:\.\d+)?)\s*(bps|Bps|Kbps|KBps|Mbps|MBps|Gbps|GBps)?\s*',
+            str(value)
+        )
+        if not match:
+            return None
+        amount = float(match.group(1))
+        unit = match.group(2) or 'Mbps'
+        factors = {
+            'bps': 0.000001, 'Bps': 0.000008,
+            'Kbps': 0.001, 'KBps': 0.008,
+            'Mbps': 1, 'MBps': 8,
+            'Gbps': 1000, 'GBps': 8000
+        }
+        mbps = amount * factors[unit]
+        if mbps <= 0 or not mbps.is_integer():
+            return None
+        return str(int(mbps))
+
+    @staticmethod
     def _valid_port_list(value):
         """验证 Hysteria 2 多端口地址：逗号分隔的端口或闭区间。"""
         if isinstance(value, bool) or value is None:
@@ -869,12 +893,15 @@ class merge:
                 if auth:
                     params['auth'] = auth
                 params['protocol'] = proxy.get('protocol') or 'udp'
-                up, down = proxy.get('up'), proxy.get('down')
-                if up in (None, '', 0, '0') or down in (None, '', 0, '0'):
+                up = self._hysteria_mbps(proxy.get('up'))
+                down = self._hysteria_mbps(proxy.get('down'))
+                if up is None or down is None:
+                    return None
+                if str(proxy.get('protocol') or 'udp').lower() not in ('udp', 'wechat-video', 'faketcp'):
                     return None
                 unsupported_options = (
                     'ports', 'recv-window-conn', 'recv-window', 'ca', 'ca-str',
-                    'fingerprint', 'fast-open', 'disable-mtu-discovery',
+                    'fingerprint', 'fast-open', 'disable-mtu-discovery', 'obfs-protocol',
                     'name-cert-verify', 'certificate', 'private-key'
                 )
                 if any(proxy.get(key) not in (None, '', False, [], {}) for key in unsupported_options):
