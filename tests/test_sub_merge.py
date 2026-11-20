@@ -6,10 +6,9 @@ import unittest
 import tempfile
 from unittest.mock import Mock, patch
 
-import sub_merge
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "utils"))
 from sub_merge import merge, base64_encode
+import sub_merge
 
 
 class MergeFingerprintTests(unittest.TestCase):
