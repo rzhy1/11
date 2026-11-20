@@ -424,14 +424,20 @@ class merge:
                 reason = 'missing_protocol'
             elif not server:
                 reason = 'missing_server'
-            elif port in (None, '') and not (protocol == 'mieru' and proxy.get('port-range')) and protocol != 'hysteria':
+            elif port in (None, '') and not (
+                (protocol == 'mieru' and proxy.get('port-range')) or
+                (protocol in ('hysteria2', 'hy2') and proxy.get('ports'))
+            ) and protocol != 'hysteria':
                 reason = 'missing_port'
-            elif protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
+            elif protocol not in ('hysteria', 'mieru', 'hysteria2', 'hy2') and not self._valid_port(port):
                 reason = 'invalid_port'
+            elif protocol in ('hysteria2', 'hy2') and (
+                (proxy.get('ports') not in (None, '') and not self._valid_port_list(proxy.get('ports'))) or
+                (proxy.get('ports') in (None, '') and not self._valid_port(port))
+            ):
+                reason = 'invalid_hysteria2_ports'
             elif protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 reason = 'invalid_port'
-            elif protocol == 'ss' and (proxy.get('plugin') or proxy.get('plugin-opts')):
-                reason = 'unsupported_plugin_options'
             elif protocol in ('http', 'socks5', 'socks'):
                 username, password = proxy.get('username'), proxy.get('password')
                 if proxy.get('headers'):
