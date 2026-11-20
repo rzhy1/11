@@ -277,17 +277,20 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
             "type": "hysteria", "name": "HY1", "server": "hy.example.com",
             "port": 443, "auth-str": "secret token", "protocol": "udp",
             "sni": "sni.example.com", "up": "30 Mbps", "down": "100 Mbps",
-            "obfs": "obfs-key", "ports": "20000-30000", "alpn": ["h3"]
+            "obfs": "obfs-key", "alpn": ["h3"]
         })
         parsed, query = self.parse_link(link)
         self.assertEqual(parsed.scheme, "hysteria")
         self.assertEqual(parsed.hostname, "hy.example.com")
         self.assertEqual(query["auth"], ["secret token"])
         self.assertEqual(query["protocol"], ["udp"])
-        self.assertEqual(query["sni"], ["sni.example.com"])
+        self.assertEqual(query["peer"], ["sni.example.com"])
         self.assertEqual(query["upmbps"], ["30 Mbps"])
         self.assertEqual(query["downmbps"], ["100 Mbps"])
-        self.assertEqual(query["mport"], ["20000-30000"])
+        self.assertEqual(query["obfs"], ["xplus"])
+        self.assertEqual(query["obfsParam"], ["obfs-key"])
+        self.assertNotIn("sni", query)
+        self.assertNotIn("mport", query)
         self.assertEqual(query["alpn"], ["h3"])
 
     def test_tuic_conversion_keeps_credentials_and_standard_uri_options(self):
@@ -564,7 +567,8 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(parsed.scheme, "anytls")
         self.assertEqual(parsed.username, "secret")
         self.assertEqual(query["sni"], ["sni.example.com"])
-        self.assertEqual(query["client-fingerprint"], ["chrome"])
+        self.assertEqual(query["fp"], ["chrome"])
+        self.assertNotIn("client-fingerprint", query)
         self.assertEqual(query["alpn"], ["h2,http/1.1"])
         self.assertEqual(query["insecure"], ["1"])
         self.assertEqual(query["idle-session-timeout"], ["45"])
@@ -576,11 +580,11 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
             "tls": True, "skip-cert-verify": True
         })
         parsed, query = self.parse_link(http_link)
-        self.assertEqual(parsed.scheme, "http")
+        self.assertEqual(parsed.scheme, "https")
         self.assertEqual(parsed.username, "user")
         from urllib.parse import unquote
         self.assertEqual(unquote(parsed.password), "p@ss")
-        self.assertEqual(query["tls"], ["true"])
+        self.assertNotIn("tls", query)
         self.assertEqual(query["skip-cert-verify"], ["true"])
 
         socks_link = self.merger.clash_to_share_link({
@@ -597,7 +601,7 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         base = {"type": "http", "name": "HTTP", "server": "proxy.example.com", "port": 8080}
         self.assertIsNone(self.merger.clash_to_share_link({**base, "headers": {"Host": ["alt.example.com"]}}))
         link = self.merger.clash_to_share_link({**base, "sni": "alt.example.com"})
-        self.assertIn("tls=true", link)
+        self.assertTrue(link.startswith("https://"))
         self.assertIn("sni=alt.example.com", link)
 
     def test_ipv6_hosts_are_bracketed_for_vless_trojan_and_ss(self):
