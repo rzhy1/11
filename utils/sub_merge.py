@@ -332,19 +332,26 @@ class merge:
             elif protocol == 'ss' and (proxy.get('plugin') or proxy.get('plugin-opts')):
                 reason = 'unsupported_plugin_options'
             elif protocol in ('http', 'socks5', 'socks'):
+                username, password = proxy.get('username'), proxy.get('password')
                 if proxy.get('headers'):
                     reason = 'unsupported_headers'
                 elif proxy.get('alpn'):
                     reason = 'unsupported_alpn'
-                elif (proxy.get('sni') or proxy.get('servername')) and str(proxy.get('sni') or proxy.get('servername')).lower() != str(server).lower():
+                elif protocol in ('socks5', 'socks') and (username is None) != (password is None):
+                    reason = 'incomplete_socks5_auth'
+                elif protocol in ('socks5', 'socks') and (username == '' or password == ''):
+                    reason = 'incomplete_socks5_auth'
+                elif protocol in ('socks5', 'socks') and (proxy.get('sni') or proxy.get('servername')):
                     reason = 'unsupported_sni'
-                elif proxy.get('password') is not None and proxy.get('username') is None:
-                    reason = 'password_without_username'
-                elif proxy.get('username') is not None and ':' in str(proxy.get('username')):
-                    reason = 'username_contains_colon'
                 else:
                     reason = 'unsupported_option_or_invalid_value'
             elif protocol == 'ssr':
+                required = ('password', 'cipher', 'protocol', 'obfs')
+                missing = [key for key in required if proxy.get(key) in (None, '')]
+                reason = 'missing_required_field' if missing else 'unsupported_protocol'
+            elif protocol == 'mieru':
+                # Mieru share links require the official serialized client-config format;
+                # do not fabricate a partial URI from a subset of Clash fields.
                 reason = 'unsupported_protocol'
             else:
                 reason = 'missing_required_field_or_unsupported_option'
@@ -512,6 +519,42 @@ class merge:
                 query_part = ('?' + query) if query else ''
                 return f"ss://{base64_encode(creds)}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
 
+            elif protocol == 'ssr':
+                server, port = proxy.get('server'), proxy.get('port')
+                password = proxy.get('password')
+                cipher = proxy.get('cipher') or proxy.get('method')
+                ssr_protocol = proxy.get('protocol')
+                obfs = proxy.get('obfs')
+                if not all([server, port, password is not None, cipher, ssr_protocol, obfs]):
+                    return None
+                try:
+                    port_number = int(port)
+                except (TypeError, ValueError):
+                    return None
+                if not 1 <= port_number <= 65535:
+                    return None
+
+                def ssr_b64(value):
+                    return base64.urlsafe_b64encode(str(value).encode('utf-8')).decode('ascii').rstrip('=')
+
+                ssr_main = (
+                    f"{self._uri_host(server)}:{port_number}:{ssr_protocol}:"
+                    f"{cipher}:{obfs}:{ssr_b64(password)}"
+                )
+                ssr_params = []
+                obfs_param = proxy.get('obfs-param')
+                protocol_param = proxy.get('protocol-param')
+                if obfs_param not in (None, ''):
+                    ssr_params.append(('obfsparam', ssr_b64(obfs_param)))
+                if protocol_param not in (None, ''):
+                    ssr_params.append(('protoparam', ssr_b64(protocol_param)))
+                if remarks:
+                    ssr_params.append(('remarks', ssr_b64(remarks)))
+                ssr_payload = ssr_main
+                if ssr_params:
+                    ssr_payload += '/?' + urllib.parse.urlencode(ssr_params)
+                return 'ssr://' + ssr_b64(ssr_payload)
+
             elif protocol in ['hysteria2', 'hy2']:
                 server, port = proxy.get('server'), proxy.get('port')
                 password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
@@ -601,41 +644,59 @@ class merge:
                 query_part = f"?{query_string}" if query_string else ""
                 return f"tuic://{auth}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
 
-            elif protocol in ('http', 'socks5', 'socks'):
+            elif protocol == 'http':
                 server, port = proxy.get('server'), proxy.get('port')
                 if not all([server, port]):
                     return None
-                # Clash Verge Rev 的 URI 解析器不支持这些字段，遇到时不静默丢失。
+                # 当前分享 URI 不承载自定义 HTTP headers / ALPN，遇到时不静默丢失。
                 if proxy.get('headers') or proxy.get('alpn'):
                     return None
-                sni = proxy.get('sni') or proxy.get('servername')
-                if sni and str(sni).lower() != str(server).lower():
-                    return None
                 params = {}
-                if proxy.get('tls'):
+                sni = proxy.get('sni') or proxy.get('servername')
+                tls_enabled = self._as_bool(proxy.get('tls')) or bool(sni)
+                if tls_enabled:
                     params['tls'] = 'true'
+                if sni:
+                    params['sni'] = str(sni)
                 if proxy.get('skip-cert-verify') or proxy.get('insecure'):
                     params['skip-cert-verify'] = 'true'
                 for key in ('fingerprint', 'ip-version'):
                     if proxy.get(key) not in (None, ''):
                         params[key] = proxy[key]
-                if protocol in ('socks5', 'socks') and 'udp' in proxy:
-                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
                 username, password = proxy.get('username'), proxy.get('password')
-                if password is not None and username is None:
+                auth = ''
+                if username is not None or password is not None:
+                    # HTTP Basic 可表达空用户名；保留 password-only 凭据，不虚构用户名。
+                    auth = urllib.parse.quote(str(username or ''), safe='')
+                    auth += ':' + urllib.parse.quote(str(password or ''), safe='')
+                    auth += '@'
+                query_string = urllib.parse.urlencode(params)
+                query_part = f"?{query_string}" if query_string else ""
+                return f"http://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+            elif protocol in ('socks5', 'socks'):
+                server, port = proxy.get('server'), proxy.get('port')
+                if not all([server, port]):
                     return None
-                if username is not None and ':' in str(username):
+                if proxy.get('headers') or proxy.get('alpn') or proxy.get('sni') or proxy.get('servername'):
                     return None
+                username, password = proxy.get('username'), proxy.get('password')
+                # SOCKS5 username/password authentication (RFC 1929) requires both non-empty fields.
+                if (username is None) != (password is None):
+                    return None
+                if username is not None and (str(username) == '' or str(password) == ''):
+                    return None
+                params = {}
+                if 'udp' in proxy:
+                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
                 auth = ''
                 if username is not None:
                     auth = urllib.parse.quote(str(username), safe='')
-                    if password is not None:
-                        auth += ':' + urllib.parse.quote(str(password), safe='')
+                    auth += ':' + urllib.parse.quote(str(password), safe='')
                     auth += '@'
-                scheme = 'socks5' if protocol in ('socks5', 'socks') else 'http'
                 query_string = urllib.parse.urlencode(params)
                 query_part = f"?{query_string}" if query_string else ""
-                return f"{scheme}://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+                return f"socks5://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
 
             elif protocol == 'naive':
                 server, port = proxy.get('server'), proxy.get('port')
