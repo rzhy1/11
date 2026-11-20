@@ -350,6 +350,24 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         }))
         self.assertIsNone(self.merger.clash_to_share_link({**base, "version": 7}))
 
+    def test_snell_rejects_version_incompatible_obfuscation(self):
+        base = {"type": "snell", "server": "snell.example.com",
+                "port": 44046, "psk": "secret"}
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "version": 2, "obfs-opts": {"mode": "http"}
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "version": 4, "obfs-opts": {"mode": "tls"}
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "version": True
+        }))
+        link = self.merger.clash_to_share_link({
+            **base, "version": 4, "udp": "false", "reuse": "false",
+            "mode": "default"
+        })
+        self.assertTrue(link.startswith("snell://"))
+
     def test_snell_auth_version_and_obfs_are_part_of_fingerprint(self):
         base = "snell://secret@snell.example.com:44046?version=4&obfs=http&obfs-host=cdn.example.com"
         self.assertNotEqual(self.merger.node_fingerprint(base),
