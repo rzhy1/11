@@ -1269,13 +1269,6 @@ class merge:
                         print("  -> Content parsed as YAML, converting proxies...")
                         yaml_parsed = True
                         provider_meta = item.get('_provider') or {}
-                        exclude_filter = provider_meta.get('exclude_filter')
-                        include_filter = provider_meta.get('filter')
-                        exclude_types = provider_meta.get('exclude_type') or []
-                        additional_prefix = str(provider_meta.get('additional_prefix') or '')
-                        additional_suffix = str(provider_meta.get('additional_suffix') or '')
-                        proxy_name_rules = provider_meta.get('proxy_name') or {}
-
                         for proxy_dict in data['proxies']:
                             if not isinstance(proxy_dict, dict):
                                 continue
