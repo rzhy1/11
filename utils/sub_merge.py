@@ -445,10 +445,16 @@ class merge:
         def is_mapping(value):
             return isinstance(value, dict)
 
-        def is_single_value(value):
-            return isinstance(value, str) or (
-                isinstance(value, (list, tuple)) and len(value) <= 1
-            )
+        def single_value_failure(*values):
+            for value in values:
+                if isinstance(value, str):
+                    continue
+                if isinstance(value, (list, tuple)):
+                    if len(value) > 1:
+                        return 'vmess_multiple_transport_hosts_or_paths'
+                    continue
+                return 'vmess_invalid_transport_options'
+            return None
 
         if network == 'ws':
             options = proxy.get('ws-opts') or {}
@@ -463,8 +469,9 @@ class merge:
                 return 'vmess_invalid_transport_options'
             hosts = headers.get('Host') or headers.get('host') or options.get('host') or []
             paths = options.get('path') or ['/']
-            if not is_single_value(hosts) or not is_single_value(paths):
-                return 'vmess_multiple_transport_hosts_or_paths'
+            failure = single_value_failure(hosts, paths)
+            if failure:
+                return failure
         elif network == 'grpc':
             options = proxy.get('grpc-opts') or {}
             if not is_mapping(options):
@@ -494,8 +501,9 @@ class merge:
                     return 'vmess_invalid_transport_options'
                 hosts = headers.get('Host') or headers.get('host') or []
                 paths = request.get('path') or ['/']
-                if not is_single_value(hosts) or not is_single_value(paths):
-                    return 'vmess_multiple_transport_hosts_or_paths'
+                failure = single_value_failure(hosts, paths)
+                if failure:
+                    return failure
 
         tls_enabled = merge._as_bool(proxy.get('tls'))
         tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint',
