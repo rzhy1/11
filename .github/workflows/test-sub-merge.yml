@@ -1,0 +1,52 @@
+name: Test sub_merge
+
+on:
+  push:
+    branches:
+      - improve-sub-merge-2026-11
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: utils/requirements.txt
+      - name: Install dependencies
+        run: python -m pip install -r utils/requirements.txt
+      - name: Compile Python files
+        run: python -m py_compile utils/sub_merge.py utils/sub_update.py tests/test_sub_merge.py tests/test_sub_update.py
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  mihomo-compatibility:
+    name: Mihomo share-link compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: python -m pip install -r utils/requirements.txt
+      - name: Download Mihomo v1.19.34
+        run: |
+          curl -fL "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.34/mihomo-linux-amd64-v1.19.34.gz" -o mihomo.gz
+          gzip -df mihomo.gz
+          chmod +x mihomo
+      - name: Validate generated share links with Mihomo
+        env:
+          MIHOMO_BIN: ${{ github.workspace }}/mihomo
+        run: |
+          PYTHONPATH=utils python -m unittest discover -s tests -p "test_mihomo_compat.py" -v

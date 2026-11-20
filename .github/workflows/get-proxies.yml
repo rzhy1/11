@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "*"
+      - master
   schedule:
     - cron: '0 12,23 * * *'
 
 jobs:
   main:
+    if: github.ref == 'refs/heads/master'
     name: Merge & speedtest
     runs-on: ubuntu-26.04
     steps:
