@@ -1083,11 +1083,11 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
 
     def test_vmess_http_network_maps_to_tcp_http_header_without_loss(self):
         payload = self.vmess_payload(self.base_proxy(
-            "vmess", network="http", http-opts={
+            "vmess", network="http", **{"http-opts": {
                 "method": "GET",
                 "path": ["/legacy"],
                 "headers": {"Host": ["cdn.example.com"]},
-            }
+            }}
         ))
         self.assertEqual(payload["net"], "tcp")
         self.assertEqual(payload["type"], "http")
