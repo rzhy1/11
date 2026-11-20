@@ -447,7 +447,8 @@ class merge:
                     if paths:
                         params['path'] = paths[0]
                 elif params['type'] in ('xhttp', 'splithttp'):
-                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}                    if xhttp_opts.get('path'):
+                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
+                    if xhttp_opts.get('path'):
                         params['path'] = xhttp_opts['path']
                     if xhttp_opts.get('host'):
                         params['host'] = xhttp_opts['host']
@@ -706,7 +707,8 @@ class merge:
         if not pattern:
             return True
         try:
-            return re.search(str(pattern), name) is not None        except re.error as exc:
+            return re.search(str(pattern), name) is not None
+        except re.error as exc:
             print(f"  -> Invalid Provider filter ignored: {exc}")
             return None
 
