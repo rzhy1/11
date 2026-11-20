@@ -1112,8 +1112,8 @@ class FirstStageLosslessTransportTests(unittest.TestCase):
                 "v2ray-http-upgrade": True,
             }}
         ))
-        self.assertEqual(payload["net"], "ws")
-        self.assertTrue(payload["httpupgrade"])
+        self.assertEqual(payload["net"], "httpupgrade")
+        self.assertNotIn("httpupgrade", payload)
         self.assertEqual(payload["host"], "cdn.example.com")
         self.assertEqual(payload["path"], "/upgrade")
 
