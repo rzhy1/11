@@ -428,9 +428,100 @@ class merge:
                 return False
         return True
 
+    @staticmethod
+    def _vmess_conversion_failure_reason(proxy):
+        """仅诊断 VMess 转换失败原因；不参与或改变实际转换规则。"""
+        if proxy.get('uuid') in (None, ''):
+            return 'vmess_missing_uuid'
+
+        network = str(proxy.get('network') or 'tcp').lower()
+        supported_networks = ('tcp', 'ws', 'h2', 'grpc', 'httpupgrade')
+        if network not in supported_networks:
+            safe_network = network[:32]
+            if not re.fullmatch(r'[a-z0-9_-]{1,32}', safe_network):
+                safe_network = 'other'
+            return 'vmess_unsupported_network', safe_network
+
+        def is_mapping(value):
+            return isinstance(value, dict)
+
+        def single_value_failure(*values):
+            for value in values:
+                if isinstance(value, str):
+                    continue
+                if isinstance(value, (list, tuple)):
+                    if len(value) > 1:
+                        return 'vmess_multiple_transport_hosts_or_paths'
+                    continue
+                return 'vmess_invalid_transport_options'
+            return None
+
+        if network == 'ws':
+            options = proxy.get('ws-opts') or {}
+            if not is_mapping(options) or not is_mapping(options.get('headers') or {}):
+                return 'vmess_invalid_transport_options'
+        elif network == 'h2':
+            options = proxy.get('h2-opts') or proxy.get('http-opts') or {}
+            if not is_mapping(options):
+                return 'vmess_invalid_transport_options'
+            headers = options.get('headers') or {}
+            if not is_mapping(headers):
+                return 'vmess_invalid_transport_options'
+            hosts = headers.get('Host') or headers.get('host') or options.get('host') or []
+            paths = options.get('path') or ['/']
+            failure = single_value_failure(hosts, paths)
+            if failure:
+                return failure
+        elif network == 'grpc':
+            options = proxy.get('grpc-opts') or {}
+            if not is_mapping(options):
+                return 'vmess_invalid_transport_options'
+            if not options.get('grpc-service-name'):
+                return 'vmess_missing_grpc_service_name'
+        elif network == 'httpupgrade':
+            options = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+            if not is_mapping(options) or not is_mapping(options.get('headers') or {}):
+                return 'vmess_invalid_transport_options'
+        else:
+            options = proxy.get('tcp-opts') or {}
+            if not is_mapping(options):
+                return 'vmess_invalid_transport_options'
+            header = options.get('header') or {}
+            if not is_mapping(header):
+                return 'vmess_invalid_transport_options'
+            header_type = str(header.get('type') or 'none').lower()
+            if header_type not in ('none', 'http'):
+                return 'vmess_unsupported_tcp_header'
+            if header_type == 'http':
+                request = header.get('request') or {}
+                if not is_mapping(request):
+                    return 'vmess_invalid_transport_options'
+                headers = request.get('headers') or {}
+                if not is_mapping(headers):
+                    return 'vmess_invalid_transport_options'
+                hosts = headers.get('Host') or headers.get('host') or []
+                paths = request.get('path') or ['/']
+                failure = single_value_failure(hosts, paths)
+                if failure:
+                    return failure
+
+        tls_enabled = merge._as_bool(proxy.get('tls'))
+        tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint',
+                       'fingerprint', 'name-cert-verify')
+        has_tls_options = (
+            any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
+            merge._as_bool(proxy.get('skip-cert-verify'))
+        )
+        if not tls_enabled and has_tls_options:
+            return 'vmess_tls_options_without_tls'
+        if proxy.get('certificate') or proxy.get('private-key'):
+            return 'vmess_unrepresentable_tls_credentials'
+        return 'vmess_conversion_failed'
+
     def clash_to_share_link(self, proxy):
         """转换节点，并记录无法转换的具体原因。"""
         self._last_conversion_failure_reason = None
+        self._last_conversion_failure_network = None
         link = self._clash_to_share_link_impl(proxy)
         if link:
             return link
@@ -462,6 +553,12 @@ class merge:
                 reason = 'invalid_hysteria2_ports'
             elif protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 reason = 'invalid_port'
+            elif protocol == 'vmess':
+                diagnostic = self._vmess_conversion_failure_reason(proxy)
+                if isinstance(diagnostic, tuple):
+                    reason, self._last_conversion_failure_network = diagnostic
+                else:
+                    reason = diagnostic
             elif protocol in ('http', 'socks5', 'socks'):
                 username, password = proxy.get('username'), proxy.get('password')
                 if proxy.get('headers'):
@@ -1336,6 +1433,7 @@ class merge:
         conversion_failures = 0
         conversion_failure_reasons = {}
         conversion_failures_by_protocol = {}
+        vmess_unsupported_networks = {}
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -1404,6 +1502,9 @@ class merge:
                                     conversion_failures_by_protocol,
                                     conversion_failure_reasons
                                 )
+                                if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
+                                    network = getattr(self, '_last_conversion_failure_network', None) or 'other'
+                                    vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
@@ -1442,6 +1543,10 @@ class merge:
             print("Clash conversion failure reasons: " + ", ".join(
                 f"{reason}={count}" for reason, count in sorted(conversion_failure_reasons.items())
             ))
+            if vmess_unsupported_networks:
+                print("VMess unsupported network types: " + ", ".join(
+                    f"{network}={count}" for network, count in sorted(vmess_unsupported_networks.items())
+                ))
             print("Clash conversion failures by protocol and reason:")
             for protocol, reasons in sorted(conversion_failures_by_protocol.items()):
                 print("  " + protocol + ": " + ", ".join(
