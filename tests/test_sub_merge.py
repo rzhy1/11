@@ -36,6 +36,63 @@ class MergeFingerprintTests(unittest.TestCase):
         self.assertNotEqual(self.merger.node_fingerprint(tcp), self.merger.node_fingerprint(ws))
         self.assertNotEqual(self.merger.node_fingerprint(tcp), self.merger.node_fingerprint(reality))
 
+    def test_vless_flow_and_reality_key_are_part_of_fingerprint(self):
+        base = "vless://11111111-1111-1111-1111-111111111111@example.com:443?security=reality&pbk=key-a&flow=xtls-rprx-vision"
+        flow_changed = base.replace("xtls-rprx-vision", "none")
+        key_changed = base.replace("key-a", "key-b")
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(flow_changed))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(key_changed))
+
+    def test_trojan_password_is_part_of_fingerprint(self):
+        a = "trojan://password-a@example.com:443?sni=sni.example"
+        b = "trojan://password-b@example.com:443?sni=sni.example"
+        self.assertNotEqual(self.merger.node_fingerprint(a),
+                            self.merger.node_fingerprint(b))
+
+    def test_hysteria_v1_auth_and_options_are_part_of_fingerprint(self):
+        base = "hysteria://hy.example.com:443/?auth=secret&sni=a.example&protocol=udp"
+        auth_changed = base.replace("auth=secret", "auth=other")
+        sni_changed = base.replace("sni=a.example", "sni=b.example")
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(auth_changed))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(sni_changed))
+
+    def test_hysteria2_password_and_options_are_part_of_fingerprint(self):
+        base = "hysteria2://secret@example.com:443/?sni=a.example&obfs=salamander"
+        password_changed = base.replace("secret@", "other@")
+        obfs_changed = base.replace("salamander", "other")
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(password_changed))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(obfs_changed))
+
+    def test_tuic_credentials_and_options_are_part_of_fingerprint(self):
+        base = "tuic://uuid:password@example.com:443/?sni=a.example&congestion-controller=bbr"
+        password_changed = base.replace(":password@", ":other@")
+        mode_changed = base.replace("bbr", "cubic")
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(password_changed))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(mode_changed))
+
+    def test_anytls_password_and_tls_options_are_part_of_fingerprint(self):
+        base = "anytls://secret@example.com:443/?sni=a.example&client-fingerprint=chrome"
+        password_changed = base.replace("secret@", "other@")
+        fingerprint_changed = base.replace("chrome", "firefox")
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(password_changed))
+        self.assertNotEqual(self.merger.node_fingerprint(base),
+                            self.merger.node_fingerprint(fingerprint_changed))
+
+    def test_query_order_does_not_change_fingerprint(self):
+        a = "vless://11111111-1111-1111-1111-111111111111@example.com:443?type=ws&security=tls&host=cdn.example.com"
+        b = "vless://11111111-1111-1111-1111-111111111111@example.com:443?host=cdn.example.com&security=tls&type=ws"
+        self.assertEqual(self.merger.node_fingerprint(a),
+                         self.merger.node_fingerprint(b))
+
     def test_remark_only_difference_is_deduplicated(self):
         a = "trojan://secret@example.com:443?sni=one.example#A"
         b = "trojan://secret@example.com:443?sni=one.example#B"
