@@ -354,7 +354,7 @@ class merge:
                 reason = 'missing_protocol'
             elif not server:
                 reason = 'missing_server'
-            elif not port and not (protocol == 'mieru' and proxy.get('port-range')) and protocol != 'hysteria':
+            elif port in (None, '') and not (protocol == 'mieru' and proxy.get('port-range')) and protocol != 'hysteria':
                 reason = 'missing_port'
             elif protocol not in ('hysteria', 'mieru') and not self._valid_port(port):
                 reason = 'invalid_port'
