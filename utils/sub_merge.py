@@ -222,22 +222,43 @@ class merge:
                     "protocol": "naive",
                     "scheme": parsed_naive.scheme.lower(),
                     "server": parsed_naive.hostname.lower(),
-                    "port": parsed_naive.port or (443 if parsed_naive.scheme.endswith("https") else 80),
+                    "port": parsed_naive.port if parsed_naive.port is not None else (443 if parsed_naive.scheme.endswith("https") else 80),
                     "username": urllib.parse.unquote(parsed_naive.username or ""),
                     "password": urllib.parse.unquote(parsed_naive.password or ""),
                     "query": sorted(urllib.parse.parse_qsl(parsed_naive.query, keep_blank_values=True))
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             parsed = urllib.parse.urlsplit(protocol + "://" + raw)
-            if protocol == "ss" and (not parsed.hostname or not parsed.port or not parsed.username):
-                # 兼容旧式 ss://base64(method:password@server:port) 链接。
-                legacy = self.parse_share_link(link)
-                if not legacy:
+            if protocol == "ss":
+                if not parsed.hostname or parsed.port is None:
+                    # 兼容旧式 ss://base64(method:password@server:port) 链接。
+                    legacy = self.parse_share_link(link)
+                    if not legacy:
+                        return None
+                    return json.dumps({
+                        "protocol": protocol,
+                        "server": legacy.get("server", "").lower(),
+                        "port": legacy.get("port", ""),
+                        "credentials": legacy.get("id", "")
+                    }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+                encoded_or_plain_user = urllib.parse.unquote(parsed.username or "")
+                decoded_user = base64_decode(encoded_or_plain_user)
+                if not parsed.password and decoded_user and ":" in decoded_user:
+                    cipher, ss_password = decoded_user.split(":", 1)
+                else:
+                    cipher = encoded_or_plain_user
+                    ss_password = urllib.parse.unquote(parsed.password or "")
+                if not cipher:
                     return None
+                ss_query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
                 return json.dumps({
                     "protocol": protocol,
-                    "server": legacy.get("server", "").lower(),
-                    "port": legacy.get("port", ""),
-                    "credentials": legacy.get("id", "")
+                    "server": parsed.hostname.lower(),
+                    "port": parsed.port,
+                    "cipher": cipher,
+                    "password": ss_password,
+                    "path": parsed.path or "",
+                    "query": sorted((str(k), str(v)) for k, v in ss_query)
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
             if protocol == "mierus":
                 # Official Mieru simple links carry the server port and transport in
@@ -245,7 +266,7 @@ class merge:
                 if not parsed.hostname or not parsed.username or not parsed.password:
                     return None
                 query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-                normalized_query = sorted((str(k).lower(), str(v)) for k, v in query)
+                normalized_query = sorted((str(k), str(v)) for k, v in query)
                 return json.dumps({
                     "protocol": "mieru",
                     "server": parsed.hostname.lower(),
@@ -257,8 +278,8 @@ class merge:
             if not parsed.hostname:
                 return None
             default_ports = {"http": 80, "https": 443, "socks": 1080, "socks5": 1080, "anytls": 443, "hysteria": 443, "tuic": 443, "wireguard": 443}
-            port = parsed.port or default_ports.get(protocol)
-            if not port:
+            port = parsed.port if parsed.port is not None else default_ports.get(protocol)
+            if port is None:
                 return None
             username = urllib.parse.unquote(parsed.username or "")
             password = urllib.parse.unquote(parsed.password or "")
