@@ -11,7 +11,9 @@ import urllib.error
 import urllib.request
 
 import yaml
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "utils"))
 from sub_merge import merge
 
 
