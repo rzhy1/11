@@ -467,8 +467,9 @@ class merge:
                     reason = 'unsupported_snell_obfs_mode'
                 elif any(key not in ('mode', 'host') for key in obfs_opts):
                     reason = 'unsupported_snell_obfs_option'
-                elif (proxy.get('udp') or proxy.get('reuse') or proxy.get('userkey')
-                      or proxy.get('mode') or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
+                elif (self._as_bool(proxy.get('udp')) or self._as_bool(proxy.get('reuse'))
+                      or proxy.get('userkey') or str(proxy.get('mode') or '').lower() not in ('', 'default')
+                      or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
                     reason = 'unsupported_snell_uri_option'
                 else:
                     reason = 'snell_conversion_failed'
@@ -1031,8 +1032,11 @@ class merge:
                 server, port, psk = proxy.get('server'), proxy.get('port'), proxy.get('psk')
                 if not all([server, port, psk]):
                     return None
+                raw_version = proxy.get('version', 1)
+                if isinstance(raw_version, bool):
+                    return None
                 try:
-                    version = int(proxy.get('version', 1))
+                    version = int(raw_version)
                 except (TypeError, ValueError):
                     return None
                 if version not in range(1, 7):
@@ -1045,17 +1049,21 @@ class merge:
                 obfs_host = obfs_opts.get('host')
                 if obfs_mode not in ('', 'http', 'tls'):
                     return None
-                if obfs_mode == 'tls' and version not in (1, 2, 3):
+                if obfs_mode == 'tls' and version != 3:
                     return None
-                if obfs_mode == 'http' and version == 6:
+                if obfs_mode == 'http' and version not in (3, 4, 5):
+                    return None
+                if not obfs_mode and obfs_host not in (None, ''):
                     return None
                 if any(key not in ('mode', 'host') for key in obfs_opts):
                     return None
 
                 # These Mihomo settings have no portable representation in the
                 # commonly used snell:// URI format; never silently discard them.
-                if (proxy.get('udp') or proxy.get('reuse') or proxy.get('userkey')
-                        or proxy.get('mode') or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
+                mode = str(proxy.get('mode') or '').lower()
+                if (self._as_bool(proxy.get('udp')) or self._as_bool(proxy.get('reuse'))
+                        or proxy.get('userkey') or mode not in ('', 'default')
+                        or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
                     return None
 
                 params = [('version', str(version))]
