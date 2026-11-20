@@ -426,6 +426,74 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         }))
         self.assertIsNone(self.merger.clash_to_share_link({**base, "mtu": 1500}))
 
+    def test_vless_reality_tls_and_alpn_options_are_preserved(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vless", "name": "VLESS Reality", "server": "vless.example.com",
+            "port": 443, "uuid": "11111111-1111-1111-1111-111111111111",
+            "tls": True, "servername": "sni.example.com",
+            "client-fingerprint": "firefox", "alpn": ["h2", "http/1.1"],
+            "skip-cert-verify": True,
+            "reality-opts": {"public-key": "public-key", "short-id": "abcd", "spider-x": "/"}
+        })
+        parsed, query = self.parse_link(link)
+        self.assertEqual(parsed.scheme, "vless")
+        self.assertEqual(query["security"], ["reality"])
+        self.assertEqual(query["pbk"], ["public-key"])
+        self.assertEqual(query["sid"], ["abcd"])
+        self.assertEqual(query["spx"], ["/"])
+        self.assertEqual(query["sni"], ["sni.example.com"])
+        self.assertEqual(query["fp"], ["firefox"])
+        self.assertEqual(query["alpn"], ["h2,http/1.1"])
+        self.assertEqual(query["allowInsecure"], ["1"])
+
+    def test_vless_websocket_early_data_is_preserved(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vless", "name": "VLESS WS", "server": "vless.example.com",
+            "port": 443, "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": "ws", "tls": True,
+            "ws-opts": {
+                "path": "/ws", "headers": {"Host": "cdn.example.com"},
+                "max-early-data": 2048,
+                "early-data-header-name": "Sec-WebSocket-Protocol"
+            }
+        })
+        _, query = self.parse_link(link)
+        self.assertEqual(query["type"], ["ws"])
+        self.assertEqual(query["host"], ["cdn.example.com"])
+        self.assertEqual(query["path"], ["/ws"])
+        self.assertEqual(query["ed"], ["2048"])
+        self.assertEqual(query["eh"], ["Sec-WebSocket-Protocol"])
+
+    def test_vless_xhttp_extra_and_padding_are_preserved(self):
+        extra = {"xPaddingBytes": "100-1000", "noGRPCHeader": True}
+        link = self.merger.clash_to_share_link({
+            "type": "vless", "name": "VLESS XHTTP", "server": "vless.example.com",
+            "port": 443, "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": "xhttp", "tls": True,
+            "xhttp-opts": {
+                "path": "/upload", "host": "cdn.example.com",
+                "mode": "packet-up", "extra": extra,
+                "x-padding-bytes": "100-1000"
+            }
+        })
+        _, query = self.parse_link(link)
+        self.assertEqual(query["type"], ["xhttp"])
+        self.assertEqual(query["path"], ["/upload"])
+        self.assertEqual(query["host"], ["cdn.example.com"])
+        self.assertEqual(query["mode"], ["packet-up"])
+        self.assertEqual(query["x_padding_bytes"], ["100-1000"])
+        self.assertEqual(json.loads(query["extra"][0]), extra)
+
+    def test_vless_rejects_invalid_reality_and_xhttp_extra(self):
+        base = {"type": "vless", "server": "vless.example.com", "port": 443,
+                "uuid": "11111111-1111-1111-1111-111111111111", "tls": True}
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "reality-opts": {"short-id": "abcd"}
+        }))
+        self.assertIsNone(self.merger.clash_to_share_link({
+            **base, "network": "xhttp", "xhttp-opts": {"extra": "not-json-object"}
+        }))
+
     def test_anytls_conversion_keeps_tls_options(self):
         link = self.merger.clash_to_share_link({
             "type": "anytls", "name": "AnyTLS", "server": "any.example.com",
