@@ -1044,11 +1044,11 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
             }]
             session = Mock()
             session.get.return_value = response
-            with patch.object(sub_merge.requests, "Session", return_value=session), \\
-                    patch("builtins.print") as print_mock:
-                self.assertTrue(merger.sub_merge())
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                with patch("builtins.print") as print_mock:
+                    self.assertTrue(merger.sub_merge())
 
-        output = "\\n".join(
+        output = "\n".join(
             " ".join(str(value) for value in call.args)
             for call in print_mock.call_args_list
         )
