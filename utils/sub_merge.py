@@ -207,7 +207,7 @@ class merge:
                     "config": config,
                     "query": query
                 }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive"):
+            if protocol not in ("vless", "trojan", "hysteria", "hysteria2", "tuic", "anytls", "wireguard", "http", "https", "socks5", "socks", "ss", "naive", "mieru", "ssh"):
                 return None
             if protocol == "naive":
                 parsed_naive = urllib.parse.urlsplit(raw if raw.startswith("naive+") else "naive+" + raw)
@@ -476,13 +476,27 @@ class merge:
                 password, cipher = proxy.get('password'), proxy.get('cipher')
                 if not all([server, port, password, cipher]):
                     return None
-                if proxy.get('plugin') or proxy.get('plugin-opts'):
-                    return None
                 cipher = str(cipher).strip()
                 if not re.fullmatch(r'[A-Za-z0-9._-]{2,64}', cipher):
                     return None
                 creds = f"{cipher}:{password}"
-                return f"ss://{base64_encode(creds)}@{self._uri_host(server)}:{port}#{remarks_encoded}"
+                params = {}
+                plugin = proxy.get('plugin')
+                plugin_opts = proxy.get('plugin-opts') or {}
+                if plugin:
+                    if not isinstance(plugin_opts, dict):
+                        return None
+                    opts = []
+                    for key, value in plugin_opts.items():
+                        if isinstance(value, bool):
+                            if value:
+                                opts.append(str(key))
+                        elif value not in (None, ''):
+                            opts.append(f'{key}={value}')
+                    params['plugin'] = str(plugin) + (';' + ';'.join(opts) if opts else '')
+                query = urllib.parse.urlencode(params)
+                query_part = ('?' + query) if query else ''
+                return f"ss://{base64_encode(creds)}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
 
             elif protocol in ['hysteria2', 'hy2']:
                 server, port = proxy.get('server'), proxy.get('port')
@@ -609,6 +623,20 @@ class merge:
                 query_part = f"?{query_string}" if query_string else ""
                 return f"{scheme}://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
 
+            elif protocol == 'naive':
+                server, port = proxy.get('server'), proxy.get('port')
+                username, password = proxy.get('username'), proxy.get('password')
+                if not all([server, port, username, password]):
+                    return None
+                params = {}
+                sni = proxy.get('servername') or proxy.get('sni')
+                if sni:
+                    params['sni'] = sni
+                if proxy.get('insecure') or proxy.get('skip-cert-verify'):
+                    params['insecure'] = '1'
+                query = urllib.parse.urlencode(params)
+                return f"naive+https://{urllib.parse.quote(str(username), safe='')}:{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
+
             elif protocol == 'wireguard':
                 private_key = proxy.get('private-key') or proxy.get('private_key')
                 peers = proxy.get('peers') or []
@@ -679,7 +707,7 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://')
+        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'mieru://', 'ssh://')
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
@@ -770,7 +798,7 @@ class merge:
                                         print(f"  -> Invalid Provider proxy-name rule ignored: {regex_error}")
                             share_link = self.clash_to_share_link(proxy_data)
                             if share_link:
-                                expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard', 'socks': 'socks5'}.get(proxy_type, proxy_type)
+                                expected_scheme = {'hy2': 'hysteria2', 'hysteria2': 'hysteria2', 'wg': 'wireguard', 'wireguard': 'wireguard', 'socks': 'socks5', 'naive': 'naive+https'}.get(proxy_type, proxy_type)
                                 if share_link.split('://', 1)[0].lower() != expected_scheme:
                                     conversion_failures += 1
                                     unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
