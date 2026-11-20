@@ -724,6 +724,83 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                                  self.merger.node_fingerprint(renamed))
 
 
+    def test_vmess_failure_diagnostics_distinguish_unsupported_networks(self):
+        base = {"type": "vmess", "server": "example.com", "port": 443,
+                "uuid": "11111111-1111-1111-1111-111111111111"}
+        expected = {
+            "xhttp": "xhttp",
+            "splithttp": "splithttp",
+            "kcp": "kcp",
+            "quic": "quic",
+        }
+        for network, label in expected.items():
+            with self.subTest(network=network):
+                self.assertIsNone(self.merger.clash_to_share_link({**base, "network": network}))
+                self.assertEqual(self.merger._last_conversion_failure_reason,
+                                 "vmess_unsupported_network")
+                self.assertEqual(self.merger._last_conversion_failure_network, label)
+
+    def test_vmess_failure_diagnostics_identify_missing_uuid(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason, "vmess_missing_uuid")
+
+    def test_vmess_failure_diagnostics_identify_missing_grpc_service_name(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443,
+                 "uuid": "11111111-1111-1111-1111-111111111111",
+                 "network": "grpc", "grpc-opts": {}}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_missing_grpc_service_name")
+
+    def test_vmess_failure_diagnostics_identify_unsupported_tcp_header(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443,
+                 "uuid": "11111111-1111-1111-1111-111111111111",
+                 "network": "tcp", "tcp-opts": {"header": {"type": "srtp"}}}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_unsupported_tcp_header")
+
+    def test_vmess_failure_diagnostics_identify_tls_options_without_tls(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443,
+                 "uuid": "11111111-1111-1111-1111-111111111111",
+                 "tls": False, "servername": "sni.example.com"}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_tls_options_without_tls")
+
+    def test_vmess_failure_diagnostics_identify_unrepresentable_tls_credentials(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443,
+                 "uuid": "11111111-1111-1111-1111-111111111111",
+                 "tls": True, "certificate": "CERTIFICATE"}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_unrepresentable_tls_credentials")
+
+    def test_vmess_failure_diagnostics_identify_invalid_transport_shapes(self):
+        cases = [
+            {"network": "ws", "ws-opts": []},
+            {"network": "h2", "h2-opts": {"headers": []}},
+            {"network": "grpc", "grpc-opts": []},
+            {"network": "httpupgrade", "http-upgrade-opts": []},
+            {"network": "tcp", "tcp-opts": {"header": []}},
+        ]
+        base = {"type": "vmess", "server": "example.com", "port": 443,
+                "uuid": "11111111-1111-1111-1111-111111111111"}
+        for options in cases:
+            with self.subTest(options=options):
+                self.assertIsNone(self.merger.clash_to_share_link({**base, **options}))
+                self.assertEqual(self.merger._last_conversion_failure_reason,
+                                 "vmess_invalid_transport_options")
+
+    def test_vmess_failure_diagnostics_identify_multiple_transport_hosts(self):
+        proxy = {"type": "vmess", "server": "example.com", "port": 443,
+                 "uuid": "11111111-1111-1111-1111-111111111111",
+                 "network": "h2", "h2-opts": {"host": ["a.example.com", "b.example.com"]}}
+        self.assertIsNone(self.merger.clash_to_share_link(proxy))
+        self.assertEqual(self.merger._last_conversion_failure_reason,
+                         "vmess_multiple_transport_hosts_or_paths")
+
     def test_vmess_rejects_unrepresented_transports(self):
         base = {"type": "vmess", "server": "example.com", "port": 443,
                 "uuid": "11111111-1111-1111-1111-111111111111"}
