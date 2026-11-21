@@ -778,7 +778,11 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
                 payload = json.loads(sub_merge.base64_decode(
                     link.split("://", 1)[1].split("#", 1)[0]
                 ))
-                for key in ("tls", "sni", "alpn", "fp", "insecure"):
+                # VMess v2 JSON keeps empty tls/sni fields to represent TLS-off.
+                # TLS-specific optional fields must not be emitted when TLS is disabled or missing.
+                self.assertEqual(payload.get("tls"), "")
+                self.assertEqual(payload.get("sni"), "")
+                for key in ("alpn", "fp", "insecure"):
                     self.assertNotIn(key, payload)
 
     def test_vmess_failure_diagnostics_identify_unrepresentable_tls_credentials(self):
