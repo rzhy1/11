@@ -590,6 +590,9 @@ class merge:
         def mapping(value):
             return isinstance(value, dict)
 
+        if network == 'tcp':
+            # TCP is the default transport; the URI builder does not need extra TCP options.
+            return None
         if network == 'ws':
             options = proxy.get('ws-opts') or {}
             if not mapping(options) or not mapping(options.get('headers') or {}):
