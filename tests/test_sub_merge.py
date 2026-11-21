@@ -1111,6 +1111,9 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
             with patch.object(sub_merge.requests, "Session", return_value=session):
                 with patch("builtins.print") as print_mock:
                     self.assertTrue(merger.sub_merge())
+            report_path = os.path.join(temp_dir, "conversion_failures.txt")
+            with open(report_path, "r", encoding="utf-8") as report_file:
+                report_content = report_file.read()
 
         output = "\n".join(
             " ".join(str(value) for value in call.args)
@@ -1119,6 +1122,44 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vless_unsupported_network=2", output)
         self.assertIn("VLESS unsupported network types: mkcp=1, quic=1", output)
         self.assertIn("vless: vless_unsupported_network=2", output)
+        self.assertIn("Conversion failure details saved to", output)
+        self.assertIn("network: mkcp", report_content)
+        self.assertIn("network: quic", report_content)
+        self.assertNotIn("11111111-1111-1111-1111-111111111111", report_content)
+        self.assertNotIn("mkcp.example.com", report_content)
+
+class ConversionFailureReportTests(unittest.TestCase):
+    def test_report_preserves_network_and_redacts_sensitive_yaml_values(self):
+        failure = {
+            'protocol': 'vless',
+            'reason': 'vless_unsupported_network',
+            'source_id': 7,
+            'source_remarks': 'diagnostic-source',
+            'proxy': {
+                'name': 'broken-vless',
+                'type': 'vless',
+                'server': 'secret.example.com',
+                'port': 443,
+                'uuid': '11111111-1111-1111-1111-111111111111',
+                'password': 'top-secret',
+                'network': 'tcp#🍎94@oneclickvpnkeys',
+                'reality-opts': {'private-key': 'private-secret'},
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = os.path.join(temp_dir, 'conversion_failures.txt')
+            merge._write_conversion_failure_report(report_path, [failure])
+            with open(report_path, 'r', encoding='utf-8') as report_file:
+                report = report_file.read()
+
+        self.assertIn('tcp#🍎94@oneclickvpnkeys', report)
+        self.assertIn('broken-vless', report)
+        self.assertIn('vless_unsupported_network', report)
+        self.assertNotIn('secret.example.com', report)
+        self.assertNotIn('11111111-1111-1111-1111-111111111111', report)
+        self.assertNotIn('top-secret', report)
+        self.assertNotIn('private-secret', report)
+        self.assertIn('[REDACTED]', report)
 
 
 class SafeNetworkDiagnosticTests(unittest.TestCase):
