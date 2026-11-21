@@ -106,6 +106,21 @@ class MergeFingerprintTests(unittest.TestCase):
         b = "trojan://secret@example.com:443?sni=b.example#B"
         self.assertEqual(len(self.merger.deduplicate_nodes([a, b])), 2)
 
+    def test_mislabeled_ss_uri_with_uuid_and_vless_options_is_corrected(self):
+        link = (
+            "ss://0970324b-8c61-4ae7-8c3f-385a6f1e17e4@104.248.173.190:443"
+            "?path=%2F&security=tls&encryption=none&insecure=0"
+            "&host=vpn47.cc.cd&fp=chrome&type=ws&allowInsecure=0&sni=vpn47.cc.cd#node"
+        )
+        corrected = self.merger._normalize_mislabeled_vless_share_link(link)
+        self.assertTrue(corrected.startswith("vless://"))
+        fingerprint = json.loads(self.merger.node_fingerprint(corrected))
+        self.assertEqual(fingerprint["protocol"], "vless")
+
+    def test_real_ss_uri_is_not_relabelled_as_vless(self):
+        link = "ss://YWVzLTI1Ni1nY206c2VjcmV0@example.com:8388"
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
     def test_legacy_shadowsocks_uri_is_supported(self):
         legacy = base64.b64encode(b"aes-128-gcm:secret@example.com:8388").decode()
         link = "ss://" + legacy + "#legacy"
@@ -1142,7 +1157,7 @@ class ConversionFailureReportTests(unittest.TestCase):
                 'port': 443,
                 'uuid': '11111111-1111-1111-1111-111111111111',
                 'password': 'top-secret',
-                'network': 'tcp#🍎94@oneclickvpnkeys',
+                'network': 'tcp#🍎94@oneclickvpnkeys-vless://11111111-1111-1111-1111-111111111111@secret.example.com:443?security=tls',
                 'reality-opts': {'private-key': 'private-secret'},
             },
         }
@@ -1152,10 +1167,11 @@ class ConversionFailureReportTests(unittest.TestCase):
             with open(report_path, 'r', encoding='utf-8') as report_file:
                 report = report_file.read()
 
-        self.assertIn('tcp#🍎94@oneclickvpnkeys', report)
+        self.assertIn('tcp#🍎94@oneclickvpnkeys-vless://[REDACTED_URI]', report)
         self.assertIn('broken-vless', report)
         self.assertIn('vless_unsupported_network', report)
         self.assertNotIn('secret.example.com', report)
+        self.assertNotIn('11111111-1111-1111-1111-111111111111@secret.example.com', report)
         self.assertNotIn('11111111-1111-1111-1111-111111111111', report)
         self.assertNotIn('top-secret', report)
         self.assertNotIn('private-secret', report)
@@ -1163,6 +1179,30 @@ class ConversionFailureReportTests(unittest.TestCase):
 
 
 class SafeNetworkDiagnosticTests(unittest.TestCase):
+    def test_vless_tcp_advertisement_suffix_recovers_only_with_vision_reality(self):
+        proxy = {
+            'type': 'vless',
+            'uuid': '11111111-1111-1111-1111-111111111111',
+            'network': 'tcp#🎡88@oneclickvpnkeys',
+            'flow': 'xtls-rprx-vision',
+            'tls': True,
+            'reality-opts': {'public-key': 'public-key'},
+        }
+        self.assertEqual(merge._normalize_vless_network(proxy), 'tcp')
+        self.assertIsNotNone(self.merger.clash_to_share_link(proxy))
+        unsafe = dict(proxy, **{'flow': ''})
+        self.assertEqual(merge._normalize_vless_network(unsafe), 'tcp#🎡88@oneclickvpnkeys')
+
+    def test_vless_embedded_share_uri_suffix_recovers_only_with_vision_reality(self):
+        proxy = {
+            'type': 'vless',
+            'uuid': '11111111-1111-1111-1111-111111111111',
+            'network': 'tcp#advertisementvless://other',
+            'flow': 'xtls-rprx-vision',
+            'reality-opts': {'public-key': 'public-key'},
+        }
+        self.assertEqual(merge._normalize_vless_network(proxy), 'tcp')
+
     def test_safe_network_diagnostic_bucket(self):
         merger = merge.__new__(merge)
         cases = {

@@ -85,6 +85,34 @@ class merge:
 
         return expanded_list
 
+    @staticmethod
+    def _normalize_mislabeled_vless_share_link(link):
+        """Correct only strongly identifiable VLESS URIs incorrectly tagged as ss://."""
+        try:
+            if not isinstance(link, str) or not link.lower().startswith('ss://'):
+                return link
+            parsed = urllib.parse.urlsplit(link)
+            username = urllib.parse.unquote(parsed.username or '')
+            if parsed.password is not None or not re.fullmatch(
+                r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+                username
+            ):
+                return link
+            if not parsed.hostname or parsed.port is None:
+                return link
+            query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+            transport = str(query.get('type') or '').lower()
+            security = str(query.get('security') or '').lower()
+            if transport not in ('tcp', 'ws', 'grpc', 'http', 'h2', 'xhttp', 'splithttp', 'httpupgrade'):
+                return link
+            if security not in ('none', 'tls', 'reality'):
+                return link
+            if not ({'encryption', 'sni', 'pbk', 'flow', 'fp'} & set(query)):
+                return link
+            return 'vless://' + link[len('ss://'):]
+        except (TypeError, ValueError):
+            return link
+
     def parse_share_link(self, link):
         """将常见分享链接解析为包含核心指纹的字典"""
         try:
@@ -482,18 +510,35 @@ class merge:
         return tls_state + ':' + ('+'.join(fields) if fields else 'no_options')
 
     @staticmethod
+    def _normalize_vless_network(proxy):
+        """Normalize aliases and recover TCP only with strong Vision+Reality evidence."""
+        network = str(proxy.get('network') or 'tcp').strip().lower()
+        if network in ('raw', 'none'):
+            return 'tcp'
+        if network == 'h2':
+            return 'http'
+        if network == 'splithttp':
+            return 'xhttp'
+        supported = ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade')
+        if network in supported:
+            return network
+        if re.fullmatch(r'tcp(?:[#?%¬].*)', network, flags=re.DOTALL):
+            reality_opts = proxy.get('reality-opts')
+            if (
+                isinstance(reality_opts, dict)
+                and bool(reality_opts.get('public-key'))
+                and str(proxy.get('flow') or '').strip().lower() == 'xtls-rprx-vision'
+            ):
+                return 'tcp'
+        return network
+
+    @staticmethod
     def _vless_conversion_failure_reason(proxy):
         """诊断 VLESS 转换失败原因；与实际 URI 生成逻辑保持同一组约束。"""
         if proxy.get('uuid') in (None, ''):
             return 'vless_missing_uuid'
 
-        network = str(proxy.get('network') or 'tcp').strip().lower()
-        if network in ('raw', 'none'):
-            network = 'tcp'
-        if network == 'h2':
-            network = 'http'
-        if network == 'splithttp':
-            network = 'xhttp'
+        network = merge._normalize_vless_network(proxy)
         supported_networks = ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade')
         if network not in supported_networks:
             return 'vless_unsupported_network'
@@ -822,6 +867,18 @@ class merge:
         """Redact credentials and endpoint identifiers while preserving network verbatim."""
         normalized_key = str(key or '').strip().lower().replace('_', '-')
         if normalized_key == 'network':
+            if not isinstance(value, str):
+                return value
+            # Preserve the malformed prefix, but redact embedded share URIs and UUIDs.
+            value = re.sub(
+                r'(?i)(vless|vmess|trojan|ssr?|hysteria2?|hy2|tuic|socks5?)(?:://|%3a%2f%2f).*',
+                lambda match: match.group(1) + '://[REDACTED_URI]',
+                value
+            )
+            value = re.sub(
+                r'(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+                '[REDACTED_UUID]', value
+            )
             return value
         if normalized_key in {
             'uuid', 'password', 'passwd', 'username', 'user', 'auth', 'auth-str',
@@ -847,7 +904,7 @@ class merge:
             'Clash proxy conversion failure report',
             f'Total failures: {len(failures)}',
             'Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.',
-            'The original network value is intentionally preserved exactly for diagnosis.',
+            'Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.',
             'Original share URI: unavailable for Clash YAML input; the source node is shown below.',
             ''
         ]
@@ -1042,11 +1099,7 @@ class merge:
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
                 if not all([server, port, uuid]):
                     return None
-                network = str(proxy.get('network') or 'tcp').strip().lower()
-                if network in ('raw', 'none'):
-                    network = 'tcp'
-                if network in ('h2', 'splithttp'):
-                    network = 'http' if network == 'h2' else 'xhttp'
+                network = self._normalize_vless_network(proxy)
                 if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
                     return None
                 reality_opts = proxy.get('reality-opts')
@@ -1950,11 +2003,23 @@ class merge:
                         print(f"  -> YAML parse failed: {yaml_error}")
 
                 if not yaml_parsed:
-                    found_nodes = [
+                    raw_links = [
                         line.strip()
                         for line in plain_text.splitlines()
                         if line.strip().lower().startswith(VALID_PROTOCOLS)
                     ]
+                    found_nodes = []
+                    corrected_mislabeled_vless = 0
+                    for raw_link in raw_links:
+                        normalized_link = self._normalize_mislabeled_vless_share_link(raw_link)
+                        if normalized_link != raw_link:
+                            corrected_mislabeled_vless += 1
+                        found_nodes.append(normalized_link)
+                    if corrected_mislabeled_vless:
+                        print(
+                            f"Corrected mislabeled SS links with VLESS signatures: "
+                            f"{corrected_mislabeled_vless}"
+                        )
 
                 if found_nodes:
                     all_nodes_raw.extend(found_nodes)
