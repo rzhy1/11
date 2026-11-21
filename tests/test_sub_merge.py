@@ -1189,7 +1189,8 @@ class SafeNetworkDiagnosticTests(unittest.TestCase):
             'reality-opts': {'public-key': 'public-key'},
         }
         self.assertEqual(merge._normalize_vless_network(proxy), 'tcp')
-        self.assertIsNotNone(self.merger.clash_to_share_link(proxy))
+        merger = merge.__new__(merge)
+        self.assertIsNotNone(merger.clash_to_share_link(proxy))
         unsafe = dict(proxy, **{'flow': ''})
         self.assertEqual(merge._normalize_vless_network(unsafe), 'tcp#🎡88@oneclickvpnkeys')
 
