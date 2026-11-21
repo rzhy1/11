@@ -487,7 +487,7 @@ class merge:
         if proxy.get('uuid') in (None, ''):
             return 'vless_missing_uuid'
 
-        network = str(proxy.get('network') or 'tcp').lower()
+        network = str(proxy.get('network') or 'tcp').strip().lower()
         if network in ('raw', 'none'):
             network = 'tcp'
         if network == 'h2':
@@ -592,7 +592,7 @@ class merge:
         if proxy.get('uuid') in (None, ''):
             return 'vmess_missing_uuid'
 
-        network = str(proxy.get('network') or 'tcp').lower()
+        network = str(proxy.get('network') or 'tcp').strip().lower()
         if network in ('raw', 'none'):
             network = 'tcp'
         supported_networks = ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade')
@@ -853,7 +853,7 @@ class merge:
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
                 if not all([server, port, uuid]):
                     return None
-                network = str(proxy.get('network') or 'tcp').lower()
+                network = str(proxy.get('network') or 'tcp').strip().lower()
                 if network in ('raw', 'none'):
                     network = 'tcp'
                 if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
@@ -980,7 +980,7 @@ class merge:
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
                 if not all([server, port, uuid]):
                     return None
-                network = str(proxy.get('network') or 'tcp').lower()
+                network = str(proxy.get('network') or 'tcp').strip().lower()
                 if network in ('raw', 'none'):
                     network = 'tcp'
                 if network in ('h2', 'splithttp'):
@@ -1146,7 +1146,7 @@ class merge:
                 params = {'sni': proxy.get('sni') or proxy.get('servername') or server}
                 if self._as_bool(proxy.get('skip-cert-verify')):
                     params['allowInsecure'] = 1
-                network = str(proxy.get('network') or 'tcp').lower()
+                network = str(proxy.get('network') or 'tcp').strip().lower()
                 if network == 'ws':
                     ws_opts = proxy.get('ws-opts') or {}
                     if not isinstance(ws_opts, dict):
@@ -1857,7 +1857,8 @@ class merge:
                                     network = getattr(self, '_last_conversion_failure_network', None) or 'other'
                                     vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
                                 elif proxy_type == 'vless' and reason == 'vless_unsupported_network':
-                                    network = str(proxy_data.get('network') or 'tcp').strip().lower() or 'tcp'
+                                    raw_network = proxy_data.get('network')
+                                    network = 'tcp' if raw_network in (None, '') else str(raw_network).strip().lower()
                                     if network == 'h2':
                                         network = 'http'
                                     elif network == 'splithttp':
