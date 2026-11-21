@@ -121,6 +121,43 @@ class merge:
         except (TypeError, ValueError):
             return link
 
+    @staticmethod
+    def _suspected_mislabeled_vless_transport(link):
+        """Return a safe transport label for ambiguous UUID-based ss:// VLESS candidates.
+
+        These links are diagnostic-only: unlike high-confidence signatures, they
+        are deliberately not rewritten because their VLESS identity is not certain.
+        """
+        try:
+            if not isinstance(link, str) or not link.lower().startswith('ss://'):
+                return None
+            parsed = urllib.parse.urlsplit(link)
+            username = urllib.parse.unquote(parsed.username or '')
+            if parsed.password is not None or not re.fullmatch(
+                r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+                username
+            ):
+                return None
+            if not parsed.hostname or parsed.port is None:
+                return None
+
+            query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+            transport = str(query.get('type') or '').strip().lower()
+            if transport not in ('tcp', 'ws', 'grpc', 'http', 'h2', 'xhttp', 'splithttp', 'httpupgrade'):
+                return None
+
+            # Transport-specific VLESS-style fields raise suspicion, but are not
+            # sufficient to rewrite a link whose encryption/security markers are absent.
+            transport_markers = {
+                'path', 'host', 'mode', 'extra', 'serviceName',
+                'headerType', 'packetEncoding'
+            }
+            if not (transport_markers & set(query)):
+                return None
+            return transport
+        except (TypeError, ValueError):
+            return None
+
     def parse_share_link(self, link):
         """将常见分享链接解析为包含核心指纹的字典"""
         try:
@@ -2049,15 +2086,31 @@ class merge:
                     ]
                     found_nodes = []
                     corrected_mislabeled_vless = 0
+                    suspected_mislabeled_vless = {}
                     for raw_link in raw_links:
                         normalized_link = self._normalize_mislabeled_vless_share_link(raw_link)
                         if normalized_link != raw_link:
                             corrected_mislabeled_vless += 1
+                        else:
+                            suspected_transport = self._suspected_mislabeled_vless_transport(raw_link)
+                            if suspected_transport:
+                                suspected_mislabeled_vless[suspected_transport] = (
+                                    suspected_mislabeled_vless.get(suspected_transport, 0) + 1
+                                )
                         found_nodes.append(normalized_link)
                     if corrected_mislabeled_vless:
                         print(
                             f"Corrected mislabeled SS links with VLESS signatures: "
                             f"{corrected_mislabeled_vless}"
+                        )
+                    if suspected_mislabeled_vless:
+                        print(
+                            "Potential mislabeled SS links retained unchanged "
+                            "(UUID + VLESS-style transport fields; review required): "
+                            + ", ".join(
+                                f"{transport}={count}"
+                                for transport, count in sorted(suspected_mislabeled_vless.items())
+                            )
                         )
 
                 if found_nodes:
