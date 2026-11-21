@@ -1196,6 +1196,12 @@ class VlessNetworkAliasTests(unittest.TestCase):
                 self.assertIsNotNone(link)
                 self.assertEqual(parse_qs(urlsplit(link).query)["type"], ["tcp"])
 
+    def test_vless_network_whitespace_is_normalized_consistently(self):
+        from urllib.parse import parse_qs, urlsplit
+        link = self.merger.clash_to_share_link(self.base_proxy(" tcp "))
+        self.assertIsNotNone(link)
+        self.assertEqual(parse_qs(urlsplit(link).query)["type"], ["tcp"])
+
 
 class FirstStageLosslessTransportTests(unittest.TestCase):
     def setUp(self):
@@ -1405,6 +1411,16 @@ class VlessPacketEncodingAndDiagnosticsTests(unittest.TestCase):
                 self.assertIsNotNone(link)
                 payload = json.loads(sub_merge.base64_decode(link.split("://", 1)[1].split("#", 1)[0]))
                 self.assertEqual(payload["net"], "tcp")
+
+    def test_vmess_network_whitespace_is_normalized_consistently(self):
+        link = self.merger.clash_to_share_link({
+            "type": "vmess", "server": "vmess.example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": " tcp ",
+        })
+        self.assertIsNotNone(link)
+        payload = json.loads(sub_merge.base64_decode(link.split("://", 1)[1].split("#", 1)[0]))
+        self.assertEqual(payload["net"], "tcp")
 
 
 if __name__ == "__main__":
