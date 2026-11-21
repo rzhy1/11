@@ -1105,6 +1105,37 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vless: vless_unsupported_network=2", output)
 
 
+class VlessNetworkAliasTests(unittest.TestCase):
+    def setUp(self):
+        self.merger = merge.__new__(merge)
+
+    def base_proxy(self, network):
+        return {
+            "type": "vless", "name": f"vless-{network}",
+            "server": "example.com", "port": 443,
+            "uuid": "11111111-1111-1111-1111-111111111111",
+            "network": network,
+        }
+
+    def test_vless_raw_and_none_networks_normalize_to_tcp(self):
+        from urllib.parse import parse_qs, urlsplit
+        for network in ("raw", "none"):
+            with self.subTest(network=network):
+                link = self.merger.clash_to_share_link(self.base_proxy(network))
+                self.assertIsNotNone(link)
+                self.assertEqual(parse_qs(urlsplit(link).query)["type"], ["tcp"])
+
+    def test_vless_raw_and_none_preserve_tcp_header_options(self):
+        from urllib.parse import parse_qs, urlsplit
+        for network in ("raw", "none"):
+            with self.subTest(network=network):
+                proxy = self.base_proxy(network)
+                proxy["tcp-opts"] = {"header": {"type": "none"}}
+                link = self.merger.clash_to_share_link(proxy)
+                self.assertIsNotNone(link)
+                self.assertEqual(parse_qs(urlsplit(link).query)["type"], ["tcp"])
+
+
 class FirstStageLosslessTransportTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)

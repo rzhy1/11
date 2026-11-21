@@ -435,6 +435,8 @@ class merge:
             return 'vless_missing_uuid'
 
         network = str(proxy.get('network') or 'tcp').lower()
+        if network in ('raw', 'none'):
+            network = 'tcp'
         if network == 'h2':
             network = 'http'
         if network == 'splithttp':
@@ -937,6 +939,8 @@ class merge:
                 if not all([server, port, uuid]):
                     return None
                 network = str(proxy.get('network') or 'tcp').lower()
+                if network in ('raw', 'none'):
+                    network = 'tcp'
                 if network in ('h2', 'splithttp'):
                     network = 'http' if network == 'h2' else 'xhttp'
                 if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
