@@ -870,8 +870,8 @@ class merge:
             ])
         temp_path = report_path + '.tmp'
         try:
-            with open(temp_path, 'w', encoding='utf-8', newline='\\n') as report_file:
-                report_file.write('\\n'.join(lines).rstrip() + '\\n')
+            with open(temp_path, 'w', encoding='utf-8', newline='\n') as report_file:
+                report_file.write('\n'.join(lines).rstrip() + '\n')
                 report_file.flush()
                 os.fsync(report_file.fileno())
             os.replace(temp_path, report_path)
@@ -2034,6 +2034,11 @@ class merge:
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+        if not conversion_failure_details and os.path.exists(failure_report_path):
+            try:
+                os.remove(failure_report_path)
+            except OSError as report_error:
+                print(f'Warning: Could not remove stale conversion failure report: {report_error}')
         print(f'\nDone! Output merged nodes to {merge_path_final}.')
         return True
 
