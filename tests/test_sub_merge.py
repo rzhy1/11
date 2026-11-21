@@ -1121,6 +1121,35 @@ class SafeNetworkDiagnosticTests(unittest.TestCase):
                 self.assertEqual(merger._safe_network_diagnostic_bucket(value), expected)
 
 
+    def test_malformed_network_diagnostic_kind_hides_raw_values(self):
+        merger = merge.__new__(merge)
+        cases = {
+            'tcp#🍎94@oneclickvpnkeys': 'unicode',
+            'tcp%23foo': 'url_encoded',
+            'tcp?type=tcp': 'punctuation',
+            'a' * 40: 'too_long',
+            '   ': 'empty',
+            123: 'non_string',
+        }
+        for value, expected in cases.items():
+            with self.subTest(expected=expected):
+                self.assertEqual(merger._network_malformed_diagnostic_kind(value), expected)
+
+    def test_tls_mismatch_diagnostic_reports_state_and_field_names_only(self):
+        merger = merge.__new__(merge)
+        self.assertEqual(
+            merger._tls_mismatch_diagnostic_bucket({
+                'tls': False, 'servername': 'secret.example',
+                'alpn': ['h2'], 'skip-cert-verify': True,
+            }),
+            'disabled:servername+alpn+skip-cert-verify',
+        )
+        self.assertEqual(
+            merger._tls_mismatch_diagnostic_bucket({'sni': 'secret.example'}),
+            'missing:sni',
+        )
+
+
 class VlessNetworkAliasTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)
