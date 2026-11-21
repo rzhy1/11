@@ -1966,6 +1966,19 @@ class merge:
             finally:
                 print()
 
+        failure_report_path = os.path.join(self.merge_dir, 'conversion_failures.txt')
+        if conversion_failure_details:
+            try:
+                self._write_conversion_failure_report(
+                    failure_report_path, conversion_failure_details
+                )
+                print(
+                    f'Conversion failure details saved to {failure_report_path} '
+                    f'({len(conversion_failure_details)} records; sensitive fields redacted).'
+                )
+            except Exception as report_error:
+                print(f'Warning: Could not write conversion failure report: {report_error}')
+
         if not all_nodes_raw:
             print('🔴🔴🔴🔴 Merging failed: No nodes collected; preserving previous output.')
             return False
@@ -2004,24 +2017,6 @@ class merge:
                 print("  " + protocol + ": " + ", ".join(
                     f"{reason}={count}" for reason, count in sorted(reasons.items())
                 ))
-
-        failure_report_path = os.path.join(self.merge_dir, 'conversion_failures.txt')
-        if conversion_failure_details:
-            try:
-                self._write_conversion_failure_report(
-                    failure_report_path, conversion_failure_details
-                )
-                print(
-                    f'Conversion failure details saved to {failure_report_path} '
-                    f'({len(conversion_failure_details)} records; sensitive fields redacted).'
-                )
-            except Exception as report_error:
-                print(f'Warning: Could not write conversion failure report: {report_error}')
-        elif os.path.exists(failure_report_path):
-            try:
-                os.remove(failure_report_path)
-            except OSError as report_error:
-                print(f'Warning: Could not remove stale conversion failure report: {report_error}')
 
         print('Packaging all collected nodes into a Base64 subscription...')
         final_plain_text = '\n'.join(sorted(unique_nodes))
