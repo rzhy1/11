@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 4
+Total failures: 7
 Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -19,7 +19,57 @@ type: socks5
 udp: true
 
 ========================================================================
-[2] Protocol: vmess
+[2] Protocol: trojan
+Reason: missing_required_field_or_unsupported_option
+Source ID: 42
+Source remarks: ⭐github.com
+Node name: 🇺🇸US_383|1.3MB/s|M003-260806 [ad2a6835fb68]
+Original YAML proxy (sensitive values redacted; network preserved):
+name: 🇺🇸US_383|1.3MB/s|M003-260806 [ad2a6835fb68]
+client-fingerprint: chrome
+network: ws#🍪100@oneclickvpnkeys
+password: '[REDACTED]'
+port: 443
+server: '[REDACTED]'
+skip-cert-verify: true
+sni: www.findconnectwithemployersandbuildprofessionalnetwork.com#🍪99@oneclickvpnkeystrojan://8deb189a-3aed-4865-843b-b72dae954c46@ctcc.cloudflare.seeck.cn:443?host=api.85s.me
+sub_tag: M003-260806
+type: trojan
+udp: true
+
+========================================================================
+[3] Protocol: socks5
+Reason: incomplete_socks5_auth
+Source ID: 42
+Source remarks: ⭐github.com
+Node name: 🇺🇸US_625|671KB/s|P002-260618 [c0b3b312046c]
+Original YAML proxy (sensitive values redacted; network preserved):
+name: 🇺🇸US_625|671KB/s|P002-260618 [c0b3b312046c]
+password: '[REDACTED]'
+port: 38182
+server: '[REDACTED]'
+sub_tag: P002-260618
+type: socks5
+udp: true
+
+========================================================================
+[4] Protocol: socks5
+Reason: incomplete_socks5_auth
+Source ID: 42
+Source remarks: ⭐github.com
+Node name: D🔴🇺🇸hos_dokng.com_ad867d51
+Original YAML proxy (sensitive values redacted; network preserved):
+name: D🔴🇺🇸hos_dokng.com_ad867d51
+password: '[REDACTED]'
+port: 38182
+server: '[REDACTED]'
+sub_tag: P002-260618
+type: socks5
+udp: true
+x-toolall-mihomo: true
+
+========================================================================
+[5] Protocol: vmess
 Reason: vmess_missing_grpc_service_name
 Source ID: 48
 Source remarks: ⭐github.com
@@ -37,7 +87,7 @@ type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[3] Protocol: vmess
+[6] Protocol: vmess
 Reason: vmess_missing_grpc_service_name
 Source ID: 48
 Source remarks: ⭐github.com
@@ -54,7 +104,7 @@ type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[4] Protocol: socks5
+[7] Protocol: socks5
 Reason: incomplete_socks5_auth
 Source ID: 49
 Source remarks: MrErrorSan Clash Profile / PuddinCat
