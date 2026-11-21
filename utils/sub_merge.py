@@ -817,6 +817,68 @@ class merge:
         protocol_reasons[reason] = protocol_reasons.get(reason, 0) + 1
         reason_counts[reason] = reason_counts.get(reason, 0) + 1
 
+    @staticmethod
+    def _sanitize_conversion_failure_value(value, key=None):
+        """Redact credentials and endpoint identifiers while preserving network verbatim."""
+        normalized_key = str(key or '').strip().lower().replace('_', '-')
+        if normalized_key == 'network':
+            return value
+        if normalized_key in {
+            'uuid', 'password', 'passwd', 'username', 'user', 'auth', 'auth-str',
+            'token', 'secret', 'private-key', 'privatekey', 'client-key',
+            'certificate', 'server', 'server-name', 'address'
+        }:
+            return '[REDACTED]'
+        if isinstance(value, dict):
+            return {
+                item_key: merge._sanitize_conversion_failure_value(item_value, item_key)
+                for item_key, item_value in value.items()
+            }
+        if isinstance(value, list):
+            return [merge._sanitize_conversion_failure_value(item) for item in value]
+        if isinstance(value, tuple):
+            return [merge._sanitize_conversion_failure_value(item) for item in value]
+        return value
+
+    @staticmethod
+    def _write_conversion_failure_report(report_path, failures):
+        """Write a local, redacted YAML-node report without exposing raw credentials."""
+        lines = [
+            'Clash proxy conversion failure report',
+            f'Total failures: {len(failures)}',
+            'Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.',
+            'The original network value is intentionally preserved exactly for diagnosis.',
+            'Original share URI: unavailable for Clash YAML input; the source node is shown below.',
+            ''
+        ]
+        for index, failure in enumerate(failures, 1):
+            proxy = failure.get('proxy') if isinstance(failure.get('proxy'), dict) else {}
+            safe_proxy = merge._sanitize_conversion_failure_value(proxy)
+            lines.extend([
+                '=' * 72,
+                f'[{index}] Protocol: {failure.get("protocol") or "unknown"}',
+                f'Reason: {failure.get("reason") or "conversion_failed"}',
+                f'Source ID: {failure.get("source_id") if failure.get("source_id") is not None else "unknown"}',
+                f'Source remarks: {failure.get("source_remarks") or "unknown"}',
+                f'Node name: {proxy.get("name") or "unknown"}',
+                'Original YAML proxy (sensitive values redacted; network preserved):',
+                yaml.safe_dump(
+                    safe_proxy, allow_unicode=True, sort_keys=False,
+                    default_flow_style=False
+                ).rstrip(),
+                ''
+            ])
+        temp_path = report_path + '.tmp'
+        try:
+            with open(temp_path, 'w', encoding='utf-8', newline='\\n') as report_file:
+                report_file.write('\\n'.join(lines).rstrip() + '\\n')
+                report_file.flush()
+                os.fsync(report_file.fileno())
+            os.replace(temp_path, report_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
     def _clash_to_share_link_impl(self, proxy):
         """将 Clash/Mihomo 节点转换为 Clash Verge Rev 可识别的分享 URI。"""
         try:
@@ -1782,6 +1844,7 @@ class merge:
         vless_unsupported_networks = {}
         malformed_network_details = {}
         tls_mismatch_details = {}
+        conversion_failure_details = []
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -1839,6 +1902,13 @@ class merge:
                                     conversion_failures += 1
                                     unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
                                     self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failures_by_protocol, conversion_failure_reasons)
+                                    conversion_failure_details.append({
+                                        'protocol': proxy_type,
+                                        'reason': 'output_protocol_mismatch',
+                                        'source_id': item_id,
+                                        'source_remarks': item_remarks,
+                                        'proxy': dict(proxy_dict),
+                                    })
                                     continue
                                 found_nodes.append(share_link)
                             else:
@@ -1850,6 +1920,13 @@ class merge:
                                     conversion_failures_by_protocol,
                                     conversion_failure_reasons
                                 )
+                                conversion_failure_details.append({
+                                    'protocol': proxy_type,
+                                    'reason': reason,
+                                    'source_id': item_id,
+                                    'source_remarks': item_remarks,
+                                    'proxy': dict(proxy_dict),
+                                })
                                 if reason in ('vless_tls_options_without_tls', 'vmess_tls_options_without_tls'):
                                     detail = proxy_type + ':' + self._tls_mismatch_diagnostic_bucket(proxy_data)
                                     tls_mismatch_details[detail] = tls_mismatch_details.get(detail, 0) + 1
@@ -1927,6 +2004,24 @@ class merge:
                 print("  " + protocol + ": " + ", ".join(
                     f"{reason}={count}" for reason, count in sorted(reasons.items())
                 ))
+
+        failure_report_path = os.path.join(self.merge_dir, 'conversion_failures.txt')
+        if conversion_failure_details:
+            try:
+                self._write_conversion_failure_report(
+                    failure_report_path, conversion_failure_details
+                )
+                print(
+                    f'Conversion failure details saved to {failure_report_path} '
+                    f'({len(conversion_failure_details)} records; sensitive fields redacted).'
+                )
+            except Exception as report_error:
+                print(f'Warning: Could not write conversion failure report: {report_error}')
+        elif os.path.exists(failure_report_path):
+            try:
+                os.remove(failure_report_path)
+            except OSError as report_error:
+                print(f'Warning: Could not remove stale conversion failure report: {report_error}')
 
         print('Packaging all collected nodes into a Base64 subscription...')
         final_plain_text = '\n'.join(sorted(unique_nodes))
