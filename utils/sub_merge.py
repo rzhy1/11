@@ -513,11 +513,6 @@ class merge:
 
         tls_enabled = merge._as_bool(proxy.get('tls')) or reality_enabled
         tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
-        if not tls_enabled and (
-            any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
-            merge._as_bool(proxy.get('skip-cert-verify'))
-        ):
-            return 'vless_tls_options_without_tls'
 
         def mapping(value):
             return isinstance(value, dict)
@@ -699,8 +694,6 @@ class merge:
             any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
             merge._as_bool(proxy.get('skip-cert-verify'))
         )
-        if not tls_enabled and has_tls_options:
-            return 'vmess_tls_options_without_tls'
         if proxy.get('certificate') or proxy.get('private-key'):
             return 'vmess_unrepresentable_tls_credentials'
         return 'vmess_conversion_failed'
@@ -966,10 +959,6 @@ class merge:
                 tls_enabled = self._as_bool(proxy.get('tls'))
                 tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint',
                                'fingerprint', 'name-cert-verify')
-                if not tls_enabled and (
-                    any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
-                    self._as_bool(proxy.get('skip-cert-verify'))
-                ): return None
                 if tls_enabled:
                     vmess_config['tls'] = 'tls'
                     vmess_config['sni'] = proxy.get('servername') or proxy.get('sni') or vmess_config['host']
@@ -1004,11 +993,6 @@ class merge:
                 reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
                 tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
                 tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
-                if not tls_enabled and (
-                    any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
-                    self._as_bool(proxy.get('skip-cert-verify'))
-                ):
-                    return None
                 params = {
                     'type': network,
                     'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')

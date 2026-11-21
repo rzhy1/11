@@ -761,13 +761,25 @@ class ClashVergeProtocolConversionTests(unittest.TestCase):
         self.assertEqual(self.merger._last_conversion_failure_reason,
                          "vmess_unsupported_tcp_header")
 
-    def test_vmess_failure_diagnostics_identify_tls_options_without_tls(self):
-        proxy = {"type": "vmess", "server": "example.com", "port": 443,
-                 "uuid": "11111111-1111-1111-1111-111111111111",
-                 "tls": False, "servername": "sni.example.com"}
-        self.assertIsNone(self.merger.clash_to_share_link(proxy))
-        self.assertEqual(self.merger._last_conversion_failure_reason,
-                         "vmess_tls_options_without_tls")
+    def test_vmess_ignores_tls_options_when_tls_is_disabled_or_missing(self):
+        for tls_fields in (
+            {"tls": False, "servername": "sni.example.com", "alpn": ["h2"],
+             "client-fingerprint": "chrome", "skip-cert-verify": True},
+            {"servername": "sni.example.com", "sni": "other.example.com"},
+        ):
+            with self.subTest(tls_fields=list(tls_fields)):
+                proxy = {
+                    "type": "vmess", "server": "example.com", "port": 443,
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    **tls_fields,
+                }
+                link = self.merger.clash_to_share_link(proxy)
+                self.assertIsNotNone(link)
+                payload = json.loads(sub_merge.base64_decode(
+                    link.split("://", 1)[1].split("#", 1)[0]
+                ))
+                for key in ("tls", "sni", "alpn", "fp", "insecure"):
+                    self.assertNotIn(key, payload)
 
     def test_vmess_failure_diagnostics_identify_unrepresentable_tls_credentials(self):
         proxy = {"type": "vmess", "server": "example.com", "port": 443,
@@ -1346,13 +1358,29 @@ class VlessPacketEncodingAndDiagnosticsTests(unittest.TestCase):
         self.assertEqual(self.merger._last_conversion_failure_reason,
                          "vless_unsupported_packet_encoding")
 
+    def test_vless_ignores_tls_options_when_tls_is_disabled_or_missing(self):
+        from urllib.parse import parse_qs, urlsplit
+        cases = (
+            {"tls": False, "servername": "sni.example.com",
+             "sni": "other.example.com", "alpn": ["h2"],
+             "client-fingerprint": "chrome", "skip-cert-verify": True},
+            {"servername": "sni.example.com", "sni": "other.example.com"},
+        )
+        for options in cases:
+            with self.subTest(options=list(options)):
+                link = self.merger.clash_to_share_link(self.base_proxy(**options))
+                self.assertIsNotNone(link)
+                query = parse_qs(urlsplit(link).query)
+                self.assertEqual(query["security"], ["none"])
+                for key in ("sni", "alpn", "fp", "allowInsecure"):
+                    self.assertNotIn(key, query)
+
     def test_vless_diagnostics_distinguish_common_failure_classes(self):
         cases = [
             ({"uuid": ""}, "vless_missing_uuid"),
             ({"network": "mkcp"}, "vless_unsupported_network"),
             ({"encryption": None}, "vless_invalid_encryption"),
             ({"reality-opts": {"short-id": "abcd"}}, "vless_missing_reality_public_key"),
-            ({"tls": False, "servername": "sni.example.com"}, "vless_tls_options_without_tls"),
             ({"network": "ws", "ws-opts": ["bad"]}, "vless_invalid_ws_options"),
             ({"network": "xhttp", "xhttp-opts": {"extra": "bad"}}, "vless_invalid_xhttp_extra"),
         ]
