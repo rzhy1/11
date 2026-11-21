@@ -117,6 +117,29 @@ class MergeFingerprintTests(unittest.TestCase):
         fingerprint = json.loads(self.merger.node_fingerprint(corrected))
         self.assertEqual(fingerprint["protocol"], "vless")
 
+    def test_mislabeled_ss_uri_with_empty_security_and_encryption_none_is_corrected(self):
+        link = (
+            "ss://1b766abe-05da-46fa-973c-0d06d9605736@172.66.40.99:8880"
+            "?path=%2Fws&security=&encryption=none&host=cdn.example.com&type=ws#node"
+        )
+        corrected = self.merger._normalize_mislabeled_vless_share_link(link)
+        self.assertTrue(corrected.startswith("vless://"))
+        self.assertEqual(json.loads(self.merger.node_fingerprint(corrected))["protocol"], "vless")
+
+    def test_empty_security_without_encryption_none_is_not_relabelled(self):
+        link = (
+            "ss://1b766abe-05da-46fa-973c-0d06d9605736@example.com:8880"
+            "?security=&type=ws&host=cdn.example.com"
+        )
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
+    def test_invalid_nonempty_security_is_not_relabelled(self):
+        link = (
+            "ss://1b766abe-05da-46fa-973c-0d06d9605736@example.com:8880"
+            "?security=unknown&encryption=none&type=ws"
+        )
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
     def test_real_ss_uri_is_not_relabelled_as_vless(self):
         link = "ss://YWVzLTI1Ni1nY206c2VjcmV0@example.com:8388"
         self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)

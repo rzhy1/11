@@ -101,12 +101,20 @@ class merge:
             if not parsed.hostname or parsed.port is None:
                 return link
             query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
-            transport = str(query.get('type') or '').lower()
-            security = str(query.get('security') or '').lower()
+            transport = str(query.get('type') or '').strip().lower()
+            security = str(query.get('security') or '').strip().lower()
             if transport not in ('tcp', 'ws', 'grpc', 'http', 'h2', 'xhttp', 'splithttp', 'httpupgrade'):
                 return link
-            if security not in ('none', 'tls', 'reality'):
+
+            # An empty security value is seen in some malformed VLESS subscriptions.
+            # Accept it only with explicit VLESS encryption=none; do not infer VLESS
+            # from a UUID-shaped SS credential alone.
+            if security:
+                if security not in ('none', 'tls', 'reality'):
+                    return link
+            elif str(query.get('encryption') or '').strip().lower() != 'none':
                 return link
+
             if not ({'encryption', 'sni', 'pbk', 'flow', 'fp'} & set(query)):
                 return link
             return 'vless://' + link[len('ss://'):]
