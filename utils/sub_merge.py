@@ -106,16 +106,35 @@ class merge:
             if transport not in ('tcp', 'ws', 'grpc', 'http', 'h2', 'xhttp', 'splithttp', 'httpupgrade'):
                 return link
 
+            # Legacy VLESS TCP HTTP-header links may omit security/encryption and
+            # the newer VLESS markers. Require the complete distinctive signature:
+            # UUID + type=tcp + headerType=http + host + path.
+            header_type = str(
+                query.get('headerType') or query.get('headertype') or ''
+            ).strip().lower()
+            legacy_tcp_http = (
+                transport == 'tcp'
+                and header_type == 'http'
+                and bool(str(query.get('host') or '').strip())
+                and 'path' in query
+            )
+
             # An empty security value is seen in some malformed VLESS subscriptions.
-            # Accept it only with explicit VLESS encryption=none; do not infer VLESS
-            # from a UUID-shaped SS credential alone.
+            # Accept it only with explicit VLESS encryption=none, unless the URI has
+            # the complete legacy TCP HTTP-header signature above.
             if security:
                 if security not in ('none', 'tls', 'reality'):
                     return link
-            elif str(query.get('encryption') or '').strip().lower() != 'none':
+            elif (
+                not legacy_tcp_http
+                and str(query.get('encryption') or '').strip().lower() != 'none'
+            ):
                 return link
 
-            if not ({'encryption', 'sni', 'pbk', 'flow', 'fp'} & set(query)):
+            if (
+                not legacy_tcp_http
+                and not ({'encryption', 'sni', 'pbk', 'flow', 'fp'} & set(query))
+            ):
                 return link
             return 'vless://' + link[len('ss://'):]
         except (TypeError, ValueError):
