@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 5
+Total failures: 4
 Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -66,24 +66,3 @@ port: 1088
 server: '[REDACTED]'
 type: socks5
 udp: true
-
-========================================================================
-[5] Protocol: vless
-Reason: vless_unsupported_network
-Source ID: 49
-Source remarks: MrErrorSan Clash Profile / Au1rxx-AM
-Node name: vless-1828371390
-Original YAML proxy (sensitive values redacted; network preserved):
-client-fingerprint: chrome
-name: vless-1828371390
-network: tcp¬e=volt____network
-port: 55983
-reality-opts:
-  public-key: nWQ7b9l9X6N3PrXLgIzOvMM8iSYrqjVHEb9ikWxqYSg
-  short-id: 0e
-server: '[REDACTED]'
-servername: yahoo.com
-tls: true
-type: vless
-udp: true
-uuid: '[REDACTED]'
