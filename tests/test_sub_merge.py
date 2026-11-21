@@ -140,6 +140,27 @@ class MergeFingerprintTests(unittest.TestCase):
         )
         self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
 
+    def test_ambiguous_uuid_ws_link_is_reported_but_not_relabelled(self):
+        link = (
+            "ss://1de37726-744b-46e1-9101-c926b3402e82@104.17.72.206:80"
+            "?type=ws&host=v2.v2configlab.workers.dev&path=/"
+        )
+        self.assertEqual(self.merger._suspected_mislabeled_vless_transport(link), "ws")
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
+    def test_ambiguous_uuid_tcp_link_is_reported_but_not_relabelled(self):
+        link = (
+            "ss://990f5f4d-5568-4e0a-96bf-2d86270d8fbf@65.109.241.111:443"
+            "?type=tcp&path=/&host=zula.ir&headerType=http"
+        )
+        self.assertEqual(self.merger._suspected_mislabeled_vless_transport(link), "tcp")
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
+    def test_base64_shadowsocks_link_is_not_a_vless_candidate(self):
+        link = "ss://YWVzLTI1Ni1nY206c2VjcmV0@example.com:8388"
+        self.assertIsNone(self.merger._suspected_mislabeled_vless_transport(link))
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
     def test_real_ss_uri_is_not_relabelled_as_vless(self):
         link = "ss://YWVzLTI1Ni1nY206c2VjcmV0@example.com:8388"
         self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
