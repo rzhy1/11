@@ -1111,11 +1111,22 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
             with patch.object(sub_merge.requests, "Session", return_value=session):
                 with patch("builtins.print") as print_mock:
                     self.assertTrue(merger.sub_merge())
-            self.assertIn("network: mkcp", report_content)
+            report_path = os.path.join(temp_dir, "conversion_failures.txt")
+            with open(report_path, "r", encoding="utf-8") as report_file:
+                report_content = report_file.read()
+
+        output = "\\n".join(
+            " ".join(str(value) for value in call.args)
+            for call in print_mock.call_args_list
+        )
+        self.assertIn("vless_unsupported_network=2", output)
+        self.assertIn("VLESS unsupported network types: mkcp=1, quic=1", output)
+        self.assertIn("vless: vless_unsupported_network=2", output)
+        self.assertIn("Conversion failure details saved to", output)
+        self.assertIn("network: mkcp", report_content)
         self.assertIn("network: quic", report_content)
         self.assertNotIn("11111111-1111-1111-1111-111111111111", report_content)
         self.assertNotIn("mkcp.example.com", report_content)
-
 
 class ConversionFailureReportTests(unittest.TestCase):
     def test_report_preserves_network_and_redacts_sensitive_yaml_values(self):
