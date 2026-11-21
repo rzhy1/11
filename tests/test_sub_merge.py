@@ -1115,7 +1115,7 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
             with open(report_path, "r", encoding="utf-8") as report_file:
                 report_content = report_file.read()
 
-        output = "\\n".join(
+        output = "\n".join(
             " ".join(str(value) for value in call.args)
             for call in print_mock.call_args_list
         )
