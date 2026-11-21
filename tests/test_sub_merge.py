@@ -1096,7 +1096,7 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
                 with patch("builtins.print") as print_mock:
                     self.assertTrue(merger.sub_merge())
 
-        output = "\\n".join(
+        output = "\n".join(
             " ".join(str(value) for value in call.args)
             for call in print_mock.call_args_list
         )
