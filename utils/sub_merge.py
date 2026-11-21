@@ -2159,6 +2159,23 @@ class merge:
             print('🔴🔴🔴🔴 Merging failed: No nodes collected; preserving previous output.')
             return False
 
+        # Normalize at the final collection boundary as well as at raw-text
+        # ingestion. YAML conversion and other source adapters can produce share
+        # links without passing through the raw-link normalization branch.
+        normalized_nodes = []
+        corrected_mislabeled_vless = 0
+        for node_link in all_nodes_raw:
+            normalized_link = self._normalize_mislabeled_vless_share_link(node_link)
+            if normalized_link != node_link:
+                corrected_mislabeled_vless += 1
+            normalized_nodes.append(normalized_link)
+        all_nodes_raw = normalized_nodes
+        if corrected_mislabeled_vless:
+            print(
+                "Corrected mislabeled SS links after source conversion: "
+                f"{corrected_mislabeled_vless}"
+            )
+
         unique_nodes = self.deduplicate_nodes(all_nodes_raw)
         final_node_count = len(unique_nodes)
         print(f'\nTotal unique node links after deduplication: {final_node_count}')
