@@ -1105,6 +1105,22 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vless: vless_unsupported_network=2", output)
 
 
+class SafeNetworkDiagnosticTests(unittest.TestCase):
+    def test_safe_network_diagnostic_bucket(self):
+        merger = merge.__new__(merge)
+        cases = {
+            'mkcp': 'mkcp', 'quic': 'quic', 'XHTTP': 'xhttp',
+            ' tcp ': 'tcp', 'tcp#🍎94@oneclickvpnkeys': 'malformed',
+            'tcp%23foo': 'malformed', 'tcp?type=tcp': 'malformed',
+            'tcp¬e=volt____network': 'malformed', 'a' * 100: 'malformed',
+            '未知网络': 'malformed', 'some_unknown_token': 'other',
+            None: 'other',
+        }
+        for value, expected in cases.items():
+            with self.subTest(value=value):
+                self.assertEqual(merger._safe_network_diagnostic_bucket(value), expected)
+
+
 class VlessNetworkAliasTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)
