@@ -1057,6 +1057,54 @@ class ClashYamlMergeRegressionTests(unittest.TestCase):
         self.assertIn("vmess: vmess_unsupported_network=2", output)
 
 
+    def test_sub_merge_reports_vless_unsupported_network_breakdown(self):
+        yaml_text = """proxies:
+  - name: unsupported-mkcp
+    type: vless
+    server: mkcp.example.com
+    port: 443
+    uuid: 11111111-1111-1111-1111-111111111111
+    network: mkcp
+  - name: unsupported-quic
+    type: vless
+    server: quic.example.com
+    port: 443
+    uuid: 22222222-2222-2222-2222-222222222222
+    network: quic
+  - name: supported-tcp
+    type: vless
+    server: tcp.example.com
+    port: 443
+    uuid: 33333333-3333-3333-3333-333333333333
+    network: tcp
+"""
+        response = Mock()
+        response.content = yaml_text.encode("utf-8")
+        response.raise_for_status = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            merger = merge.__new__(merge)
+            merger.list_dir = os.path.join(temp_dir, "list")
+            merger.merge_dir = temp_dir
+            merger.url_list = [{
+                "id": 1, "remarks": "vless-diagnostic-test",
+                "url": "https://example.invalid/vless.yaml"
+            }]
+            session = Mock()
+            session.get.return_value = response
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                with patch("builtins.print") as print_mock:
+                    self.assertTrue(merger.sub_merge())
+
+        output = "\n".join(
+            " ".join(str(value) for value in call.args)
+            for call in print_mock.call_args_list
+        )
+        self.assertIn("vless_unsupported_network=2", output)
+        self.assertIn("VLESS unsupported network types: mkcp=1, quic=1", output)
+        self.assertIn("vless: vless_unsupported_network=2", output)
+
+
 class FirstStageLosslessTransportTests(unittest.TestCase):
     def setUp(self):
         self.merger = merge.__new__(merge)
