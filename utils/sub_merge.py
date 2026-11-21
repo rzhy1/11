@@ -429,6 +429,21 @@ class merge:
         return True
 
     @staticmethod
+    def _safe_network_diagnostic_bucket(value):
+        """Bound network diagnostic buckets; never emit malformed/raw values."""
+        if value is None:
+            return 'other'
+        network = str(value).strip().lower()
+        if not re.fullmatch(r'[a-z0-9_-]{1,32}', network):
+            return 'malformed'
+        known = {
+            'tcp', 'raw', 'none', 'ws', 'http', 'h2', 'grpc', 'xhttp',
+            'splithttp', 'httpupgrade', 'mkcp', 'kcp', 'quic', 'hysteria',
+            'udp', 'tls', 'reality', 'ssh', 'wireguard'
+        }
+        return network if network in known else 'other'
+
+    @staticmethod
     def _vless_conversion_failure_reason(proxy):
         """诊断 VLESS 转换失败原因；与实际 URI 生成逻辑保持同一组约束。"""
         if proxy.get('uuid') in (None, ''):
@@ -1820,7 +1835,8 @@ class merge:
                                         network = 'http'
                                     elif network == 'splithttp':
                                         network = 'xhttp'
-                                    vless_unsupported_networks[network[:32]] = vless_unsupported_networks.get(network[:32], 0) + 1
+                                    bucket = self._safe_network_diagnostic_bucket(network)
+                                    vless_unsupported_networks[bucket] = vless_unsupported_networks.get(bucket, 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
