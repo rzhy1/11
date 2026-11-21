@@ -1179,30 +1179,70 @@ class ConversionFailureReportTests(unittest.TestCase):
 
 
 class SafeNetworkDiagnosticTests(unittest.TestCase):
-    def test_vless_tcp_advertisement_suffix_recovers_only_with_vision_reality(self):
+    def test_vless_tcp_advertisement_suffix_recovers_with_reality_without_vision_flow(self):
         proxy = {
             'type': 'vless',
             'server': 'example.com',
             'port': 443,
             'uuid': '11111111-1111-1111-1111-111111111111',
-            'network': 'tcp#🎡88@oneclickvpnkeys',
-            'flow': 'xtls-rprx-vision',
+            'network': 'tcp¬e=volt____network',
             'tls': True,
-            'reality-opts': {'public-key': 'public-key'},
+            'servername': 'yahoo.com',
+            'client-fingerprint': 'chrome',
+            'reality-opts': {
+                'public-key': 'public-key',
+                'short-id': '0e',
+            },
         }
         self.assertEqual(merge._normalize_vless_network(proxy), 'tcp')
+        self.assertIsNone(merge._vless_conversion_failure_reason(proxy))
         merger = merge.__new__(merge)
-        self.assertIsNotNone(merger.clash_to_share_link(proxy))
-        unsafe = dict(proxy, **{'flow': ''})
-        self.assertEqual(merge._normalize_vless_network(unsafe), 'tcp#🎡88@oneclickvpnkeys')
+        link = merger.clash_to_share_link(proxy)
+        self.assertIsNotNone(link)
+        self.assertIn('type=tcp', link)
+        self.assertIn('security=reality', link)
+        self.assertNotIn('flow=', link)
 
-    def test_vless_embedded_share_uri_suffix_recovers_only_with_vision_reality(self):
+    def test_vless_tcp_recovery_rejects_incomplete_or_conflicting_reality_config(self):
         proxy = {
             'type': 'vless',
+            'server': 'example.com',
+            'port': 443,
+            'uuid': '11111111-1111-1111-1111-111111111111',
+            'network': 'tcp¬e=volt____network',
+            'tls': True,
+            'reality-opts': {
+                'public-key': 'public-key',
+                'short-id': '0e',
+            },
+        }
+        unsafe_cases = (
+            dict(proxy, **{'reality-opts': {'public-key': 'public-key'}}),
+            dict(proxy, **{'reality-opts': {'short-id': '0e'}}),
+            dict(proxy, **{'uuid': 'not-a-uuid'}),
+            dict(proxy, **{'port': 0}),
+            dict(proxy, **{'ws-opts': {'path': '/'}}),
+            dict(proxy, **{'grpc-opts': {'grpc-service-name': 'svc'}}),
+        )
+        for unsafe in unsafe_cases:
+            with self.subTest(proxy=unsafe):
+                self.assertEqual(
+                    merge._normalize_vless_network(unsafe),
+                    'tcp¬e=volt____network'
+                )
+
+    def test_vless_embedded_share_uri_suffix_recovers_with_complete_reality_config(self):
+        proxy = {
+            'type': 'vless',
+            'server': 'example.com',
+            'port': 443,
             'uuid': '11111111-1111-1111-1111-111111111111',
             'network': 'tcp#advertisementvless://other',
-            'flow': 'xtls-rprx-vision',
-            'reality-opts': {'public-key': 'public-key'},
+            'tls': True,
+            'reality-opts': {
+                'public-key': 'public-key',
+                'short-id': '0e',
+            },
         }
         self.assertEqual(merge._normalize_vless_network(proxy), 'tcp')
 

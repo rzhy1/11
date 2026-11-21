@@ -511,7 +511,7 @@ class merge:
 
     @staticmethod
     def _normalize_vless_network(proxy):
-        """Normalize aliases and recover TCP only with strong Vision+Reality evidence."""
+        """Normalize aliases and recover contaminated TCP only with complete Reality evidence."""
         network = str(proxy.get('network') or 'tcp').strip().lower()
         if network in ('raw', 'none'):
             return 'tcp'
@@ -524,10 +524,38 @@ class merge:
             return network
         if re.fullmatch(r'tcp(?:[#?%¬].*)', network, flags=re.DOTALL):
             reality_opts = proxy.get('reality-opts')
-            if (
+            uuid_value = proxy.get('uuid')
+            has_valid_identity = (
+                isinstance(proxy.get('server'), str)
+                and bool(proxy.get('server').strip())
+                and merge._valid_port(proxy.get('port'))
+                and isinstance(uuid_value, str)
+                and bool(re.fullmatch(
+                    r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+                    uuid_value
+                ))
+            )
+            has_reality_parameters = (
                 isinstance(reality_opts, dict)
-                and bool(reality_opts.get('public-key'))
-                and str(proxy.get('flow') or '').strip().lower() == 'xtls-rprx-vision'
+                and isinstance(reality_opts.get('public-key'), str)
+                and bool(reality_opts.get('public-key').strip())
+                and isinstance(reality_opts.get('short-id'), str)
+            )
+            non_tcp_option_keys = (
+                'ws-opts', 'grpc-opts', 'http-opts', 'h2-opts',
+                'xhttp-opts', 'httpupgrade-opts', 'http-upgrade-opts',
+                'splithttp-opts', 'kcp-opts', 'quic-opts'
+            )
+            has_conflicting_transport_options = any(
+                proxy.get(key) not in (None, '', {}, [])
+                for key in non_tcp_option_keys
+            )
+            security_enabled = merge._as_bool(proxy.get('tls')) or bool(reality_opts)
+            if (
+                has_valid_identity
+                and has_reality_parameters
+                and security_enabled
+                and not has_conflicting_transport_options
             ):
                 return 'tcp'
         return network
