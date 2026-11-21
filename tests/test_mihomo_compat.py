@@ -83,6 +83,13 @@ class MihomoShareLinkCompatibilityTests(unittest.TestCase):
                 "network": "tcp", "tls": True, "packet-encoding": "",
             },
         ])
+        for network in ("raw", "none"):
+            fixtures.append({
+                "type": "vless", "name": f"VLESS {network.upper()} network compatibility",
+                "server": f"{network}.example.com", "port": 443,
+                "uuid": "44444444-4444-4444-4444-444444444444",
+                "network": network, "tls": True,
+            })
         cls.links = []
         cls.expected_names = []
         for proxy in fixtures:
@@ -163,6 +170,8 @@ class MihomoShareLinkCompatibilityTests(unittest.TestCase):
                     "VLESS XUDP compatibility",
                     "VLESS PacketAddr compatibility",
                     "VLESS Raw compatibility",
+                    "VLESS RAW network compatibility",
+                    "VLESS NONE network compatibility",
                 }
                 self.assertTrue(
                     mihomo_supported_names.issubset(actual_names),
