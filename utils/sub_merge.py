@@ -453,7 +453,7 @@ class merge:
             return 'empty'
         if len(network) > 32:
             return 'too_long'
-        if re.search(r'[^\\x00-\\x7f]', network):
+        if re.search(r'[^\x00-\x7f]', network):
             return 'unicode'
         if '%' in network:
             return 'url_encoded'
