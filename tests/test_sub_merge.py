@@ -1182,6 +1182,8 @@ class SafeNetworkDiagnosticTests(unittest.TestCase):
     def test_vless_tcp_advertisement_suffix_recovers_only_with_vision_reality(self):
         proxy = {
             'type': 'vless',
+            'server': 'example.com',
+            'port': 443,
             'uuid': '11111111-1111-1111-1111-111111111111',
             'network': 'tcp#🎡88@oneclickvpnkeys',
             'flow': 'xtls-rprx-vision',
