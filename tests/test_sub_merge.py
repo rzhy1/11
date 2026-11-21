@@ -1611,5 +1611,46 @@ class VlessPacketEncodingAndDiagnosticsTests(unittest.TestCase):
         self.assertEqual(payload["net"], "tcp")
 
 
+class FinalCollectionNormalizationTests(unittest.TestCase):
+    def test_yaml_conversion_output_is_normalized_before_deduplication(self):
+        yaml_text = """proxies:
+  - name: Finland 033
+    type: ss
+    server: 65.109.241.111
+    port: 443
+    cipher: aes-128-gcm
+    password: placeholder
+"""
+        legacy_link = (
+            "ss://990f5f4d-5568-4e0a-96bf-2d86270d8fbf@65.109.241.111:443"
+            "?type=tcp&path=%2F&host=zula.ir&headerType=http#Finland-033"
+        )
+        response = Mock()
+        response.content = yaml_text.encode("utf-8")
+        response.raise_for_status = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            merger = merge.__new__(merge)
+            merger.list_dir = os.path.join(temp_dir, "list")
+            merger.merge_dir = temp_dir
+            merger.url_list = [{
+                "id": 1, "remarks": "legacy-vless-yaml-test",
+                "url": "https://example.invalid/proxies.yaml"
+            }]
+            session = Mock()
+            session.get.return_value = response
+            with patch.object(sub_merge.requests, "Session", return_value=session):
+                with patch.object(merger, "clash_to_share_link", return_value=legacy_link):
+                    self.assertTrue(merger.sub_merge())
+
+            output_path = os.path.join(temp_dir, "sub_merge_base64.txt")
+            with open(output_path, "r", encoding="utf-8") as output_file:
+                merged_text = sub_merge.base64_decode(output_file.read())
+
+        self.assertIn("vless://", merged_text)
+        self.assertNotIn("ss://", merged_text)
+        self.assertIn("Finland-033", merged_text)
+
+
 if __name__ == "__main__":
     unittest.main()
