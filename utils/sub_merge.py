@@ -444,6 +444,44 @@ class merge:
         return network if network in known else 'other'
 
     @staticmethod
+    def _network_malformed_diagnostic_kind(value):
+        """Classify malformed network values without exposing their contents."""
+        if not isinstance(value, str):
+            return 'non_string'
+        network = value.strip()
+        if not network:
+            return 'empty'
+        if len(network) > 32:
+            return 'too_long'
+        if re.search(r'[^\\x00-\\x7f]', network):
+            return 'unicode'
+        if '%' in network:
+            return 'url_encoded'
+        if not re.fullmatch(r'[a-zA-Z0-9_-]+', network):
+            return 'punctuation'
+        return 'other'
+
+    @staticmethod
+    def _tls_mismatch_diagnostic_bucket(proxy):
+        """Describe inactive TLS options using field names only, never values."""
+        if 'tls' not in proxy:
+            tls_state = 'missing'
+        elif proxy.get('tls') is None or proxy.get('tls') == '':
+            tls_state = 'empty'
+        elif merge._as_bool(proxy.get('tls')):
+            tls_state = 'enabled'
+        else:
+            tls_state = 'disabled'
+        fields = [
+            key for key in ('servername', 'sni', 'alpn', 'client-fingerprint',
+                            'fingerprint', 'name-cert-verify')
+            if proxy.get(key) not in (None, '', [], {})
+        ]
+        if merge._as_bool(proxy.get('skip-cert-verify')):
+            fields.append('skip-cert-verify')
+        return tls_state + ':' + ('+'.join(fields) if fields else 'no_options')
+
+    @staticmethod
     def _vless_conversion_failure_reason(proxy):
         """诊断 VLESS 转换失败原因；与实际 URI 生成逻辑保持同一组约束。"""
         if proxy.get('uuid') in (None, ''):
@@ -1758,6 +1796,8 @@ class merge:
         conversion_failures_by_protocol = {}
         vmess_unsupported_networks = {}
         vless_unsupported_networks = {}
+        malformed_network_details = {}
+        tls_mismatch_details = {}
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -1826,6 +1866,9 @@ class merge:
                                     conversion_failures_by_protocol,
                                     conversion_failure_reasons
                                 )
+                                if reason in ('vless_tls_options_without_tls', 'vmess_tls_options_without_tls'):
+                                    detail = proxy_type + ':' + self._tls_mismatch_diagnostic_bucket(proxy_data)
+                                    tls_mismatch_details[detail] = tls_mismatch_details.get(detail, 0) + 1
                                 if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
                                     network = getattr(self, '_last_conversion_failure_network', None) or 'other'
                                     vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
@@ -1837,6 +1880,9 @@ class merge:
                                         network = 'xhttp'
                                     bucket = self._safe_network_diagnostic_bucket(network)
                                     vless_unsupported_networks[bucket] = vless_unsupported_networks.get(bucket, 0) + 1
+                                    if bucket == 'malformed':
+                                        detail = self._network_malformed_diagnostic_kind(proxy_data.get('network'))
+                                        malformed_network_details[detail] = malformed_network_details.get(detail, 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
@@ -1882,6 +1928,14 @@ class merge:
             if vless_unsupported_networks:
                 print("VLESS unsupported network types: " + ", ".join(
                     f"{network}={count}" for network, count in sorted(vless_unsupported_networks.items())
+                ))
+            if malformed_network_details:
+                print("VLESS malformed network detail (value hidden): " + ", ".join(
+                    f"{kind}={count}" for kind, count in sorted(malformed_network_details.items())
+                ))
+            if tls_mismatch_details:
+                print("TLS options without TLS detail (values hidden): " + ", ".join(
+                    f"{detail}={count}" for detail, count in sorted(tls_mismatch_details.items())
                 ))
             print("Clash conversion failures by protocol and reason:")
             for protocol, reasons in sorted(conversion_failures_by_protocol.items()):
