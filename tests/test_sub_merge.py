@@ -148,12 +148,32 @@ class MergeFingerprintTests(unittest.TestCase):
         self.assertEqual(self.merger._suspected_mislabeled_vless_transport(link), "ws")
         self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
 
-    def test_ambiguous_uuid_tcp_link_is_reported_but_not_relabelled(self):
+    def test_mislabeled_ss_uri_with_legacy_vless_tcp_http_header_is_corrected(self):
         link = (
             "ss://990f5f4d-5568-4e0a-96bf-2d86270d8fbf@65.109.241.111:443"
-            "?type=tcp&path=/&host=zula.ir&headerType=http"
+            "?type=tcp&path=/&host=zula.ir&headerType=http#Finland-035"
+        )
+        corrected = self.merger._normalize_mislabeled_vless_share_link(link)
+        self.assertTrue(corrected.startswith("vless://"))
+        self.assertEqual(
+            json.loads(self.merger.node_fingerprint(corrected))["protocol"],
+            "vless",
+        )
+        self.assertIsNone(self.merger._suspected_mislabeled_vless_transport(corrected))
+
+    def test_ambiguous_uuid_tcp_link_without_http_header_remains_unchanged(self):
+        link = (
+            "ss://990f5f4d-5568-4e0a-96bf-2d86270d8fbf@65.109.241.111:443"
+            "?type=tcp&path=/&host=zula.ir"
         )
         self.assertEqual(self.merger._suspected_mislabeled_vless_transport(link), "tcp")
+        self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
+
+    def test_tcp_http_header_without_host_or_path_is_not_relabelled(self):
+        link = (
+            "ss://990f5f4d-5568-4e0a-96bf-2d86270d8fbf@65.109.241.111:443"
+            "?type=tcp&headerType=http"
+        )
         self.assertEqual(self.merger._normalize_mislabeled_vless_share_link(link), link)
 
     def test_base64_shadowsocks_link_is_not_a_vless_candidate(self):
