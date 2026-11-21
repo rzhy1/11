@@ -1738,6 +1738,7 @@ class merge:
         conversion_failure_reasons = {}
         conversion_failures_by_protocol = {}
         vmess_unsupported_networks = {}
+        vless_unsupported_networks = {}
 
         for item in url_list:
             item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
@@ -1809,6 +1810,13 @@ class merge:
                                 if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
                                     network = getattr(self, '_last_conversion_failure_network', None) or 'other'
                                     vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
+                                elif proxy_type == 'vless' and reason == 'vless_unsupported_network':
+                                    network = str(proxy_data.get('network') or 'tcp').strip().lower() or 'tcp'
+                                    if network == 'h2':
+                                        network = 'http'
+                                    elif network == 'splithttp':
+                                        network = 'xhttp'
+                                    vless_unsupported_networks[network[:32]] = vless_unsupported_networks.get(network[:32], 0) + 1
                 except yaml.YAMLError as yaml_error:
                     if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
                         print(f"  -> YAML parse failed: {yaml_error}")
@@ -1850,6 +1858,10 @@ class merge:
             if vmess_unsupported_networks:
                 print("VMess unsupported network types: " + ", ".join(
                     f"{network}={count}" for network, count in sorted(vmess_unsupported_networks.items())
+                ))
+            if vless_unsupported_networks:
+                print("VLESS unsupported network types: " + ", ".join(
+                    f"{network}={count}" for network, count in sorted(vless_unsupported_networks.items())
                 ))
             print("Clash conversion failures by protocol and reason:")
             for protocol, reasons in sorted(conversion_failures_by_protocol.items()):
