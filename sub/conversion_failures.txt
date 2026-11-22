@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 7
+Total failures: 5
 Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -69,42 +69,7 @@ udp: true
 x-toolall-mihomo: true
 
 ========================================================================
-[5] Protocol: vmess
-Reason: vmess_missing_grpc_service_name
-Source ID: 48
-Source remarks: ⭐github.com
-Node name: NL 🇳🇱 | @Raydikalx | 57D832
-Original YAML proxy (sensitive values redacted; network preserved):
-alterId: 0
-cipher: auto
-name: NL 🇳🇱 | @Raydikalx | 57D832
-network: grpc
-port: 8080
-server: '[REDACTED]'
-servername: ''
-tls: true
-type: vmess
-uuid: '[REDACTED]'
-
-========================================================================
-[6] Protocol: vmess
-Reason: vmess_missing_grpc_service_name
-Source ID: 48
-Source remarks: ⭐github.com
-Node name: NL 🇳🇱 | @Raydikalx | E41F34
-Original YAML proxy (sensitive values redacted; network preserved):
-alterId: 0
-cipher: auto
-name: NL 🇳🇱 | @Raydikalx | E41F34
-network: grpc
-port: 8080
-server: '[REDACTED]'
-tls: true
-type: vmess
-uuid: '[REDACTED]'
-
-========================================================================
-[7] Protocol: socks5
+[5] Protocol: socks5
 Reason: incomplete_socks5_auth
 Source ID: 49
 Source remarks: MrErrorSan Clash Profile / PuddinCat
