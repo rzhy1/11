@@ -53,20 +53,22 @@ type: socks5
 udp: true
 
 ========================================================================
-[4] Protocol: socks5
-Reason: incomplete_socks5_auth
-Source ID: 42
+[4] Protocol: vmess
+Reason: vmess_unsupported_network
+Source ID: 48
 Source remarks: ⭐github.com
-Node name: D🔴🇺🇸hos_dokng.com_ad867d51
+Node name: IR 🇮🇷 | @Raydikalx | 9C69DC
 Original YAML proxy (sensitive values redacted; network preserved):
-name: D🔴🇺🇸hos_dokng.com_ad867d51
-password: '[REDACTED]'
-port: 38182
+alterId: 0
+cipher: auto
+name: IR 🇮🇷 | @Raydikalx | 9C69DC
+network: xhttp
+port: 2105
 server: '[REDACTED]'
-sub_tag: P002-260618
-type: socks5
-udp: true
-x-toolall-mihomo: true
+servername: Pannelman.pannelman.ir
+tls: true
+type: vmess
+uuid: '[REDACTED]'
 
 ========================================================================
 [5] Protocol: socks5
