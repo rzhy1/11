@@ -57,16 +57,16 @@ udp: true
 Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: IR 🇮🇷 | @Raydikalx | 9C69DC
+Node name: IR 🇮🇷 | @Raydikalx | 84BC9B
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: IR 🇮🇷 | @Raydikalx | 9C69DC
+name: IR 🇮🇷 | @Raydikalx | 84BC9B
 network: xhttp
-port: 2105
+port: 27361
 server: '[REDACTED]'
-servername: Pannelman.pannelman.ir
-tls: true
+servername: ''
+tls: false
 type: vmess
 uuid: '[REDACTED]'
 
