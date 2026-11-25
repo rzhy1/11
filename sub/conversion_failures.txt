@@ -77,32 +77,33 @@ x-toolall-mihomo: true
 Reason: vmess_missing_grpc_service_name
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: NL 🇳🇱 | @Raydikalx | B98D8C
+Node name: Global 🌐 | @Raydikalx | 18515F
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: NL 🇳🇱 | @Raydikalx | B98D8C
+name: Global 🌐 | @Raydikalx | 18515F
 network: grpc
-port: 8080
+port: 41787
 server: '[REDACTED]'
+servername: ''
 tls: true
 type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
 [6] Protocol: vmess
-Reason: vmess_unsupported_network
+Reason: vmess_missing_grpc_service_name
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: US 🇺🇸 | @Raydikalx | 2D3F12 #1
+Node name: US 🇺🇸 | @Raydikalx | 6925F4
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: 'US 🇺🇸 | @Raydikalx | 2D3F12 #1'
-network: xhttp
-port: 443
+name: US 🇺🇸 | @Raydikalx | 6925F4
+network: grpc
+port: 29199
 server: '[REDACTED]'
-servername: ssl.fastly.com
+servername: ''
 tls: true
 type: vmess
 uuid: '[REDACTED]'
