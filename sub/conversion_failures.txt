@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 7
+Total failures: 5
 Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -23,9 +23,9 @@ udp: true
 Reason: missing_required_field_or_unsupported_option
 Source ID: 42
 Source remarks: ⭐github.com
-Node name: 🇺🇸US_383|1.3MB/s|M003-260806 [ad2a6835fb68]
+Node name: 🇺🇸US_485|1.0MB/s|M003-260806 [ad2a6835fb68]
 Original YAML proxy (sensitive values redacted; network preserved):
-name: 🇺🇸US_383|1.3MB/s|M003-260806 [ad2a6835fb68]
+name: 🇺🇸US_485|1.0MB/s|M003-260806 [ad2a6835fb68]
 client-fingerprint: chrome
 network: ws#🍪100@oneclickvpnkeys
 password: '[REDACTED]'
@@ -42,9 +42,9 @@ udp: true
 Reason: incomplete_socks5_auth
 Source ID: 42
 Source remarks: ⭐github.com
-Node name: 🇺🇸US_625|671KB/s|P002-260618 [c0b3b312046c]
+Node name: 🇺🇸US_506|388KB/s|P002-260618 [c0b3b312046c]
 Original YAML proxy (sensitive values redacted; network preserved):
-name: 🇺🇸US_625|671KB/s|P002-260618 [c0b3b312046c]
+name: 🇺🇸US_506|388KB/s|P002-260618 [c0b3b312046c]
 password: '[REDACTED]'
 port: 38182
 server: '[REDACTED]'
@@ -53,63 +53,25 @@ type: socks5
 udp: true
 
 ========================================================================
-[4] Protocol: hysteria2
-Reason: missing_required_field_or_unsupported_option
-Source ID: 42
-Source remarks: ⭐github.com
-Node name: C🟠🇯🇵hos[🤖🔮🧩🎵]_dokng.com_e33e9dba
-Original YAML proxy (sensitive values redacted; network preserved):
-down: 200
-fast-open: true
-name: C🟠🇯🇵hos[🤖🔮🧩🎵]_dokng.com_e33e9dba
-password: '[REDACTED]'
-port: 443
-server: '[REDACTED]'
-skip-cert-verify: true
-sni: www.bing.com
-type: hysteria2
-udp: true
-up: 50
-x-toolall-mihomo: true
-
-========================================================================
-[5] Protocol: vmess
-Reason: vmess_unsupported_network
+[4] Protocol: vmess
+Reason: vmess_missing_grpc_service_name
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: CA 🇨🇦 | @Raydikalx | DA7C14
+Node name: Global 🌐 | @Raydikalx | 06BF1A
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: CA 🇨🇦 | @Raydikalx | DA7C14
-network: xhttp
-port: 443
+name: Global 🌐 | @Raydikalx | 06BF1A
+network: grpc
+port: 8443
 server: '[REDACTED]'
-servername: monfira.ir
+servername: ''
 tls: true
 type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[6] Protocol: vmess
-Reason: vmess_unsupported_network
-Source ID: 48
-Source remarks: ⭐github.com
-Node name: DE 🇩🇪 | @Raydikalx | 07BDFA
-Original YAML proxy (sensitive values redacted; network preserved):
-alterId: 0
-cipher: auto
-name: DE 🇩🇪 | @Raydikalx | 07BDFA
-network: xhttp
-port: 442
-server: '[REDACTED]'
-servername: 193.148.253.210
-tls: true
-type: vmess
-uuid: '[REDACTED]'
-
-========================================================================
-[7] Protocol: socks5
+[5] Protocol: socks5
 Reason: incomplete_socks5_auth
 Source ID: 49
 Source remarks: MrErrorSan Clash Profile / PuddinCat
