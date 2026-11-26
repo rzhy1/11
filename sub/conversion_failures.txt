@@ -74,36 +74,36 @@ x-toolall-mihomo: true
 
 ========================================================================
 [5] Protocol: vmess
-Reason: vmess_missing_grpc_service_name
+Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: Global 🌐 | @Raydikalx | 18515F
+Node name: CA 🇨🇦 | @Raydikalx | DA7C14
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: Global 🌐 | @Raydikalx | 18515F
-network: grpc
-port: 41787
+name: CA 🇨🇦 | @Raydikalx | DA7C14
+network: xhttp
+port: 443
 server: '[REDACTED]'
-servername: ''
+servername: monfira.ir
 tls: true
 type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
 [6] Protocol: vmess
-Reason: vmess_missing_grpc_service_name
+Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: US 🇺🇸 | @Raydikalx | 6925F4
+Node name: DE 🇩🇪 | @Raydikalx | 07BDFA
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: US 🇺🇸 | @Raydikalx | 6925F4
-network: grpc
-port: 29199
+name: DE 🇩🇪 | @Raydikalx | 07BDFA
+network: xhttp
+port: 442
 server: '[REDACTED]'
-servername: ''
+servername: 193.148.253.210
 tls: true
 type: vmess
 uuid: '[REDACTED]'
