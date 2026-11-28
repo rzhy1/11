@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 6
+Total failures: 7
 Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -57,39 +57,57 @@ udp: true
 Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: IR 🇮🇷 | @Raydikalx | 84BC9B
+Node name: DE 🇩🇪 | @Raydikalx | 4FE27D
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: IR 🇮🇷 | @Raydikalx | 84BC9B
+name: DE 🇩🇪 | @Raydikalx | 4FE27D
 network: xhttp
-port: 27361
+port: 443
 server: '[REDACTED]'
-servername: ''
-tls: false
-type: vmess
-uuid: '[REDACTED]'
-
-========================================================================
-[5] Protocol: vmess
-Reason: vmess_missing_grpc_service_name
-Source ID: 48
-Source remarks: ⭐github.com
-Node name: NL 🇳🇱 | @Raydikalx | A778D7
-Original YAML proxy (sensitive values redacted; network preserved):
-alterId: 0
-cipher: auto
-name: NL 🇳🇱 | @Raydikalx | A778D7
-network: grpc
-port: 8080
-server: '[REDACTED]'
-servername: ''
+servername: nginx.greewebservices.ir
 tls: true
 type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[6] Protocol: socks5
+[5] Protocol: vmess
+Reason: vmess_unsupported_network
+Source ID: 48
+Source remarks: ⭐github.com
+Node name: US 🇺🇸 | @Raydikalx | 39928D
+Original YAML proxy (sensitive values redacted; network preserved):
+alterId: 0
+cipher: auto
+name: US 🇺🇸 | @Raydikalx | 39928D
+network: xhttp
+port: 443
+server: '[REDACTED]'
+servername: default.ssl.fastly.net
+tls: true
+type: vmess
+uuid: '[REDACTED]'
+
+========================================================================
+[6] Protocol: vmess
+Reason: vmess_unsupported_network
+Source ID: 48
+Source remarks: ⭐github.com
+Node name: US 🇺🇸 | @Raydikalx | A8EEF5
+Original YAML proxy (sensitive values redacted; network preserved):
+alterId: 0
+cipher: auto
+name: US 🇺🇸 | @Raydikalx | A8EEF5
+network: xhttp
+port: 443
+server: '[REDACTED]'
+servername: ssl.fastly.com
+tls: true
+type: vmess
+uuid: '[REDACTED]'
+
+========================================================================
+[7] Protocol: socks5
 Reason: incomplete_socks5_auth
 Source ID: 49
 Source remarks: MrErrorSan Clash Profile / PuddinCat
