@@ -454,6 +454,10 @@ class merge:
         return host
 
     @staticmethod
+    def _valid_server(value):
+        return isinstance(value, str) and bool(value.strip())
+
+    @staticmethod
     def _as_bool(value):
         if isinstance(value, bool):
             return value
@@ -554,26 +558,6 @@ class merge:
         return 'other'
 
     @staticmethod
-    def _tls_mismatch_diagnostic_bucket(proxy):
-        """Describe inactive TLS options using field names only, never values."""
-        if 'tls' not in proxy:
-            tls_state = 'missing'
-        elif proxy.get('tls') is None or proxy.get('tls') == '':
-            tls_state = 'empty'
-        elif merge._as_bool(proxy.get('tls')):
-            tls_state = 'enabled'
-        else:
-            tls_state = 'disabled'
-        fields = [
-            key for key in ('servername', 'sni', 'alpn', 'client-fingerprint',
-                            'fingerprint', 'name-cert-verify')
-            if proxy.get(key) not in (None, '', [], {})
-        ]
-        if merge._as_bool(proxy.get('skip-cert-verify')):
-            fields.append('skip-cert-verify')
-        return tls_state + ':' + ('+'.join(fields) if fields else 'no_options')
-
-    @staticmethod
     def _normalize_vless_network(proxy):
         """Normalize aliases and recover contaminated TCP only with complete Reality evidence."""
         network = str(proxy.get('network') or 'tcp').strip().lower()
@@ -590,8 +574,7 @@ class merge:
             reality_opts = proxy.get('reality-opts')
             uuid_value = proxy.get('uuid')
             has_valid_identity = (
-                isinstance(proxy.get('server'), str)
-                and bool(proxy.get('server').strip())
+                merge._valid_server(proxy.get('server'))
                 and merge._valid_port(proxy.get('port'))
                 and isinstance(uuid_value, str)
                 and bool(re.fullmatch(
@@ -648,15 +631,11 @@ class merge:
         if packet_encoding not in (None, '') and packet_encoding not in ('xudp', 'packetaddr'):
             return 'vless_unsupported_packet_encoding'
 
-        tls_enabled = merge._as_bool(proxy.get('tls')) or reality_enabled
-        tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
-
         def mapping(value):
             return isinstance(value, dict)
 
         if network == 'tcp':
-            # TCP is the default transport; the URI builder does not need extra TCP options.
-            return None
+            return 'vless_conversion_failed'
         if network == 'ws':
             options = proxy.get('ws-opts') or {}
             if not mapping(options) or not mapping(options.get('headers') or {}):
@@ -675,6 +654,16 @@ class merge:
                 return 'vless_multiple_transport_hosts'
             if host not in (None, '') and not isinstance(host, (str, list, tuple)):
                 return 'vless_invalid_transport_host'
+            max_early_data = options.get('max-early-data')
+            if max_early_data not in (None, '', 0, '0'):
+                try:
+                    if int(max_early_data) <= 0:
+                        return 'vless_invalid_ws_early_data'
+                except (TypeError, ValueError):
+                    return 'vless_invalid_ws_early_data'
+            early_data_header = options.get('early-data-header-name')
+            if early_data_header not in (None, '') and not isinstance(early_data_header, str):
+                return 'vless_invalid_ws_early_data'
         elif network == 'httpupgrade':
             options = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
             if not mapping(options):
@@ -717,10 +706,13 @@ class merge:
             options = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
             if not mapping(options):
                 return 'vless_invalid_xhttp_options'
-            for key in ('path', 'host', 'mode', 'x-padding-bytes'):
+            for key in ('path', 'host', 'mode'):
                 value = options.get(key)
                 if value not in (None, '') and not isinstance(value, str):
-                    return 'vless_invalid_xhttp_' + key.replace('-', '_')
+                    return 'vless_invalid_xhttp_' + key
+            padding = options.get('x-padding-bytes')
+            if padding not in (None, '') and (isinstance(padding, bool) or not isinstance(padding, (str, int))):
+                return 'vless_invalid_xhttp_x_padding_bytes'
             if options.get('extra') not in (None, '') and not mapping(options.get('extra')):
                 return 'vless_invalid_xhttp_extra'
 
@@ -752,6 +744,8 @@ class merge:
                 if isinstance(value, (list, tuple)):
                     if len(value) > 1:
                         return 'vmess_multiple_transport_hosts_or_paths'
+                    if any(not isinstance(item, str) for item in value):
+                        return 'vmess_invalid_transport_options'
                     continue
                 return 'vmess_invalid_transport_options'
             return None
@@ -763,9 +757,15 @@ class merge:
             if merge._as_bool(options.get('v2ray-http-upgrade-fast-open')):
                 return 'vmess_unrepresentable_httpupgrade_fast_open'
             if merge._as_bool(options.get('v2ray-http-upgrade')) and (
+                    any(str(key).lower() != 'host' for key in (options.get('headers') or {})) or
                     options.get('max-early-data') not in (None, '', 0, '0') or
                     options.get('early-data-header-name') not in (None, '')):
                 return 'vmess_unrepresentable_httpupgrade_early_data'
+            headers = options.get('headers') or {}
+            host = headers.get('Host') or headers.get('host') or ''
+            failure = single_value_failure(host)
+            if failure:
+                return failure
         elif network == 'http':
             options = proxy.get('http-opts') or {}
             if not is_mapping(options):
@@ -802,7 +802,19 @@ class merge:
                 return 'vmess_missing_grpc_service_name'
         elif network == 'httpupgrade':
             options = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
-            if not is_mapping(options) or not is_mapping(options.get('headers') or {}):
+            if not is_mapping(options):
+                return 'vmess_invalid_transport_options'
+            headers = options.get('headers') or {}
+            if not is_mapping(headers):
+                return 'vmess_invalid_transport_options'
+            if any(str(key).lower() != 'host' for key in headers):
+                return 'vmess_unrepresentable_http_headers'
+            hosts = headers.get('Host') or headers.get('host') or options.get('host') or ''
+            failure = single_value_failure(hosts)
+            if failure:
+                return failure
+            path = options.get('path', '/')
+            if not isinstance(path, str) or not path:
                 return 'vmess_invalid_transport_options'
         else:
             options = proxy.get('tcp-opts') or {}
@@ -827,13 +839,6 @@ class merge:
                 if failure:
                     return failure
 
-        tls_enabled = merge._as_bool(proxy.get('tls'))
-        tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint',
-                       'fingerprint', 'name-cert-verify')
-        has_tls_options = (
-            any(proxy.get(key) not in (None, '', [], {}) for key in tls_options) or
-            merge._as_bool(proxy.get('skip-cert-verify'))
-        )
         if proxy.get('certificate') or proxy.get('private-key'):
             return 'vmess_unrepresentable_tls_credentials'
         return 'vmess_conversion_failed'
@@ -849,15 +854,25 @@ class merge:
             reason = 'invalid_proxy'
         else:
             protocol = str(proxy.get('type', '')).lower()
+            if protocol == 'hy':
+                protocol = 'hysteria'
+            elif protocol == 'https':
+                protocol = 'http'
+
             server, port = proxy.get('server'), proxy.get('port')
             if protocol == 'wireguard':
                 peers = proxy.get('peers') or []
                 peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
                 server = peer.get('server') or server
                 port = peer.get('port') or port
+
             if not protocol:
                 reason = 'missing_protocol'
-            elif not server:
+            elif protocol in ('direct', 'reject', 'reject-drop', 'compatible', 'pass', 'dns'):
+                reason = 'builtin_non_portable_type'
+            elif protocol in ('ssh', 'masque', 'sudoku', 'trusttunnel', 'juicity'):
+                reason = f'{protocol}_share_link_not_portable'
+            elif not self._valid_server(server):
                 reason = 'missing_server'
             elif port in (None, '') and not (
                 (protocol == 'mieru' and proxy.get('port-range')) or
@@ -893,21 +908,102 @@ class merge:
                     reason = 'unsupported_sni'
                 else:
                     reason = 'unsupported_option_or_invalid_value'
+            elif protocol in ('hysteria2', 'hy2'):
+                password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
+                ech_opts = proxy.get('ech-opts') or {}
+                if not password:
+                    reason = 'missing_hysteria2_auth'
+                elif any(proxy.get(key) not in (None, '', False, [], {})
+                         for key in ('up', 'down', 'bbr-profile', 'name-cert-verify',
+                                     'ca', 'ca-str', 'certificate', 'private-key',
+                                     'obfs-min-packet-size', 'obfs-max-packet-size',
+                                     'realm-opts', 'handshake-timeout')):
+                    reason = 'unsupported_hysteria2_option'
+                elif proxy.get('hop-interval') not in (None, '', 30, '30', '30s'):
+                    reason = 'unsupported_hysteria2_hop_interval'
+                elif proxy.get('alpn') not in (None, '', ['h3'], 'h3'):
+                    reason = 'unsupported_hysteria2_alpn'
+                elif proxy.get('obfs') and str(proxy.get('obfs')).lower() not in ('salamander', 'gecko'):
+                    reason = 'unsupported_hysteria2_obfs'
+                elif ech_opts and (not isinstance(ech_opts, dict) or not self._as_bool(ech_opts.get('enable')) or not ech_opts.get('config')):
+                    reason = 'invalid_hysteria2_ech_options'
+                else:
+                    reason = 'hysteria2_conversion_failed'
+            elif protocol == 'hysteria':
+                if self._hysteria_mbps(proxy.get('up')) is None or self._hysteria_mbps(proxy.get('down')) is None:
+                    reason = 'invalid_or_missing_hysteria_bandwidth'
+                elif str(proxy.get('protocol') or 'udp').lower() not in ('udp', 'wechat-video', 'faketcp'):
+                    reason = 'unsupported_hysteria_protocol'
+                elif any(proxy.get(key) not in (None, '', False, [], {}) for key in (
+                    'ports', 'recv-window-conn', 'recv-window', 'ca', 'ca-str',
+                    'fingerprint', 'fast-open', 'disable-mtu-discovery', 'obfs-protocol',
+                    'name-cert-verify', 'certificate', 'private-key'
+                )):
+                    reason = 'unsupported_hysteria_option'
+                else:
+                    reason = 'hysteria_conversion_failed'
+            elif protocol == 'tuic':
+                token = proxy.get('token')
+                uuid, password = proxy.get('uuid'), proxy.get('password')
+                if token not in (None, '') and (uuid not in (None, '') or password not in (None, '')):
+                    reason = 'conflicting_tuic_auth'
+                elif token in (None, '') and (not uuid or password in (None, '')):
+                    reason = 'missing_tuic_auth'
+                elif any(proxy.get(key) not in (None, '', False)
+                         for key in ('ip', 'name-cert-verify', 'fingerprint',
+                                     'client-fingerprint', 'certificate', 'private-key',
+                                     'bbr-profile')):
+                    reason = 'unsupported_tuic_option'
+                else:
+                    reason = 'tuic_conversion_failed'
+            elif protocol == 'naive':
+                username, password = proxy.get('username'), proxy.get('password')
+                extra_headers = proxy.get('extra-headers')
+                if (username not in (None, '')) != (password not in (None, '')):
+                    reason = 'incomplete_naive_auth'
+                elif (proxy.get('servername') or proxy.get('sni') or
+                        self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')) or
+                        proxy.get('headers')):
+                    reason = 'unsupported_naive_option'
+                elif extra_headers not in (None, '') and (not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\x00', '\r', '\n'))):
+                    reason = 'invalid_naive_extra_headers'
+                else:
+                    reason = 'naive_conversion_failed'
+            elif protocol == 'wireguard':
+                peers = proxy.get('peers') or []
+                private_key = proxy.get('private-key') or proxy.get('private_key')
+                peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
+                public_key = peer.get('public-key') or peer.get('public_key') or proxy.get('public-key') or proxy.get('public_key')
+                if isinstance(peers, list) and len(peers) > 1:
+                    reason = 'multiple_wireguard_peers'
+                elif not private_key or not public_key:
+                    reason = 'missing_wireguard_keys'
+                else:
+                    reason = 'wireguard_conversion_failed'
             elif protocol == 'snell':
                 obfs_opts = proxy.get('obfs-opts') or {}
-                version = proxy.get('version', 1)
-                try:
-                    version = int(version)
-                except (TypeError, ValueError):
+                raw_version = proxy.get('version', 1)
+                if isinstance(raw_version, bool):
                     version = 0
+                else:
+                    try:
+                        version = int(raw_version)
+                    except (TypeError, ValueError):
+                        version = 0
+                obfs_mode = str(obfs_opts.get('mode') or '').lower() if isinstance(obfs_opts, dict) else ''
+                obfs_host = obfs_opts.get('host') if isinstance(obfs_opts, dict) else None
                 if proxy.get('psk') in (None, ''):
                     reason = 'missing_snell_psk'
                 elif version not in range(1, 7):
                     reason = 'invalid_snell_version'
                 elif not isinstance(obfs_opts, dict):
                     reason = 'invalid_snell_obfs_options'
-                elif str(obfs_opts.get('mode') or '').lower() not in ('', 'http', 'tls'):
+                elif obfs_mode not in ('', 'http', 'tls'):
                     reason = 'unsupported_snell_obfs_mode'
+                elif (obfs_mode == 'tls' and version != 3) or (obfs_mode == 'http' and version not in (3, 4, 5)):
+                    reason = 'unsupported_snell_obfs_for_version'
+                elif not obfs_mode and obfs_host not in (None, ''):
+                    reason = 'snell_obfs_host_without_mode'
                 elif any(key not in ('mode', 'host') for key in obfs_opts):
                     reason = 'unsupported_snell_obfs_option'
                 elif (self._as_bool(proxy.get('udp')) or self._as_bool(proxy.get('reuse'))
@@ -916,8 +1012,6 @@ class merge:
                     reason = 'unsupported_snell_uri_option'
                 else:
                     reason = 'snell_conversion_failed'
-            elif protocol == 'ssh':
-                reason = 'ssh_share_link_not_portable'
             elif protocol == 'ssr':
                 required = ('password', 'cipher', 'protocol', 'obfs')
                 missing = [key for key in required if proxy.get(key) in (None, '')]
@@ -977,8 +1071,9 @@ class merge:
             return value
         if normalized_key in {
             'uuid', 'password', 'passwd', 'username', 'user', 'auth', 'auth-str',
-            'token', 'secret', 'private-key', 'privatekey', 'client-key',
-            'certificate', 'server', 'server-name', 'address'
+            'token', 'secret', 'psk', 'obfs-password', 'pre-shared-key', 'userkey',
+            'private-key', 'privatekey', 'client-key', 'certificate',
+            'server', 'server-name', 'address'
         }:
             return '[REDACTED]'
         if isinstance(value, dict):
@@ -1039,6 +1134,12 @@ class merge:
             protocol = str(proxy.get('type', '')).lower()
             if not protocol:
                 return None
+            if protocol == 'hy':
+                protocol = 'hysteria'
+            elif protocol == 'https':
+                protocol = 'http'
+                if 'tls' not in proxy or proxy.get('tls') is None:
+                    proxy = dict(proxy, tls=True)
 
             # Hysteria 允许省略端口；Mieru 使用 port 或 port-range；
             # WireGuard 的端点通常定义在第一个 peer 中，其余协议使用顶层 port。
@@ -1065,16 +1166,17 @@ class merge:
 
             if protocol == 'vmess':
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
-                if not all([server, port, uuid]):
+                if not self._valid_server(server) or not port or not uuid:
                     return None
                 network = str(proxy.get('network') or 'tcp').strip().lower()
                 if network in ('raw', 'none'):
                     network = 'tcp'
                 if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
                     return None
+                alter_id = proxy.get('alterId')
                 vmess_config = {
-                    "v": "2", "ps": remarks, "add": server, "port": str(port),
-                    "id": uuid, "aid": str(proxy.get('alterId', 0)),
+                    "v": "2", "ps": remarks, "add": server.strip(), "port": str(port),
+                    "id": uuid, "aid": str(0 if alter_id is None else alter_id),
                     "scy": proxy.get('cipher') or 'auto',
                     "net": 'tcp' if network == 'http' else network,
                     "type": "none", "host": "", "path": "", "tls": "", "sni": ""
@@ -1136,44 +1238,91 @@ class merge:
                     vmess_config['path'] = paths[0] if paths else '/'
                 elif network == 'h2':
                     h2_opts = proxy.get('h2-opts') or proxy.get('http-opts') or {}
+                    if not isinstance(h2_opts, dict):
+                        return None
                     headers = h2_opts.get('headers') or {}
+                    if not isinstance(headers, dict):
+                        return None
                     hosts = headers.get('Host') or headers.get('host') or h2_opts.get('host') or []
                     paths = h2_opts.get('path') or ['/']
-                    if isinstance(hosts, str): hosts = [hosts]
-                    if isinstance(paths, str): paths = [paths]
-                    if len(hosts) > 1 or len(paths) > 1: return None
+                    if isinstance(hosts, str):
+                        hosts = [hosts]
+                    if isinstance(paths, str):
+                        paths = [paths]
+                    if (not isinstance(hosts, (list, tuple)) or
+                            not isinstance(paths, (list, tuple)) or
+                            len(hosts) > 1 or len(paths) > 1):
+                        return None
+                    if hosts and not isinstance(hosts[0], str):
+                        return None
+                    if paths and not isinstance(paths[0], str):
+                        return None
                     vmess_config['host'] = hosts[0] if hosts else ''
                     vmess_config['path'] = paths[0] if paths else '/'
                 elif network == 'grpc':
                     grpc_opts = proxy.get('grpc-opts') or {}
+                    if not isinstance(grpc_opts, dict):
+                        return None
                     service_name = grpc_opts.get('grpc-service-name')
-                    if not service_name: return None
+                    if not service_name:
+                        return None
                     vmess_config['path'] = service_name
                 elif network == 'httpupgrade':
                     upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+                    if not isinstance(upgrade_opts, dict):
+                        return None
                     headers = upgrade_opts.get('headers') or {}
-                    vmess_config['host'] = headers.get('Host', '')
-                    vmess_config['path'] = upgrade_opts.get('path', '/')
+                    if not isinstance(headers, dict):
+                        return None
+                    if any(str(key).lower() != 'host' for key in headers):
+                        return None
+                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host') or ''
+                    if isinstance(host, (list, tuple)):
+                        if len(host) > 1:
+                            return None
+                        host = host[0] if host else ''
+                    if not isinstance(host, str):
+                        return None
+                    path = upgrade_opts.get('path', '/')
+                    if not isinstance(path, str) or not path:
+                        return None
+                    vmess_config['host'] = host
+                    vmess_config['path'] = path
                 else:
                     tcp_opts = proxy.get('tcp-opts') or {}
+                    if not isinstance(tcp_opts, dict):
+                        return None
                     header = tcp_opts.get('header') or {}
+                    if not isinstance(header, dict):
+                        return None
                     header_type = str(header.get('type') or 'none').lower()
-                    if header_type not in ('none', 'http'): return None
+                    if header_type not in ('none', 'http'):
+                        return None
                     if header_type == 'http':
                         request = header.get('request') or {}
+                        if not isinstance(request, dict):
+                            return None
                         headers = request.get('headers') or {}
+                        if not isinstance(headers, dict):
+                            return None
                         hosts = headers.get('Host') or headers.get('host') or []
                         paths = request.get('path') or ['/']
-                        if isinstance(hosts, str): hosts = [hosts]
-                        if isinstance(paths, str): paths = [paths]
-                        if len(hosts) > 1 or len(paths) > 1: return None
+                        if isinstance(hosts, str):
+                            hosts = [hosts]
+                        if isinstance(paths, str):
+                            paths = [paths]
+                        if (not isinstance(hosts, (list, tuple)) or
+                                not isinstance(paths, (list, tuple)) or
+                                len(hosts) > 1 or len(paths) > 1):
+                            return None
+                        if hosts and not isinstance(hosts[0], str):
+                            return None
+                        if paths and not isinstance(paths[0], str):
+                            return None
                         vmess_config['type'] = 'http'
-                        vmess_config['host'] = ','.join(map(str, hosts))
+                        vmess_config['host'] = hosts[0] if hosts else ''
                         vmess_config['path'] = paths[0] if paths else '/'
-                tls_enabled = self._as_bool(proxy.get('tls'))
-                tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint',
-                               'fingerprint', 'name-cert-verify')
-                if tls_enabled:
+                if self._as_bool(proxy.get('tls')):
                     vmess_config['tls'] = 'tls'
                     vmess_config['sni'] = proxy.get('servername') or proxy.get('sni') or vmess_config['host']
                     alpn = proxy.get('alpn')
@@ -1187,12 +1336,13 @@ class merge:
                         vmess_config['pcs'] = proxy.get('fingerprint')
                     if proxy.get('name-cert-verify'):
                         vmess_config['vcn'] = proxy.get('name-cert-verify')
-                if proxy.get('certificate') or proxy.get('private-key'): return None
+                if proxy.get('certificate') or proxy.get('private-key'):
+                    return None
                 return f"vmess://{base64_encode(json.dumps(vmess_config, separators=(',', ':')))}"
 
             elif protocol == 'vless':
                 server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
-                if not all([server, port, uuid]):
+                if not self._valid_server(server) or not port or not uuid:
                     return None
                 network = self._normalize_vless_network(proxy)
                 if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
@@ -1202,7 +1352,6 @@ class merge:
                     return None
                 reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
                 tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
-                tls_options = ('servername', 'sni', 'alpn', 'client-fingerprint')
                 params = {
                     'type': network,
                     'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')
@@ -1310,18 +1459,28 @@ class merge:
                     params['path'] = path
                 elif network == 'grpc':
                     grpc_opts = proxy.get('grpc-opts') or {}
+                    if not isinstance(grpc_opts, dict):
+                        return None
                     if grpc_opts.get('grpc-service-name'):
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
                 elif network in ('http', 'h2'):
                     http_opts = proxy.get('http-opts') or proxy.get('h2-opts') or {}
+                    if not isinstance(http_opts, dict):
+                        return None
                     headers = http_opts.get('headers') or {}
+                    if not isinstance(headers, dict):
+                        return None
                     hosts = headers.get('Host') or headers.get('host') or http_opts.get('host') or []
                     paths = http_opts.get('path') or ['/']
                     if isinstance(hosts, str):
                         hosts = [hosts]
                     if isinstance(paths, str):
                         paths = [paths]
-                    if len(hosts) > 1 or len(paths) > 1:
+                    if (not isinstance(hosts, (list, tuple)) or
+                            not isinstance(paths, (list, tuple)) or
+                            len(hosts) > 1 or len(paths) > 1):
+                        return None
+                    if any(not isinstance(value, str) for value in list(hosts) + list(paths)):
                         return None
                     if hosts:
                         params['host'] = hosts[0]
@@ -1344,16 +1503,19 @@ class merge:
                         if not isinstance(extra, dict):
                             return None
                         params['extra'] = json.dumps(extra, ensure_ascii=False, separators=(',', ':'))
-                    if xhttp_opts.get('x-padding-bytes') not in (None, ''):
-                        params['x_padding_bytes'] = xhttp_opts['x-padding-bytes']
+                    padding = xhttp_opts.get('x-padding-bytes')
+                    if padding not in (None, ''):
+                        if isinstance(padding, bool) or not isinstance(padding, (str, int)):
+                            return None
+                        params['x_padding_bytes'] = str(padding)
                 query_string = urllib.parse.urlencode(params)
                 return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
 
             elif protocol == 'trojan':
                 server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
-                if not all([server, port, password]):
+                if not self._valid_server(server) or not port or not password:
                     return None
-                params = {'sni': proxy.get('sni') or proxy.get('servername') or server}
+                params = {'sni': proxy.get('sni') or proxy.get('servername') or server.strip()}
                 if self._as_bool(proxy.get('skip-cert-verify')):
                     params['allowInsecure'] = 1
                 network = str(proxy.get('network') or 'tcp').strip().lower()
@@ -1406,6 +1568,8 @@ class merge:
                 elif network == 'grpc':
                     params['type'] = 'grpc'
                     grpc_opts = proxy.get('grpc-opts') or {}
+                    if not isinstance(grpc_opts, dict):
+                        return None
                     if grpc_opts.get('grpc-service-name'):
                         params['serviceName'] = grpc_opts.get('grpc-service-name')
                 elif network not in ('tcp', 'none', ''):
@@ -1417,7 +1581,7 @@ class merge:
             elif protocol == 'ss':
                 server, port = proxy.get('server'), proxy.get('port')
                 password, cipher = proxy.get('password'), proxy.get('cipher')
-                if not all([server, port, password, cipher]):
+                if not self._valid_server(server) or not port or password in (None, '') or not cipher:
                     return None
                 cipher = str(cipher).strip()
                 if not re.fullmatch(r'[A-Za-z0-9._-]{2,64}', cipher):
@@ -1450,7 +1614,7 @@ class merge:
                 cipher = proxy.get('cipher') or proxy.get('method')
                 ssr_protocol = proxy.get('protocol')
                 obfs = proxy.get('obfs')
-                if not all([server, port, password is not None, cipher, ssr_protocol, obfs]):
+                if not self._valid_server(server) or not all([port, password is not None, cipher, ssr_protocol, obfs]):
                     return None
                 try:
                     port_number = int(port)
@@ -1484,7 +1648,7 @@ class merge:
                 server, port = proxy.get('server'), proxy.get('port')
                 password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
                 ports = proxy.get('ports')
-                if not server or not password:
+                if not self._valid_server(server) or not password:
                     return None
                 if ports not in (None, ''):
                     if not self._valid_port_list(ports):
@@ -1538,7 +1702,7 @@ class merge:
 
             elif protocol == 'hysteria':
                 server, port = proxy.get('server'), proxy.get('port')
-                if not server:
+                if not self._valid_server(server):
                     return None
                 params = {}
                 auth = proxy.get('auth-str') or proxy.get('auth')
@@ -1561,7 +1725,8 @@ class merge:
                 params['upmbps'] = up
                 params['downmbps'] = down
                 sni = proxy.get('sni') or proxy.get('servername')
-                if sni: params['peer'] = sni
+                if sni:
+                    params['peer'] = sni
                 if proxy.get('alpn') not in (None, ''):
                     alpn = proxy.get('alpn')
                     params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else alpn
@@ -1578,7 +1743,7 @@ class merge:
 
             elif protocol == 'anytls':
                 server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
-                if not all([server, port, password]):
+                if not self._valid_server(server) or not port or not password:
                     return None
                 params = {}
                 for key in ('sni', 'alpn', 'idle-session-check-interval',
@@ -1602,7 +1767,7 @@ class merge:
                 server, port = proxy.get('server'), proxy.get('port')
                 token = proxy.get('token')
                 uuid, password = proxy.get('uuid'), proxy.get('password')
-                if not server or not self._valid_port(port):
+                if not self._valid_server(server) or not self._valid_port(port):
                     return None
                 if token not in (None, ''):
                     if uuid not in (None, '') or password not in (None, ''):
@@ -1649,7 +1814,7 @@ class merge:
 
             elif protocol == 'http':
                 server, port = proxy.get('server'), proxy.get('port')
-                if not all([server, port]):
+                if not self._valid_server(server) or not port:
                     return None
                 # 当前分享 URI 不承载自定义 HTTP headers / ALPN，遇到时不静默丢失。
                 if proxy.get('headers') or proxy.get('alpn'):
@@ -1678,7 +1843,7 @@ class merge:
 
             elif protocol in ('socks5', 'socks'):
                 server, port = proxy.get('server'), proxy.get('port')
-                if not all([server, port]):
+                if not self._valid_server(server) or not port:
                     return None
                 if proxy.get('headers') or proxy.get('alpn') or proxy.get('sni') or proxy.get('servername'):
                     return None
@@ -1704,7 +1869,7 @@ class merge:
             elif protocol == 'mieru':
                 server = proxy.get('server')
                 username, password = proxy.get('username'), proxy.get('password')
-                if not all([server, username, password]):
+                if not self._valid_server(server) or not username or not password:
                     return None
 
                 # Mieru simple links require a profile and one or more port/protocol
@@ -1728,6 +1893,8 @@ class merge:
                     return None
                 mtu = proxy.get('mtu')
                 if mtu not in (None, ''):
+                    if isinstance(mtu, bool):
+                        return None
                     try:
                         mtu = int(mtu)
                     except (TypeError, ValueError):
@@ -1743,6 +1910,8 @@ class merge:
                     if not (1 <= start_port <= end_port <= 65535):
                         return None
                 else:
+                    if isinstance(port, bool):
+                        return None
                     try:
                         port_value = int(port)
                     except (TypeError, ValueError):
@@ -1772,7 +1941,7 @@ class merge:
 
             elif protocol == 'snell':
                 server, port, psk = proxy.get('server'), proxy.get('port'), proxy.get('psk')
-                if not all([server, port, psk]):
+                if not self._valid_server(server) or not port or psk in (None, ''):
                     return None
                 raw_version = proxy.get('version', 1)
                 if isinstance(raw_version, bool):
@@ -1822,7 +1991,7 @@ class merge:
             elif protocol == 'naive':
                 server, port = proxy.get('server'), proxy.get('port')
                 username, password = proxy.get('username'), proxy.get('password')
-                if not server or not self._valid_port(port):
+                if not self._valid_server(server) or not self._valid_port(port):
                     return None
                 has_username = username not in (None, '')
                 has_password = password not in (None, '')
@@ -1854,7 +2023,7 @@ class merge:
                 scheme = 'naive+quic' if self._as_bool(proxy.get('quic')) else 'naive+https'
                 return f"{scheme}://{auth}{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
 
-            elif protocol == 'wireguard':
+            elif protocol in ('wireguard', 'wg'):
                 private_key = proxy.get('private-key') or proxy.get('private_key')
                 peers = proxy.get('peers') or []
                 if isinstance(peers, list) and len(peers) > 1:
@@ -1865,7 +2034,7 @@ class merge:
                 server = peer.get('server') or proxy.get('server')
                 port = peer.get('port') or proxy.get('port')
                 public_key = peer.get('public-key') or peer.get('public_key') or proxy.get('public-key') or proxy.get('public_key')
-                if not all([private_key, server, port, public_key]):
+                if not self._valid_server(server) or not all([private_key, port, public_key]):
                     return None
                 params = {}
                 for key, value in (
@@ -1981,7 +2150,15 @@ class merge:
         os.makedirs(merge_dir, exist_ok=True)
 
         all_nodes_raw = []
-        VALID_PROTOCOLS = ('vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://', 'hy2://', 'hysteria2://', 'hysteria://', 'hy://', 'tuic://', 'anytls://', 'wireguard://', 'wg://', 'http://', 'https://', 'socks5://', 'socks://', 'naive+https://', 'naive+http://', 'naive+quic://', 'mieru://', 'mierus://', 'ssh://', 'snell://')
+        VALID_PROTOCOLS = (
+            'vless://', 'vmess://', 'trojan://', 'ss://', 'ssr://',
+            'hy2://', 'hysteria2://', 'hysteria://', 'hy://',
+            'tuic://', 'anytls://', 'wireguard://', 'wg://',
+            'http://', 'https://', 'socks5://', 'socks://',
+            'naive+https://', 'naive+http://', 'naive+quic://',
+            'mieru://', 'mierus://', 'ssh://', 'snell://',
+            'masque://', 'juicity://', 'sudoku://'
+        )
         headers = {'User-Agent': 'v2rayN/6.0'}
         session = requests.Session()
         unsupported_types = {}
@@ -1991,7 +2168,6 @@ class merge:
         vmess_unsupported_networks = {}
         vless_unsupported_networks = {}
         malformed_network_details = {}
-        tls_mismatch_details = {}
         conversion_failure_details = []
 
         for item in url_list:
@@ -2039,8 +2215,10 @@ class merge:
                             if share_link:
                                 expected_schemes = {
                                     'hy2': {'hysteria2'}, 'hysteria2': {'hysteria2'},
+                                    'hy': {'hysteria'}, 'hysteria': {'hysteria'},
                                     'wg': {'wireguard'}, 'wireguard': {'wireguard'},
                                     'socks': {'socks5'}, 'http': {'http', 'https'},
+                                    'https': {'http', 'https'},
                                     'naive': {'naive+https', 'naive+quic', 'naive+http'},
                                     'mieru': {'mierus'}
                                 }
@@ -2075,9 +2253,6 @@ class merge:
                                     'source_remarks': item_remarks,
                                     'proxy': dict(proxy_dict),
                                 })
-                                if reason in ('vless_tls_options_without_tls', 'vmess_tls_options_without_tls'):
-                                    detail = proxy_type + ':' + self._tls_mismatch_diagnostic_bucket(proxy_data)
-                                    tls_mismatch_details[detail] = tls_mismatch_details.get(detail, 0) + 1
                                 if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
                                     network = getattr(self, '_last_conversion_failure_network', None) or 'other'
                                     vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
@@ -2201,10 +2376,6 @@ class merge:
                 print("VLESS malformed network detail (value hidden): " + ", ".join(
                     f"{kind}={count}" for kind, count in sorted(malformed_network_details.items())
                 ))
-            if tls_mismatch_details:
-                print("TLS options without TLS detail (values hidden): " + ", ".join(
-                    f"{detail}={count}" for detail, count in sorted(tls_mismatch_details.items())
-                ))
             print("Clash conversion failures by protocol and reason:")
             for protocol, reasons in sorted(conversion_failures_by_protocol.items()):
                 print("  " + protocol + ": " + ", ".join(
@@ -2219,7 +2390,7 @@ class merge:
         merge_path_final = os.path.join(self.merge_dir, 'sub_merge_base64.txt')
         temp_path = merge_path_final + '.tmp'
         try:
-            with open(temp_path, 'w', encoding='utf-8', newline='') as file:
+            with open(temp_path, 'w', encoding='utf-8', newline='\n') as file:
                 file.write(final_b64_content)
                 file.flush()
                 os.fsync(file.fileno())
