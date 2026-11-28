@@ -1,5 +1,5 @@
 Clash proxy conversion failure report
-Total failures: 7
+Total failures: 8
 Privacy: credentials, UUIDs, private keys, certificates, IPs, DNS and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
@@ -57,21 +57,39 @@ udp: true
 Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
-Node name: DE 🇩🇪 | @Raydikalx | 4FE27D
+Node name: CA 🇨🇦 | @Raydikalx | A12DC1
 Original YAML proxy (sensitive values redacted; network preserved):
 alterId: 0
 cipher: auto
-name: DE 🇩🇪 | @Raydikalx | 4FE27D
+name: CA 🇨🇦 | @Raydikalx | A12DC1
 network: xhttp
 port: 443
 server: '[REDACTED]'
-servername: nginx.greewebservices.ir
+servername: xcrouse23ed.iranpuls.ir
 tls: true
 type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
 [5] Protocol: vmess
+Reason: vmess_missing_grpc_service_name
+Source ID: 48
+Source remarks: ⭐github.com
+Node name: Global 🌐 | @Raydikalx | D9068D
+Original YAML proxy (sensitive values redacted; network preserved):
+alterId: 0
+cipher: auto
+name: Global 🌐 | @Raydikalx | D9068D
+network: grpc
+port: 41787
+server: '[REDACTED]'
+servername: ''
+tls: true
+type: vmess
+uuid: '[REDACTED]'
+
+========================================================================
+[6] Protocol: vmess
 Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
@@ -89,7 +107,7 @@ type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[6] Protocol: vmess
+[7] Protocol: vmess
 Reason: vmess_unsupported_network
 Source ID: 48
 Source remarks: ⭐github.com
@@ -107,7 +125,7 @@ type: vmess
 uuid: '[REDACTED]'
 
 ========================================================================
-[7] Protocol: socks5
+[8] Protocol: socks5
 Reason: incomplete_socks5_auth
 Source ID: 49
 Source remarks: MrErrorSan Clash Profile / PuddinCat
