@@ -1,6 +1,6 @@
 Clash proxy conversion failure report
 Total failures: 7
-Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.
+Privacy: credentials, UUIDs, private keys, certificates, IPs, DNS and endpoint addresses are redacted.
 Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.
 Original share URI: unavailable for Clash YAML input; the source node is shown below.
 
@@ -32,7 +32,7 @@ password: '[REDACTED]'
 port: 443
 server: '[REDACTED]'
 skip-cert-verify: true
-sni: www.findconnectwithemployersandbuildprofessionalnetwork.com#🍪99@oneclickvpnkeystrojan://8deb189a-3aed-4865-843b-b72dae954c46@ctcc.cloudflare.seeck.cn:443?host=api.85s.me
+sni: www.findconnectwithemployersandbuildprofessionalnetwork.com#🍪99@oneclickvpnkeystrojan://[REDACTED_UUID]@ctcc.cloudflare.seeck.cn:443?host=api.85s.me
 sub_tag: M003-260806
 type: trojan
 udp: true
