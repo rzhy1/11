@@ -7,6 +7,8 @@ import re
 import urllib.parse
 import requests
 import yaml
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 def base64_decode(s):
@@ -40,19 +42,27 @@ def is_base64(s):
         if missing_padding:
             s_std += '=' * (4 - missing_padding)
         decoded = base64.b64decode(s_std, validate=True)
-        decoded.decode('utf-8', 'strict')
-        return bool(decoded)
+        decoded_str = decoded.decode('utf-8', 'strict')
+        if not decoded_str:
+            return False
+        lowered = decoded_str.lower()
+        return (
+            '://' in decoded_str
+            or 'proxies:' in lowered
+            or 'proxy-providers:' in lowered
+        )
     except Exception:
         return False
 
 
 class merge:
-    def __init__(self, file_dir, format_config):
+    def __init__(self, file_dir, format_config=None):
         self.list_dir = file_dir['list_dir']
         self.list_file = file_dir['list_file']
         self.merge_dir = file_dir['merge_dir']
         self.readme_file = file_dir.get('readme_file')
-        self.format_config = format_config
+        self.format_config = format_config if isinstance(format_config, dict) else {}
+        self._warned_invalid_filters = set()
         self.url_list = self.read_list()
         self.merge_succeeded = self.sub_merge()
         if self.readme_file and self.merge_succeeded:
@@ -60,7 +70,19 @@ class merge:
 
     def read_list(self):
         with open(self.list_file, 'r', encoding='utf-8') as f:
-            source_list = [item for item in json.load(f) if item.get('enabled')]
+            raw_data = json.load(f)
+
+        if not isinstance(raw_data, list):
+            print(f"Warning: {self.list_file} top-level JSON must be a list; skipping.")
+            return []
+
+        source_list = []
+        for idx, item in enumerate(raw_data):
+            if not isinstance(item, dict):
+                print(f"Warning: Ignoring non-object entry at index {idx} in {self.list_file}.")
+                continue
+            if item.get('enabled'):
+                source_list.append(item)
 
         # Clash Profile 只作为 Provider 来源索引，不作为普通节点订阅解析。
         expanded_list = []
@@ -69,7 +91,15 @@ class merge:
                 expanded_list.append(item)
                 continue
 
-            providers = item.get('providers') or []
+            raw_providers = item.get('providers')
+            if raw_providers is None:
+                providers = []
+            elif not isinstance(raw_providers, list):
+                print(f"Warning: Clash Profile [ID: {item.get('id')}] has non-list providers; skipping.")
+                continue
+            else:
+                providers = raw_providers
+
             print(f"Clash Profile [ID: {item.get('id')}] discovered {len(providers)} providers.")
             for provider in providers:
                 if not isinstance(provider, dict) or not provider.get('url'):
@@ -418,7 +448,7 @@ class merge:
             return None
 
     def deduplicate_nodes(self, nodes):
-        """基于完整连接参数去重，避免误删传输或安全配置不同的节点。"""
+        """基于完整连接参数去重，避免误删传输或安全配置不同的节点（保留最先出现的节点）。"""
         print(f"\n--- Step 2: Performing advanced deduplication on {len(nodes)} nodes ---")
         unique_nodes_dict = {}
         unparseable_preserved = 0
@@ -558,6 +588,24 @@ class merge:
         return 'other'
 
     @staticmethod
+    def _resolve_vless_http_h2_options(proxy):
+        """Resolve http-opts / h2-opts according to original network and detect conflicts."""
+        raw_network = str(proxy.get('network') or 'tcp').strip().lower()
+        http_opts = proxy.get('http-opts')
+        h2_opts = proxy.get('h2-opts')
+        has_http_opts = http_opts not in (None, '', {})
+        has_h2_opts = h2_opts not in (None, '', {})
+        if has_http_opts and has_h2_opts and http_opts != h2_opts:
+            return None, 'vless_conflicting_http_h2_options'
+        if raw_network == 'h2':
+            options = h2_opts if h2_opts not in (None, '') else (http_opts or {})
+        else:
+            options = http_opts if http_opts not in (None, '') else (h2_opts or {})
+        if options in (None, ''):
+            options = {}
+        return options, None
+
+    @staticmethod
     def _normalize_vless_network(proxy):
         """Normalize aliases and recover contaminated TCP only with complete Reality evidence."""
         network = str(proxy.get('network') or 'tcp').strip().lower()
@@ -684,7 +732,9 @@ class merge:
             if not mapping(options):
                 return 'vless_invalid_grpc_options'
         elif network == 'http':
-            options = proxy.get('http-opts') or proxy.get('h2-opts') or {}
+            options, conflict_reason = merge._resolve_vless_http_h2_options(proxy)
+            if conflict_reason:
+                return conflict_reason
             if not mapping(options):
                 return 'vless_invalid_http_options'
             headers = options.get('headers') or {}
@@ -850,6 +900,10 @@ class merge:
         link = self._clash_to_share_link_impl(proxy)
         if link:
             return link
+
+        strict_hysteria_uri = bool(
+            getattr(self, 'format_config', {}).get('strict_hysteria_uri', True)
+        )
         if not isinstance(proxy, dict):
             reason = 'invalid_proxy'
         else:
@@ -860,7 +914,7 @@ class merge:
                 protocol = 'http'
 
             server, port = proxy.get('server'), proxy.get('port')
-            if protocol == 'wireguard':
+            if protocol in ('wireguard', 'wg'):
                 peers = proxy.get('peers') or []
                 peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
                 server = peer.get('server') or server
@@ -911,15 +965,15 @@ class merge:
             elif protocol in ('hysteria2', 'hy2'):
                 password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
                 ech_opts = proxy.get('ech-opts') or {}
+                security_unsupported = ('name-cert-verify', 'ca', 'ca-str', 'certificate', 'private-key', 'realm-opts')
+                tuning_unsupported = ('up', 'down', 'bbr-profile', 'obfs-min-packet-size', 'obfs-max-packet-size', 'handshake-timeout')
                 if not password:
                     reason = 'missing_hysteria2_auth'
-                elif any(proxy.get(key) not in (None, '', False, [], {})
-                         for key in ('up', 'down', 'bbr-profile', 'name-cert-verify',
-                                     'ca', 'ca-str', 'certificate', 'private-key',
-                                     'obfs-min-packet-size', 'obfs-max-packet-size',
-                                     'realm-opts', 'handshake-timeout')):
+                elif any(proxy.get(key) not in (None, '', False, [], {}) for key in security_unsupported):
+                    reason = 'unsupported_hysteria2_security_option'
+                elif strict_hysteria_uri and any(proxy.get(key) not in (None, '', False, [], {}) for key in tuning_unsupported):
                     reason = 'unsupported_hysteria2_option'
-                elif proxy.get('hop-interval') not in (None, '', 30, '30', '30s'):
+                elif strict_hysteria_uri and proxy.get('hop-interval') not in (None, '', 30, '30', '30s'):
                     reason = 'unsupported_hysteria2_hop_interval'
                 elif proxy.get('alpn') not in (None, '', ['h3'], 'h3'):
                     reason = 'unsupported_hysteria2_alpn'
@@ -969,7 +1023,7 @@ class merge:
                     reason = 'invalid_naive_extra_headers'
                 else:
                     reason = 'naive_conversion_failed'
-            elif protocol == 'wireguard':
+            elif protocol in ('wireguard', 'wg'):
                 peers = proxy.get('peers') or []
                 private_key = proxy.get('private-key') or proxy.get('private_key')
                 peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
@@ -1052,6 +1106,25 @@ class merge:
         reason_counts[reason] = reason_counts.get(reason, 0) + 1
 
     @staticmethod
+    def _sanitize_report_label(text):
+        """Sanitize remarks/node names against embedded URIs, UUIDs, and IPv4 addresses."""
+        if not text:
+            return 'unknown'
+        cleaned = str(text)
+        cleaned = re.sub(
+            r'(?i)\b[a-z][a-z0-9+.-]{1,15}(?:://|%3a%2f%2f)\S+',
+            '[REDACTED_URI]',
+            cleaned
+        )
+        cleaned = re.sub(
+            r'(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            '[REDACTED_UUID]',
+            cleaned
+        )
+        cleaned = re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', '[REDACTED_IP]', cleaned)
+        return cleaned
+
+    @staticmethod
     def _sanitize_conversion_failure_value(value, key=None):
         """Redact credentials and endpoint identifiers while preserving network verbatim."""
         normalized_key = str(key or '').strip().lower().replace('_', '-')
@@ -1073,7 +1146,8 @@ class merge:
             'uuid', 'password', 'passwd', 'username', 'user', 'auth', 'auth-str',
             'token', 'secret', 'psk', 'obfs-password', 'pre-shared-key', 'userkey',
             'private-key', 'privatekey', 'client-key', 'certificate',
-            'server', 'server-name', 'address'
+            'server', 'server-name', 'address', 'ip', 'ipv6', 'dns',
+            'allowed-ips', 'endpoint', 'obfs-param', 'protocol-param'
         }:
             return '[REDACTED]'
         if isinstance(value, dict):
@@ -1085,6 +1159,18 @@ class merge:
             return [merge._sanitize_conversion_failure_value(item) for item in value]
         if isinstance(value, tuple):
             return [merge._sanitize_conversion_failure_value(item) for item in value]
+        if isinstance(value, str):
+            sanitized = re.sub(
+                r'(?i)\b[a-z][a-z0-9+.-]{1,15}(?:://|%3a%2f%2f)\S+',
+                '[REDACTED_URI]',
+                value
+            )
+            sanitized = re.sub(
+                r'(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+                '[REDACTED_UUID]',
+                sanitized
+            )
+            return sanitized
         return value
 
     @staticmethod
@@ -1093,7 +1179,7 @@ class merge:
         lines = [
             'Clash proxy conversion failure report',
             f'Total failures: {len(failures)}',
-            'Privacy: credentials, UUIDs, private keys, certificates and endpoint addresses are redacted.',
+            'Privacy: credentials, UUIDs, private keys, certificates, IPs, DNS and endpoint addresses are redacted.',
             'Network values are retained for diagnosis; embedded share URIs and UUIDs are redacted.',
             'Original share URI: unavailable for Clash YAML input; the source node is shown below.',
             ''
@@ -1101,13 +1187,15 @@ class merge:
         for index, failure in enumerate(failures, 1):
             proxy = failure.get('proxy') if isinstance(failure.get('proxy'), dict) else {}
             safe_proxy = merge._sanitize_conversion_failure_value(proxy)
+            safe_remarks = merge._sanitize_report_label(failure.get('source_remarks'))
+            safe_name = merge._sanitize_report_label(proxy.get('name'))
             lines.extend([
                 '=' * 72,
                 f'[{index}] Protocol: {failure.get("protocol") or "unknown"}',
                 f'Reason: {failure.get("reason") or "conversion_failed"}',
                 f'Source ID: {failure.get("source_id") if failure.get("source_id") is not None else "unknown"}',
-                f'Source remarks: {failure.get("source_remarks") or "unknown"}',
-                f'Node name: {proxy.get("name") or "unknown"}',
+                f'Source remarks: {safe_remarks}',
+                f'Node name: {safe_name}',
                 'Original YAML proxy (sensitive values redacted; network preserved):',
                 yaml.safe_dump(
                     safe_proxy, allow_unicode=True, sort_keys=False,
@@ -1144,13 +1232,13 @@ class merge:
             # Hysteria 允许省略端口；Mieru 使用 port 或 port-range；
             # WireGuard 的端点通常定义在第一个 peer 中，其余协议使用顶层 port。
             port = proxy.get('port')
-            if protocol == 'wireguard':
+            if protocol in ('wireguard', 'wg'):
                 peers = proxy.get('peers') or []
                 peer = peers[0] if isinstance(peers, list) and peers and isinstance(peers[0], dict) else {}
                 port = peer.get('port') or port
             elif protocol not in ('hysteria', 'mieru', 'hysteria2', 'hy2') and not self._valid_port(port):
                 return None
-            if protocol == 'wireguard' and not self._valid_port(port):
+            if protocol in ('wireguard', 'wg') and not self._valid_port(port):
                 return None
             if protocol == 'hysteria' and port not in (None, '') and not self._valid_port(port):
                 return None
@@ -1165,901 +1253,916 @@ class merge:
             remarks_encoded = urllib.parse.quote(remarks)
 
             if protocol == 'vmess':
-                server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
-                if not self._valid_server(server) or not port or not uuid:
-                    return None
-                network = str(proxy.get('network') or 'tcp').strip().lower()
-                if network in ('raw', 'none'):
-                    network = 'tcp'
-                if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
-                    return None
-                alter_id = proxy.get('alterId')
-                vmess_config = {
-                    "v": "2", "ps": remarks, "add": server.strip(), "port": str(port),
-                    "id": uuid, "aid": str(0 if alter_id is None else alter_id),
-                    "scy": proxy.get('cipher') or 'auto',
-                    "net": 'tcp' if network == 'http' else network,
-                    "type": "none", "host": "", "path": "", "tls": "", "sni": ""
-                }
-                if network == 'ws':
-                    ws_opts = proxy.get('ws-opts') or {}
-                    if not isinstance(ws_opts, dict):
-                        return None
-                    headers = ws_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
-                        return None
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
-                        if (any(str(key).lower() != 'host' for key in headers) or
-                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
-                                ws_opts.get('early-data-header-name') not in (None, '')):
-                            return None
-                        # Mihomo's legacy VMess QR parser recognizes net=httpupgrade
-                        # and reconstructs ws-opts.v2ray-http-upgrade from that value.
-                        vmess_config['net'] = 'httpupgrade'
-                    host = headers.get('Host') or headers.get('host') or ''
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if not isinstance(host, str):
-                        return None
-                    vmess_config['host'] = host
-                    vmess_config['path'] = ws_opts.get('path', '/')
-                elif network == 'http':
-                    http_opts = proxy.get('http-opts') or {}
-                    if not isinstance(http_opts, dict):
-                        return None
-                    method = str(http_opts.get('method') or 'GET').upper()
-                    if method != 'GET':
-                        return None
-                    headers = http_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    if any(str(key).lower() != 'host' for key in headers):
-                        return None
-                    hosts = headers.get('Host') or headers.get('host') or []
-                    paths = http_opts.get('path') or ['/']
-                    if isinstance(hosts, str):
-                        hosts = [hosts]
-                    if isinstance(paths, str):
-                        paths = [paths]
-                    if (not isinstance(hosts, (list, tuple)) or
-                            not isinstance(paths, (list, tuple)) or
-                            len(hosts) > 1 or len(paths) > 1):
-                        return None
-                    if hosts and not isinstance(hosts[0], str):
-                        return None
-                    if paths and not isinstance(paths[0], str):
-                        return None
-                    vmess_config['type'] = 'http'
-                    vmess_config['host'] = hosts[0] if hosts else ''
-                    vmess_config['path'] = paths[0] if paths else '/'
-                elif network == 'h2':
-                    h2_opts = proxy.get('h2-opts') or proxy.get('http-opts') or {}
-                    if not isinstance(h2_opts, dict):
-                        return None
-                    headers = h2_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    hosts = headers.get('Host') or headers.get('host') or h2_opts.get('host') or []
-                    paths = h2_opts.get('path') or ['/']
-                    if isinstance(hosts, str):
-                        hosts = [hosts]
-                    if isinstance(paths, str):
-                        paths = [paths]
-                    if (not isinstance(hosts, (list, tuple)) or
-                            not isinstance(paths, (list, tuple)) or
-                            len(hosts) > 1 or len(paths) > 1):
-                        return None
-                    if hosts and not isinstance(hosts[0], str):
-                        return None
-                    if paths and not isinstance(paths[0], str):
-                        return None
-                    vmess_config['host'] = hosts[0] if hosts else ''
-                    vmess_config['path'] = paths[0] if paths else '/'
-                elif network == 'grpc':
-                    grpc_opts = proxy.get('grpc-opts') or {}
-                    if not isinstance(grpc_opts, dict):
-                        return None
-                    service_name = grpc_opts.get('grpc-service-name')
-                    if not service_name:
-                        return None
-                    vmess_config['path'] = service_name
-                elif network == 'httpupgrade':
-                    upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
-                    if not isinstance(upgrade_opts, dict):
-                        return None
-                    headers = upgrade_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    if any(str(key).lower() != 'host' for key in headers):
-                        return None
-                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host') or ''
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if not isinstance(host, str):
-                        return None
-                    path = upgrade_opts.get('path', '/')
-                    if not isinstance(path, str) or not path:
-                        return None
-                    vmess_config['host'] = host
-                    vmess_config['path'] = path
-                else:
-                    tcp_opts = proxy.get('tcp-opts') or {}
-                    if not isinstance(tcp_opts, dict):
-                        return None
-                    header = tcp_opts.get('header') or {}
-                    if not isinstance(header, dict):
-                        return None
-                    header_type = str(header.get('type') or 'none').lower()
-                    if header_type not in ('none', 'http'):
-                        return None
-                    if header_type == 'http':
-                        request = header.get('request') or {}
-                        if not isinstance(request, dict):
-                            return None
-                        headers = request.get('headers') or {}
-                        if not isinstance(headers, dict):
-                            return None
-                        hosts = headers.get('Host') or headers.get('host') or []
-                        paths = request.get('path') or ['/']
-                        if isinstance(hosts, str):
-                            hosts = [hosts]
-                        if isinstance(paths, str):
-                            paths = [paths]
-                        if (not isinstance(hosts, (list, tuple)) or
-                                not isinstance(paths, (list, tuple)) or
-                                len(hosts) > 1 or len(paths) > 1):
-                            return None
-                        if hosts and not isinstance(hosts[0], str):
-                            return None
-                        if paths and not isinstance(paths[0], str):
-                            return None
-                        vmess_config['type'] = 'http'
-                        vmess_config['host'] = hosts[0] if hosts else ''
-                        vmess_config['path'] = paths[0] if paths else '/'
-                if self._as_bool(proxy.get('tls')):
-                    vmess_config['tls'] = 'tls'
-                    vmess_config['sni'] = proxy.get('servername') or proxy.get('sni') or vmess_config['host']
-                    alpn = proxy.get('alpn')
-                    if alpn not in (None, ''):
-                        vmess_config['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else str(alpn)
-                    if proxy.get('client-fingerprint'):
-                        vmess_config['fp'] = proxy.get('client-fingerprint')
-                    if self._as_bool(proxy.get('skip-cert-verify')):
-                        vmess_config['insecure'] = '1'
-                    if proxy.get('fingerprint'):
-                        vmess_config['pcs'] = proxy.get('fingerprint')
-                    if proxy.get('name-cert-verify'):
-                        vmess_config['vcn'] = proxy.get('name-cert-verify')
-                if proxy.get('certificate') or proxy.get('private-key'):
-                    return None
-                return f"vmess://{base64_encode(json.dumps(vmess_config, separators=(',', ':')))}"
-
-            elif protocol == 'vless':
-                server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
-                if not self._valid_server(server) or not port or not uuid:
-                    return None
-                network = self._normalize_vless_network(proxy)
-                if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
-                    return None
-                reality_opts = proxy.get('reality-opts')
-                if reality_opts not in (None, '', {}) and not isinstance(reality_opts, dict):
-                    return None
-                reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
-                tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
-                params = {
-                    'type': network,
-                    'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')
-                }
-                if proxy.get('flow'):
-                    params['flow'] = proxy.get('flow')
-                if 'encryption' in proxy:
-                    encryption = proxy.get('encryption')
-                    if not isinstance(encryption, str):
-                        return None
-                    # Empty encryption is Mihomo's default and need not be encoded.
-                    if encryption:
-                        params['encryption'] = encryption
-
-                if 'packet-encoding' in proxy:
-                    packet_encoding = proxy.get('packet-encoding')
-                    if packet_encoding == '':
-                        params['packetEncoding'] = 'none'
-                    elif packet_encoding == 'xudp':
-                        params['packetEncoding'] = 'xudp'
-                    elif packet_encoding == 'packetaddr':
-                        # Mihomo's V-share parser maps "packet" to packet-addr.
-                        params['packetEncoding'] = 'packet'
-                    elif packet_encoding is not None:
-                        return None
-                if tls_enabled:
-                    sni = proxy.get('servername') or proxy.get('sni', '')
-                    if sni:
-                        params['sni'] = sni
-                    if proxy.get('client-fingerprint'):
-                        params['fp'] = proxy.get('client-fingerprint')
-                    alpn = proxy.get('alpn')
-                    if alpn not in (None, ''):
-                        params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else str(alpn)
-                    if self._as_bool(proxy.get('skip-cert-verify')):
-                        params['allowInsecure'] = 1
-                if reality_enabled:
-                    public_key = reality_opts.get('public-key')
-                    if not public_key:
-                        return None
-                    params['pbk'] = public_key
-                    if reality_opts.get('short-id'):
-                        params['sid'] = reality_opts.get('short-id')
-                    if reality_opts.get('spider-x'):
-                        params['spx'] = reality_opts.get('spider-x')
-
-                if network == 'ws':
-                    ws_opts = proxy.get('ws-opts') or {}
-                    if not isinstance(ws_opts, dict):
-                        return None
-                    headers = ws_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
-                        return None
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
-                        if (any(str(key).lower() != 'host' for key in headers) or
-                                ws_opts.get('max-early-data') not in (None, '', 0, '0') or
-                                ws_opts.get('early-data-header-name') not in (None, '')):
-                            return None
-                        params['type'] = 'httpupgrade'
-                    host = headers.get('Host') or headers.get('host')
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if host not in (None, ''):
-                        if not isinstance(host, str):
-                            return None
-                        params['host'] = host
-                    params['path'] = ws_opts.get('path', '/')
-                    max_early_data = ws_opts.get('max-early-data')
-                    if max_early_data not in (None, '', 0, '0'):
-                        try:
-                            early_data_size = int(max_early_data)
-                        except (TypeError, ValueError):
-                            return None
-                        if early_data_size <= 0:
-                            return None
-                        params['ed'] = str(early_data_size)
-                    early_data_header = ws_opts.get('early-data-header-name')
-                    if early_data_header not in (None, ''):
-                        if not isinstance(early_data_header, str):
-                            return None
-                        params['eh'] = early_data_header
-                elif network == 'httpupgrade':
-                    upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
-                    if not isinstance(upgrade_opts, dict):
-                        return None
-                    headers = upgrade_opts.get('headers') or {}
-                    if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
-                        return None
-                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if host not in (None, ''):
-                        if not isinstance(host, str):
-                            return None
-                        params['host'] = host
-                    path = upgrade_opts.get('path', '/')
-                    if not isinstance(path, str) or not path:
-                        return None
-                    params['path'] = path
-                elif network == 'grpc':
-                    grpc_opts = proxy.get('grpc-opts') or {}
-                    if not isinstance(grpc_opts, dict):
-                        return None
-                    if grpc_opts.get('grpc-service-name'):
-                        params['serviceName'] = grpc_opts.get('grpc-service-name')
-                elif network in ('http', 'h2'):
-                    http_opts = proxy.get('http-opts') or proxy.get('h2-opts') or {}
-                    if not isinstance(http_opts, dict):
-                        return None
-                    headers = http_opts.get('headers') or {}
-                    if not isinstance(headers, dict):
-                        return None
-                    hosts = headers.get('Host') or headers.get('host') or http_opts.get('host') or []
-                    paths = http_opts.get('path') or ['/']
-                    if isinstance(hosts, str):
-                        hosts = [hosts]
-                    if isinstance(paths, str):
-                        paths = [paths]
-                    if (not isinstance(hosts, (list, tuple)) or
-                            not isinstance(paths, (list, tuple)) or
-                            len(hosts) > 1 or len(paths) > 1):
-                        return None
-                    if any(not isinstance(value, str) for value in list(hosts) + list(paths)):
-                        return None
-                    if hosts:
-                        params['host'] = hosts[0]
-                    if paths:
-                        params['path'] = paths[0]
-                    if http_opts.get('method'):
-                        params['method'] = http_opts['method']
-                elif network in ('xhttp', 'splithttp'):
-                    xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
-                    if not isinstance(xhttp_opts, dict):
-                        return None
-                    for key in ('path', 'host', 'mode'):
-                        value = xhttp_opts.get(key)
-                        if value not in (None, ''):
-                            if not isinstance(value, str):
-                                return None
-                            params[key] = value
-                    extra = xhttp_opts.get('extra')
-                    if extra not in (None, ''):
-                        if not isinstance(extra, dict):
-                            return None
-                        params['extra'] = json.dumps(extra, ensure_ascii=False, separators=(',', ':'))
-                    padding = xhttp_opts.get('x-padding-bytes')
-                    if padding not in (None, ''):
-                        if isinstance(padding, bool) or not isinstance(padding, (str, int)):
-                            return None
-                        params['x_padding_bytes'] = str(padding)
-                query_string = urllib.parse.urlencode(params)
-                return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
-
-            elif protocol == 'trojan':
-                server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
-                if not self._valid_server(server) or not port or not password:
-                    return None
-                params = {'sni': proxy.get('sni') or proxy.get('servername') or server.strip()}
-                if self._as_bool(proxy.get('skip-cert-verify')):
-                    params['allowInsecure'] = 1
-                network = str(proxy.get('network') or 'tcp').strip().lower()
-                if network == 'ws':
-                    ws_opts = proxy.get('ws-opts') or {}
-                    if not isinstance(ws_opts, dict):
-                        return None
-                    ws_headers = ws_opts.get('headers') or {}
-                    if not isinstance(ws_headers, dict):
-                        return None
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
-                        return None
-                    params['type'] = 'httpupgrade' if self._as_bool(ws_opts.get('v2ray-http-upgrade')) else 'ws'
-                    if self._as_bool(ws_opts.get('v2ray-http-upgrade')) and (
-                            any(str(key).lower() != 'host' for key in ws_headers) or
-                            ws_opts.get('max-early-data') not in (None, '', 0, '0') or
-                            ws_opts.get('early-data-header-name') not in (None, '')):
-                        return None
-                    host = ws_headers.get('Host') or ws_headers.get('host')
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if host not in (None, ''):
-                        if not isinstance(host, str):
-                            return None
-                        params['host'] = host
-                    params['path'] = ws_opts.get('path', '/')
-                elif network == 'httpupgrade':
-                    params['type'] = 'httpupgrade'
-                    upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
-                    if not isinstance(upgrade_opts, dict):
-                        return None
-                    headers = upgrade_opts.get('headers') or {}
-                    if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
-                        return None
-                    host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
-                    if isinstance(host, (list, tuple)):
-                        if len(host) > 1:
-                            return None
-                        host = host[0] if host else ''
-                    if host not in (None, ''):
-                        if not isinstance(host, str):
-                            return None
-                        params['host'] = host
-                    path = upgrade_opts.get('path', '/')
-                    if not isinstance(path, str) or not path:
-                        return None
-                    params['path'] = path
-                elif network == 'grpc':
-                    params['type'] = 'grpc'
-                    grpc_opts = proxy.get('grpc-opts') or {}
-                    if not isinstance(grpc_opts, dict):
-                        return None
-                    if grpc_opts.get('grpc-service-name'):
-                        params['serviceName'] = grpc_opts.get('grpc-service-name')
-                elif network not in ('tcp', 'none', ''):
-                    print(f"  -> Unsupported Trojan transport: {network}")
-                    return None
-                query_string = urllib.parse.urlencode(params)
-                return f"trojan://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
-
-            elif protocol == 'ss':
-                server, port = proxy.get('server'), proxy.get('port')
-                password, cipher = proxy.get('password'), proxy.get('cipher')
-                if not self._valid_server(server) or not port or password in (None, '') or not cipher:
-                    return None
-                cipher = str(cipher).strip()
-                if not re.fullmatch(r'[A-Za-z0-9._-]{2,64}', cipher):
-                    return None
-                creds = f"{cipher}:{password}"
-                params = {}
-                plugin = proxy.get('plugin')
-                plugin_opts = proxy.get('plugin-opts') or {}
-                if plugin_opts and not plugin:
-                    return None
-                if plugin:
-                    if not isinstance(plugin_opts, dict):
-                        return None
-                    opts = []
-                    for key, value in plugin_opts.items():
-                        if isinstance(value, bool):
-                            if value:
-                                opts.append(str(key))
-                        elif value not in (None, ''):
-                            opts.append(f'{key}={value}')
-                    params['plugin'] = str(plugin) + (';' + ';'.join(opts) if opts else '')
-                query = urllib.parse.urlencode(params)
-                query_part = ('?' + query) if query else ''
-                ss_userinfo = base64.urlsafe_b64encode(creds.encode('utf-8')).decode('ascii').rstrip('=')
-                return f"ss://{ss_userinfo}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
-
-            elif protocol == 'ssr':
-                server, port = proxy.get('server'), proxy.get('port')
-                password = proxy.get('password')
-                cipher = proxy.get('cipher') or proxy.get('method')
-                ssr_protocol = proxy.get('protocol')
-                obfs = proxy.get('obfs')
-                if not self._valid_server(server) or not all([port, password is not None, cipher, ssr_protocol, obfs]):
-                    return None
-                try:
-                    port_number = int(port)
-                except (TypeError, ValueError):
-                    return None
-                if not 1 <= port_number <= 65535:
-                    return None
-
-                def ssr_b64(value):
-                    return base64.urlsafe_b64encode(str(value).encode('utf-8')).decode('ascii').rstrip('=')
-
-                ssr_main = (
-                    f"{self._uri_host(server)}:{port_number}:{ssr_protocol}:"
-                    f"{cipher}:{obfs}:{ssr_b64(password)}"
-                )
-                ssr_params = []
-                obfs_param = proxy.get('obfs-param')
-                protocol_param = proxy.get('protocol-param')
-                if obfs_param not in (None, ''):
-                    ssr_params.append(('obfsparam', ssr_b64(obfs_param)))
-                if protocol_param not in (None, ''):
-                    ssr_params.append(('protoparam', ssr_b64(protocol_param)))
-                if remarks:
-                    ssr_params.append(('remarks', ssr_b64(remarks)))
-                ssr_payload = ssr_main
-                if ssr_params:
-                    ssr_payload += '/?' + urllib.parse.urlencode(ssr_params)
-                return 'ssr://' + ssr_b64(ssr_payload)
-
-            elif protocol in ['hysteria2', 'hy2']:
-                server, port = proxy.get('server'), proxy.get('port')
-                password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
-                ports = proxy.get('ports')
-                if not self._valid_server(server) or not password:
-                    return None
-                if ports not in (None, ''):
-                    if not self._valid_port_list(ports):
-                        return None
-                    port_text = str(ports)
-                else:
-                    if not self._valid_port(port):
-                        return None
-                    port_text = str(port)
-
-                # The standard Hysteria 2 URI has no fields for these client-only
-                # tuning / custom certificate options. Refuse rather than lose them.
-                if any(proxy.get(key) not in (None, '', False, [], {})
-                       for key in ('up', 'down', 'bbr-profile', 'name-cert-verify',
-                                   'ca', 'ca-str', 'certificate', 'private-key',
-                                   'obfs-min-packet-size', 'obfs-max-packet-size',
-                                   'realm-opts', 'handshake-timeout')):
-                    return None
-                hop_interval = proxy.get('hop-interval')
-                if hop_interval not in (None, '', 30, '30', '30s'):
-                    return None
-                alpn = proxy.get('alpn')
-                if alpn not in (None, '', ['h3'], 'h3'):
-                    return None
-
-                params = {}
-                if proxy.get('sni'):
-                    params['sni'] = proxy.get('sni')
-                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
-                    params['insecure'] = 1
-                if proxy.get('obfs'):
-                    obfs = str(proxy.get('obfs')).lower()
-                    if obfs not in ('salamander', 'gecko'):
-                        return None
-                    params['obfs'] = obfs
-                if proxy.get('obfs-password'):
-                    params['obfs-password'] = proxy.get('obfs-password')
-                if proxy.get('fingerprint'):
-                    params['pinSHA256'] = proxy.get('fingerprint')
-                ech_opts = proxy.get('ech-opts') or {}
-                if ech_opts:
-                    if not isinstance(ech_opts, dict) or not self._as_bool(ech_opts.get('enable')):
-                        return None
-                    ech_config = ech_opts.get('config')
-                    if not ech_config:
-                        return None
-                    params['ech'] = ech_config
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                return f"hysteria2://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port_text}/{query_part}#{remarks_encoded}"
-
-            elif protocol == 'hysteria':
-                server, port = proxy.get('server'), proxy.get('port')
-                if not self._valid_server(server):
-                    return None
-                params = {}
-                auth = proxy.get('auth-str') or proxy.get('auth')
-                if auth:
-                    params['auth'] = auth
-                params['protocol'] = proxy.get('protocol') or 'udp'
-                up = self._hysteria_mbps(proxy.get('up'))
-                down = self._hysteria_mbps(proxy.get('down'))
-                if up is None or down is None:
-                    return None
-                if str(proxy.get('protocol') or 'udp').lower() not in ('udp', 'wechat-video', 'faketcp'):
-                    return None
-                unsupported_options = (
-                    'ports', 'recv-window-conn', 'recv-window', 'ca', 'ca-str',
-                    'fingerprint', 'fast-open', 'disable-mtu-discovery', 'obfs-protocol',
-                    'name-cert-verify', 'certificate', 'private-key'
-                )
-                if any(proxy.get(key) not in (None, '', False, [], {}) for key in unsupported_options):
-                    return None
-                params['upmbps'] = up
-                params['downmbps'] = down
-                sni = proxy.get('sni') or proxy.get('servername')
-                if sni:
-                    params['peer'] = sni
-                if proxy.get('alpn') not in (None, ''):
-                    alpn = proxy.get('alpn')
-                    params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else alpn
-                obfs_password = proxy.get('obfs')
-                if obfs_password not in (None, ''):
-                    params['obfs'] = 'xplus'
-                    params['obfsParam'] = obfs_password
-                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
-                    params['insecure'] = 1
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                port_part = f":{port}" if port else ""
-                return f"hysteria://{self._uri_host(server)}{port_part}/{query_part}#{remarks_encoded}"
-
-            elif protocol == 'anytls':
-                server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
-                if not self._valid_server(server) or not port or not password:
-                    return None
-                params = {}
-                for key in ('sni', 'alpn', 'idle-session-check-interval',
-                            'idle-session-timeout', 'min-idle-session'):
-                    value = proxy.get(key)
-                    if value not in (None, ''):
-                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if proxy.get('client-fingerprint'):
-                    params['fp'] = proxy.get('client-fingerprint')
-                if proxy.get('fingerprint'):
-                    params['hpkp'] = proxy.get('fingerprint')
-                if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
-                    params['insecure'] = 1
-                if 'udp' in proxy:
-                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                return f"anytls://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
-
-            elif protocol == 'tuic':
-                server, port = proxy.get('server'), proxy.get('port')
-                token = proxy.get('token')
-                uuid, password = proxy.get('uuid'), proxy.get('password')
-                if not self._valid_server(server) or not self._valid_port(port):
-                    return None
-                if token not in (None, ''):
-                    if uuid not in (None, '') or password not in (None, ''):
-                        return None
-                    auth = urllib.parse.quote(str(token), safe='')
-                else:
-                    if not uuid or password in (None, ''):
-                        return None
-                    auth = urllib.parse.quote(str(uuid), safe='') + ':' + urllib.parse.quote(str(password), safe='')
-
-                # DNS override and custom certificate identity/material cannot be
-                # represented by the portable TUIC share-link convention.
-                if any(proxy.get(key) not in (None, '', False)
-                       for key in ('ip', 'name-cert-verify', 'fingerprint',
-                                   'client-fingerprint', 'certificate', 'private-key',
-                                   'bbr-profile')):
-                    return None
-
-                params = {}
-                uri_names = {
-                    'sni': 'sni',
-                    'alpn': 'alpn',
-                    'heartbeat-interval': 'heartbeat_interval',
-                    'disable-sni': 'disable_sni',
-                    'reduce-rtt': 'reduce_rtt',
-                    'request-timeout': 'request_timeout',
-                    'udp-relay-mode': 'udp_relay_mode',
-                    'congestion-controller': 'congestion_control',
-                    'max-udp-relay-packet-size': 'max_udp_relay_packet_size',
-                    'max-open-streams': 'max_open_streams',
-                    'fast-open': 'fast_open'
-                }
-                for source, target in uri_names.items():
-                    value = proxy.get(source)
-                    if value not in (None, ''):
-                        if isinstance(value, bool):
-                            value = str(value).lower()
-                        params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('allow-insecure')):
-                    params['allow_insecure'] = 1
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                return f"tuic://{auth}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
-
-            elif protocol == 'http':
-                server, port = proxy.get('server'), proxy.get('port')
-                if not self._valid_server(server) or not port:
-                    return None
-                # 当前分享 URI 不承载自定义 HTTP headers / ALPN，遇到时不静默丢失。
-                if proxy.get('headers') or proxy.get('alpn'):
-                    return None
-                params = {}
-                sni = proxy.get('sni') or proxy.get('servername')
-                tls_enabled = self._as_bool(proxy.get('tls')) or bool(sni)
-                if sni:
-                    params['sni'] = str(sni)
-                if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('insecure')):
-                    params['skip-cert-verify'] = 'true'
-                for key in ('fingerprint', 'ip-version'):
-                    if proxy.get(key) not in (None, ''):
-                        params[key] = proxy[key]
-                username, password = proxy.get('username'), proxy.get('password')
-                auth = ''
-                if username is not None or password is not None:
-                    # HTTP Basic 可表达空用户名；保留 password-only 凭据，不虚构用户名。
-                    auth = urllib.parse.quote(str(username or ''), safe='')
-                    auth += ':' + urllib.parse.quote(str(password or ''), safe='')
-                    auth += '@'
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                scheme = 'https' if tls_enabled else 'http'
-                return f"{scheme}://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
-
-            elif protocol in ('socks5', 'socks'):
-                server, port = proxy.get('server'), proxy.get('port')
-                if not self._valid_server(server) or not port:
-                    return None
-                if proxy.get('headers') or proxy.get('alpn') or proxy.get('sni') or proxy.get('servername'):
-                    return None
-                username, password = proxy.get('username'), proxy.get('password')
-                # Treat two absent/blank credentials as unauthenticated SOCKS5.
-                # RFC 1929 authentication is only emitted when both fields are non-empty.
-                has_username = username not in (None, '')
-                has_password = password not in (None, '')
-                if has_username != has_password:
-                    return None
-                params = {}
-                if 'udp' in proxy:
-                    params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
-                auth = ''
-                if has_username and has_password:
-                    auth = urllib.parse.quote(str(username), safe='')
-                    auth += ':' + urllib.parse.quote(str(password), safe='')
-                    auth += '@'
-                query_string = urllib.parse.urlencode(params)
-                query_part = f"?{query_string}" if query_string else ""
-                return f"socks5://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
-
-            elif protocol == 'mieru':
-                server = proxy.get('server')
-                username, password = proxy.get('username'), proxy.get('password')
-                if not self._valid_server(server) or not username or not password:
-                    return None
-
-                # Mieru simple links require a profile and one or more port/protocol
-                # pairs. Mihomo's single port/port-range plus transport maps to one pair.
-                port = proxy.get('port')
-                port_range = proxy.get('port-range')
-                if bool(port) == bool(port_range):
-                    return None
-                transport = str(proxy.get('transport') or 'TCP').upper()
-                if transport not in ('TCP', 'UDP'):
-                    return None
-
-                multiplexing = str(proxy.get('multiplexing') or '').upper()
-                if multiplexing and multiplexing not in (
-                        'MULTIPLEXING_OFF', 'MULTIPLEXING_LOW',
-                        'MULTIPLEXING_MIDDLE', 'MULTIPLEXING_HIGH'):
-                    return None
-                handshake_mode = str(proxy.get('handshake-mode') or '').upper()
-                if handshake_mode and handshake_mode not in (
-                        'HANDSHAKE_STANDARD', 'HANDSHAKE_NO_WAIT'):
-                    return None
-                mtu = proxy.get('mtu')
-                if mtu not in (None, ''):
-                    if isinstance(mtu, bool):
-                        return None
-                    try:
-                        mtu = int(mtu)
-                    except (TypeError, ValueError):
-                        return None
-                    if not 1280 <= mtu <= 1400:
-                        return None
-
-                port_value = port_range if port_range else port
-                if port_range:
-                    if not re.fullmatch(r'\d{1,5}-\d{1,5}', str(port_range)):
-                        return None
-                    start_port, end_port = (int(part) for part in str(port_range).split('-', 1))
-                    if not (1 <= start_port <= end_port <= 65535):
-                        return None
-                else:
-                    if isinstance(port, bool):
-                        return None
-                    try:
-                        port_value = int(port)
-                    except (TypeError, ValueError):
-                        return None
-                    if not 1 <= port_value <= 65535:
-                        return None
-
-                params = [('profile', str(proxy.get('profile') or 'default'))]
-                for source, target in (
-                    ('mtu', 'mtu'),
-                    ('multiplexing', 'multiplexing'),
-                    ('handshake-mode', 'handshake-mode'),
-                    ('traffic-pattern', 'traffic-pattern')
-                ):
-                    value = proxy.get(source)
-                    if value not in (None, ''):
-                        params.append((target, str(value)))
-                params.append(('port', str(port_value)))
-                params.append(('protocol', transport))
-
-                auth = (
-                    urllib.parse.quote(str(username), safe='') + ':' +
-                    urllib.parse.quote(str(password), safe='')
-                )
-                query_string = urllib.parse.urlencode(params)
-                return f"mierus://{auth}@{self._uri_host(server)}?{query_string}#{remarks_encoded}"
-
-            elif protocol == 'snell':
-                server, port, psk = proxy.get('server'), proxy.get('port'), proxy.get('psk')
-                if not self._valid_server(server) or not port or psk in (None, ''):
-                    return None
-                raw_version = proxy.get('version', 1)
-                if isinstance(raw_version, bool):
-                    return None
-                try:
-                    version = int(raw_version)
-                except (TypeError, ValueError):
-                    return None
-                if version not in range(1, 7):
-                    return None
-
-                obfs_opts = proxy.get('obfs-opts') or {}
-                if not isinstance(obfs_opts, dict):
-                    return None
-                obfs_mode = str(obfs_opts.get('mode') or '').lower()
-                obfs_host = obfs_opts.get('host')
-                if obfs_mode not in ('', 'http', 'tls'):
-                    return None
-                if obfs_mode == 'tls' and version != 3:
-                    return None
-                if obfs_mode == 'http' and version not in (3, 4, 5):
-                    return None
-                if not obfs_mode and obfs_host not in (None, ''):
-                    return None
-                if any(key not in ('mode', 'host') for key in obfs_opts):
-                    return None
-
-                # These Mihomo settings have no portable representation in the
-                # commonly used snell:// URI format; never silently discard them.
-                mode = str(proxy.get('mode') or '').lower()
-                if (self._as_bool(proxy.get('udp')) or self._as_bool(proxy.get('reuse'))
-                        or proxy.get('userkey') or mode not in ('', 'default')
-                        or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
-                    return None
-
-                params = [('version', str(version))]
-                if obfs_mode:
-                    params.append(('obfs', obfs_mode))
-                if obfs_host not in (None, ''):
-                    params.append(('obfs-host', str(obfs_host)))
-                query = urllib.parse.urlencode(params)
-                return (
-                    f"snell://{urllib.parse.quote(str(psk), safe='')}@"
-                    f"{self._uri_host(server)}:{port}?{query}#{remarks_encoded}"
-                )
-
-            elif protocol == 'naive':
-                server, port = proxy.get('server'), proxy.get('port')
-                username, password = proxy.get('username'), proxy.get('password')
-                if not self._valid_server(server) or not self._valid_port(port):
-                    return None
-                has_username = username not in (None, '')
-                has_password = password not in (None, '')
-                if has_username != has_password:
-                    return None
-
-                # Naive's portable URI supports HTTPS/QUIC, Basic auth,
-                # padding and extra-headers. It has no standard SNI/insecure field.
-                if (proxy.get('servername') or proxy.get('sni') or
-                        self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')) or
-                        proxy.get('headers')):
-                    return None
-                params = {}
-                if 'padding' in proxy:
-                    params['padding'] = str(self._as_bool(proxy.get('padding'))).lower()
-                extra_headers = proxy.get('extra-headers')
-                if extra_headers not in (None, ''):
-                    if not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\x00', '\r', '\n')):
-                        return None
-                    params['extra-headers'] = extra_headers
-                query = urllib.parse.urlencode(params)
-
-                auth = ''
-                if has_username and has_password:
-                    auth = (
-                        urllib.parse.quote(str(username), safe='') + ':' +
-                        urllib.parse.quote(str(password), safe='') + '@'
-                    )
-                scheme = 'naive+quic' if self._as_bool(proxy.get('quic')) else 'naive+https'
-                return f"{scheme}://{auth}{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
-
-            elif protocol in ('wireguard', 'wg'):
-                private_key = proxy.get('private-key') or proxy.get('private_key')
-                peers = proxy.get('peers') or []
-                if isinstance(peers, list) and len(peers) > 1:
-                    return None
-                peer = peers[0] if isinstance(peers, list) and peers else {}
-                if not isinstance(peer, dict):
-                    return None
-                server = peer.get('server') or proxy.get('server')
-                port = peer.get('port') or proxy.get('port')
-                public_key = peer.get('public-key') or peer.get('public_key') or proxy.get('public-key') or proxy.get('public_key')
-                if not self._valid_server(server) or not all([private_key, port, public_key]):
-                    return None
-                params = {}
-                for key, value in (
-                    ('publickey', public_key),
-                    ('address', proxy.get('ip') or proxy.get('address')),
-                    ('allowed-ips', peer.get('allowed-ips') or proxy.get('allowed-ips')),
-                    ('pre-shared-key', peer.get('pre-shared-key') or proxy.get('pre-shared-key')),
-                    ('reserved', peer.get('reserved') or proxy.get('reserved')),
-                    ('mtu', proxy.get('mtu')),
-                    ('dns', proxy.get('dns')),
-                    ('udp', proxy.get('udp')),
-                    ('remote-dns-resolve', proxy.get('remote-dns-resolve'))
-                ):
-                    if value not in (None, ''):
-                        if isinstance(value, bool):
-                            value = str(value).lower()
-                        params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
-                if proxy.get('ipv6'):
-                    params['address'] = ','.join(filter(None, [str(params.get('address', '')), str(proxy['ipv6'])]))
-                query_string = urllib.parse.urlencode(params)
-                return f"wireguard://{urllib.parse.quote(str(private_key), safe='')}@{self._uri_host(server)}:{port}/?{query_string}#{remarks_encoded}"
-
+                return self._clash_to_vmess(proxy, remarks)
+            if protocol == 'vless':
+                return self._clash_to_vless(proxy, remarks_encoded)
+            if protocol == 'trojan':
+                return self._clash_to_trojan(proxy, remarks_encoded)
+            if protocol == 'ss':
+                return self._clash_to_ss(proxy, remarks_encoded)
+            if protocol == 'ssr':
+                return self._clash_to_ssr(proxy, remarks)
+            if protocol in ('hysteria2', 'hy2'):
+                return self._clash_to_hysteria2(proxy, remarks_encoded)
+            if protocol == 'hysteria':
+                return self._clash_to_hysteria(proxy, remarks_encoded)
+            if protocol == 'anytls':
+                return self._clash_to_anytls(proxy, remarks_encoded)
+            if protocol == 'tuic':
+                return self._clash_to_tuic(proxy, remarks_encoded)
+            if protocol == 'http':
+                return self._clash_to_http(proxy, remarks_encoded)
+            if protocol in ('socks5', 'socks'):
+                return self._clash_to_socks5(proxy, remarks_encoded)
+            if protocol == 'mieru':
+                return self._clash_to_mieru(proxy, remarks_encoded)
+            if protocol == 'snell':
+                return self._clash_to_snell(proxy, remarks_encoded)
+            if protocol == 'naive':
+                return self._clash_to_naive(proxy, remarks_encoded)
+            if protocol in ('wireguard', 'wg'):
+                return self._clash_to_wireguard(proxy, remarks_encoded)
             return None
         except Exception:
             return None
+
+    def _clash_to_vmess(self, proxy, remarks):
+        server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
+        if not self._valid_server(server) or not port or not uuid:
+            return None
+        network = str(proxy.get('network') or 'tcp').strip().lower()
+        if network in ('raw', 'none'):
+            network = 'tcp'
+        if network not in ('tcp', 'ws', 'http', 'h2', 'grpc', 'httpupgrade'):
+            return None
+        alter_id = proxy.get('alterId')
+        vmess_config = {
+            "v": "2", "ps": remarks, "add": server.strip(), "port": str(port),
+            "id": uuid, "aid": str(0 if alter_id is None else alter_id),
+            "scy": proxy.get('cipher') or 'auto',
+            "net": 'tcp' if network == 'http' else network,
+            "type": "none", "host": "", "path": "", "tls": "", "sni": ""
+        }
+        if network == 'ws':
+            ws_opts = proxy.get('ws-opts') or {}
+            if not isinstance(ws_opts, dict):
+                return None
+            headers = ws_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                return None
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
+                if (any(str(key).lower() != 'host' for key in headers) or
+                        ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                        ws_opts.get('early-data-header-name') not in (None, '')):
+                    return None
+                vmess_config['net'] = 'httpupgrade'
+            host = headers.get('Host') or headers.get('host') or ''
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if not isinstance(host, str):
+                return None
+            vmess_config['host'] = host
+            vmess_config['path'] = ws_opts.get('path', '/')
+        elif network == 'http':
+            http_opts = proxy.get('http-opts') or {}
+            if not isinstance(http_opts, dict):
+                return None
+            if str(http_opts.get('method') or 'GET').upper() != 'GET':
+                return None
+            headers = http_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            if any(str(key).lower() != 'host' for key in headers):
+                return None
+            hosts = headers.get('Host') or headers.get('host') or []
+            paths = http_opts.get('path') or ['/']
+            if isinstance(hosts, str):
+                hosts = [hosts]
+            if isinstance(paths, str):
+                paths = [paths]
+            if (not isinstance(hosts, (list, tuple)) or
+                    not isinstance(paths, (list, tuple)) or
+                    len(hosts) > 1 or len(paths) > 1):
+                return None
+            if hosts and not isinstance(hosts[0], str):
+                return None
+            if paths and not isinstance(paths[0], str):
+                return None
+            vmess_config['type'] = 'http'
+            vmess_config['host'] = hosts[0] if hosts else ''
+            vmess_config['path'] = paths[0] if paths else '/'
+        elif network == 'h2':
+            h2_opts = proxy.get('h2-opts') or proxy.get('http-opts') or {}
+            if not isinstance(h2_opts, dict):
+                return None
+            headers = h2_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            hosts = headers.get('Host') or headers.get('host') or h2_opts.get('host') or []
+            paths = h2_opts.get('path') or ['/']
+            if isinstance(hosts, str):
+                hosts = [hosts]
+            if isinstance(paths, str):
+                paths = [paths]
+            if (not isinstance(hosts, (list, tuple)) or
+                    not isinstance(paths, (list, tuple)) or
+                    len(hosts) > 1 or len(paths) > 1):
+                return None
+            if hosts and not isinstance(hosts[0], str):
+                return None
+            if paths and not isinstance(paths[0], str):
+                return None
+            vmess_config['host'] = hosts[0] if hosts else ''
+            vmess_config['path'] = paths[0] if paths else '/'
+        elif network == 'grpc':
+            grpc_opts = proxy.get('grpc-opts') or {}
+            if not isinstance(grpc_opts, dict):
+                return None
+            service_name = grpc_opts.get('grpc-service-name')
+            if not service_name:
+                return None
+            vmess_config['path'] = service_name
+        elif network == 'httpupgrade':
+            upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+            if not isinstance(upgrade_opts, dict):
+                return None
+            headers = upgrade_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            if any(str(key).lower() != 'host' for key in headers):
+                return None
+            host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host') or ''
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if not isinstance(host, str):
+                return None
+            path = upgrade_opts.get('path', '/')
+            if not isinstance(path, str) or not path:
+                return None
+            vmess_config['host'] = host
+            vmess_config['path'] = path
+        else:
+            tcp_opts = proxy.get('tcp-opts') or {}
+            if not isinstance(tcp_opts, dict):
+                return None
+            header = tcp_opts.get('header') or {}
+            if not isinstance(header, dict):
+                return None
+            header_type = str(header.get('type') or 'none').lower()
+            if header_type not in ('none', 'http'):
+                return None
+            if header_type == 'http':
+                request = header.get('request') or {}
+                if not isinstance(request, dict):
+                    return None
+                headers = request.get('headers') or {}
+                if not isinstance(headers, dict):
+                    return None
+                hosts = headers.get('Host') or headers.get('host') or []
+                paths = request.get('path') or ['/']
+                if isinstance(hosts, str):
+                    hosts = [hosts]
+                if isinstance(paths, str):
+                    paths = [paths]
+                if (not isinstance(hosts, (list, tuple)) or
+                        not isinstance(paths, (list, tuple)) or
+                        len(hosts) > 1 or len(paths) > 1):
+                    return None
+                if hosts and not isinstance(hosts[0], str):
+                    return None
+                if paths and not isinstance(paths[0], str):
+                    return None
+                vmess_config['type'] = 'http'
+                vmess_config['host'] = hosts[0] if hosts else ''
+                vmess_config['path'] = paths[0] if paths else '/'
+
+        if self._as_bool(proxy.get('tls')):
+            vmess_config['tls'] = 'tls'
+            vmess_config['sni'] = proxy.get('servername') or proxy.get('sni') or vmess_config['host']
+            alpn = proxy.get('alpn')
+            if alpn not in (None, ''):
+                vmess_config['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else str(alpn)
+            if proxy.get('client-fingerprint'):
+                vmess_config['fp'] = proxy.get('client-fingerprint')
+            if self._as_bool(proxy.get('skip-cert-verify')):
+                vmess_config['insecure'] = '1'
+            if proxy.get('fingerprint'):
+                vmess_config['pcs'] = proxy.get('fingerprint')
+            if proxy.get('name-cert-verify'):
+                vmess_config['vcn'] = proxy.get('name-cert-verify')
+        if proxy.get('certificate') or proxy.get('private-key'):
+            return None
+        return f"vmess://{base64_encode(json.dumps(vmess_config, separators=(',', ':')))}"
+
+    def _clash_to_vless(self, proxy, remarks_encoded):
+        server, port, uuid = proxy.get('server'), proxy.get('port'), proxy.get('uuid')
+        if not self._valid_server(server) or not port or not uuid:
+            return None
+        network = self._normalize_vless_network(proxy)
+        if network not in ('tcp', 'ws', 'http', 'grpc', 'xhttp', 'httpupgrade'):
+            return None
+        reality_opts = proxy.get('reality-opts')
+        if reality_opts not in (None, '', {}) and not isinstance(reality_opts, dict):
+            return None
+        reality_enabled = isinstance(reality_opts, dict) and bool(reality_opts)
+        tls_enabled = self._as_bool(proxy.get('tls')) or reality_enabled
+        params = {
+            'type': network,
+            'security': 'reality' if reality_enabled else ('tls' if tls_enabled else 'none')
+        }
+        if proxy.get('flow'):
+            params['flow'] = proxy.get('flow')
+        if 'encryption' in proxy:
+            encryption = proxy.get('encryption')
+            if not isinstance(encryption, str):
+                return None
+            if encryption:
+                params['encryption'] = encryption
+
+        if 'packet-encoding' in proxy:
+            packet_encoding = proxy.get('packet-encoding')
+            if packet_encoding == '':
+                params['packetEncoding'] = 'none'
+            elif packet_encoding == 'xudp':
+                params['packetEncoding'] = 'xudp'
+            elif packet_encoding == 'packetaddr':
+                params['packetEncoding'] = 'packet'
+            elif packet_encoding is not None:
+                return None
+        if tls_enabled:
+            sni = proxy.get('servername') or proxy.get('sni', '')
+            if sni:
+                params['sni'] = sni
+            if proxy.get('client-fingerprint'):
+                params['fp'] = proxy.get('client-fingerprint')
+            alpn = proxy.get('alpn')
+            if alpn not in (None, ''):
+                params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else str(alpn)
+            if self._as_bool(proxy.get('skip-cert-verify')):
+                params['allowInsecure'] = 1
+        if reality_enabled:
+            public_key = reality_opts.get('public-key')
+            if not public_key:
+                return None
+            params['pbk'] = public_key
+            if reality_opts.get('short-id'):
+                params['sid'] = reality_opts.get('short-id')
+            if reality_opts.get('spider-x'):
+                params['spx'] = reality_opts.get('spider-x')
+
+        if network == 'ws':
+            ws_opts = proxy.get('ws-opts') or {}
+            if not isinstance(ws_opts, dict):
+                return None
+            headers = ws_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                return None
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade')):
+                if (any(str(key).lower() != 'host' for key in headers) or
+                        ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                        ws_opts.get('early-data-header-name') not in (None, '')):
+                    return None
+                params['type'] = 'httpupgrade'
+            host = headers.get('Host') or headers.get('host')
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if host not in (None, ''):
+                if not isinstance(host, str):
+                    return None
+                params['host'] = host
+            params['path'] = ws_opts.get('path', '/')
+            max_early_data = ws_opts.get('max-early-data')
+            if max_early_data not in (None, '', 0, '0'):
+                try:
+                    early_data_size = int(max_early_data)
+                except (TypeError, ValueError):
+                    return None
+                if early_data_size <= 0:
+                    return None
+                params['ed'] = str(early_data_size)
+            early_data_header = ws_opts.get('early-data-header-name')
+            if early_data_header not in (None, ''):
+                if not isinstance(early_data_header, str):
+                    return None
+                params['eh'] = early_data_header
+        elif network == 'httpupgrade':
+            upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+            if not isinstance(upgrade_opts, dict):
+                return None
+            headers = upgrade_opts.get('headers') or {}
+            if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
+                return None
+            host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if host not in (None, ''):
+                if not isinstance(host, str):
+                    return None
+                params['host'] = host
+            path = upgrade_opts.get('path', '/')
+            if not isinstance(path, str) or not path:
+                return None
+            params['path'] = path
+        elif network == 'grpc':
+            grpc_opts = proxy.get('grpc-opts') or {}
+            if not isinstance(grpc_opts, dict):
+                return None
+            if grpc_opts.get('grpc-service-name'):
+                params['serviceName'] = grpc_opts.get('grpc-service-name')
+        elif network in ('http', 'h2'):
+            http_opts, conflict_reason = self._resolve_vless_http_h2_options(proxy)
+            if conflict_reason or not isinstance(http_opts, dict):
+                return None
+            headers = http_opts.get('headers') or {}
+            if not isinstance(headers, dict):
+                return None
+            hosts = headers.get('Host') or headers.get('host') or http_opts.get('host') or []
+            paths = http_opts.get('path') or ['/']
+            if isinstance(hosts, str):
+                hosts = [hosts]
+            if isinstance(paths, str):
+                paths = [paths]
+            if (not isinstance(hosts, (list, tuple)) or
+                    not isinstance(paths, (list, tuple)) or
+                    len(hosts) > 1 or len(paths) > 1):
+                return None
+            if any(not isinstance(value, str) for value in list(hosts) + list(paths)):
+                return None
+            if hosts:
+                params['host'] = hosts[0]
+            if paths:
+                params['path'] = paths[0]
+            if http_opts.get('method'):
+                params['method'] = http_opts['method']
+        elif network in ('xhttp', 'splithttp'):
+            xhttp_opts = proxy.get('xhttp-opts') or proxy.get('splithttp-opts') or {}
+            if not isinstance(xhttp_opts, dict):
+                return None
+            for key in ('path', 'host', 'mode'):
+                value = xhttp_opts.get(key)
+                if value not in (None, ''):
+                    if not isinstance(value, str):
+                        return None
+                    params[key] = value
+            extra = xhttp_opts.get('extra')
+            if extra not in (None, ''):
+                if not isinstance(extra, dict):
+                    return None
+                params['extra'] = json.dumps(extra, ensure_ascii=False, separators=(',', ':'))
+            padding = xhttp_opts.get('x-padding-bytes')
+            if padding not in (None, ''):
+                if isinstance(padding, bool) or not isinstance(padding, (str, int)):
+                    return None
+                params['x_padding_bytes'] = str(padding)
+
+        query_string = urllib.parse.urlencode(params)
+        return f"vless://{uuid}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
+
+    def _clash_to_trojan(self, proxy, remarks_encoded):
+        server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
+        if not self._valid_server(server) or not port or not password:
+            return None
+        params = {'sni': proxy.get('sni') or proxy.get('servername') or server.strip()}
+        if self._as_bool(proxy.get('skip-cert-verify')):
+            params['allowInsecure'] = 1
+        network = str(proxy.get('network') or 'tcp').strip().lower()
+        if network == 'ws':
+            ws_opts = proxy.get('ws-opts') or {}
+            if not isinstance(ws_opts, dict):
+                return None
+            ws_headers = ws_opts.get('headers') or {}
+            if not isinstance(ws_headers, dict):
+                return None
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade-fast-open')):
+                return None
+            params['type'] = 'httpupgrade' if self._as_bool(ws_opts.get('v2ray-http-upgrade')) else 'ws'
+            if self._as_bool(ws_opts.get('v2ray-http-upgrade')) and (
+                    any(str(key).lower() != 'host' for key in ws_headers) or
+                    ws_opts.get('max-early-data') not in (None, '', 0, '0') or
+                    ws_opts.get('early-data-header-name') not in (None, '')):
+                return None
+            host = ws_headers.get('Host') or ws_headers.get('host')
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if host not in (None, ''):
+                if not isinstance(host, str):
+                    return None
+                params['host'] = host
+            params['path'] = ws_opts.get('path', '/')
+        elif network == 'httpupgrade':
+            params['type'] = 'httpupgrade'
+            upgrade_opts = proxy.get('http-upgrade-opts') or proxy.get('httpupgrade-opts') or {}
+            if not isinstance(upgrade_opts, dict):
+                return None
+            headers = upgrade_opts.get('headers') or {}
+            if not isinstance(headers, dict) or any(str(key).lower() != 'host' for key in headers):
+                return None
+            host = headers.get('Host') or headers.get('host') or upgrade_opts.get('host')
+            if isinstance(host, (list, tuple)):
+                if len(host) > 1:
+                    return None
+                host = host[0] if host else ''
+            if host not in (None, ''):
+                if not isinstance(host, str):
+                    return None
+                params['host'] = host
+            path = upgrade_opts.get('path', '/')
+            if not isinstance(path, str) or not path:
+                return None
+            params['path'] = path
+        elif network == 'grpc':
+            params['type'] = 'grpc'
+            grpc_opts = proxy.get('grpc-opts') or {}
+            if not isinstance(grpc_opts, dict):
+                return None
+            if grpc_opts.get('grpc-service-name'):
+                params['serviceName'] = grpc_opts.get('grpc-service-name')
+        elif network not in ('tcp', 'none', ''):
+            print(f"  -> Unsupported Trojan transport: {network}")
+            return None
+        query_string = urllib.parse.urlencode(params)
+        return f"trojan://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}?{query_string}#{remarks_encoded}"
+
+    def _clash_to_ss(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        password, cipher = proxy.get('password'), proxy.get('cipher')
+        if not self._valid_server(server) or not port or password in (None, '') or not cipher:
+            return None
+        cipher = str(cipher).strip()
+        if not re.fullmatch(r'[A-Za-z0-9._-]{2,64}', cipher):
+            return None
+        creds = f"{cipher}:{password}"
+        params = {}
+        plugin = proxy.get('plugin')
+        plugin_opts = proxy.get('plugin-opts') or {}
+        if plugin_opts and not plugin:
+            return None
+        if plugin:
+            if not isinstance(plugin_opts, dict):
+                return None
+            opts = []
+            for key, value in plugin_opts.items():
+                if isinstance(value, bool):
+                    if value:
+                        opts.append(str(key))
+                elif value not in (None, ''):
+                    opts.append(f'{key}={value}')
+            params['plugin'] = str(plugin) + (';' + ';'.join(opts) if opts else '')
+        query = urllib.parse.urlencode(params)
+        query_part = ('?' + query) if query else ''
+        ss_userinfo = base64.urlsafe_b64encode(creds.encode('utf-8')).decode('ascii').rstrip('=')
+        return f"ss://{ss_userinfo}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
+
+    def _clash_to_ssr(self, proxy, remarks):
+        server, port = proxy.get('server'), proxy.get('port')
+        password = proxy.get('password')
+        cipher = proxy.get('cipher') or proxy.get('method')
+        ssr_protocol = proxy.get('protocol')
+        obfs = proxy.get('obfs')
+        if not self._valid_server(server) or not all([port, password is not None, cipher, ssr_protocol, obfs]):
+            return None
+        try:
+            port_number = int(port)
+        except (TypeError, ValueError):
+            return None
+        if not 1 <= port_number <= 65535:
+            return None
+
+        def ssr_b64(value):
+            return base64.urlsafe_b64encode(str(value).encode('utf-8')).decode('ascii').rstrip('=')
+
+        ssr_main = (
+            f"{self._uri_host(server)}:{port_number}:{ssr_protocol}:"
+            f"{cipher}:{obfs}:{ssr_b64(password)}"
+        )
+        ssr_params = []
+        obfs_param = proxy.get('obfs-param')
+        protocol_param = proxy.get('protocol-param')
+        if obfs_param not in (None, ''):
+            ssr_params.append(('obfsparam', ssr_b64(obfs_param)))
+        if protocol_param not in (None, ''):
+            ssr_params.append(('protoparam', ssr_b64(protocol_param)))
+        if remarks:
+            ssr_params.append(('remarks', ssr_b64(remarks)))
+        ssr_payload = ssr_main
+        if ssr_params:
+            ssr_payload += '/?' + urllib.parse.urlencode(ssr_params)
+        return 'ssr://' + ssr_b64(ssr_payload)
+
+    def _clash_to_hysteria2(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        password = proxy.get('password') or proxy.get('auth-str') or proxy.get('auth')
+        ports = proxy.get('ports')
+        if not self._valid_server(server) or not password:
+            return None
+        if ports not in (None, ''):
+            if not self._valid_port_list(ports):
+                return None
+            port_text = str(ports)
+        else:
+            if not self._valid_port(port):
+                return None
+            port_text = str(port)
+
+        strict_hysteria_uri = bool(self.format_config.get('strict_hysteria_uri', True))
+        # 安全相关与不可表达的证书选项始终拒绝；限速/调优参数受 strict_hysteria_uri 控制。
+        if any(proxy.get(key) not in (None, '', False, [], {})
+               for key in ('name-cert-verify', 'ca', 'ca-str', 'certificate', 'private-key', 'realm-opts')):
+            return None
+        if strict_hysteria_uri:
+            if any(proxy.get(key) not in (None, '', False, [], {})
+                   for key in ('up', 'down', 'bbr-profile', 'obfs-min-packet-size',
+                               'obfs-max-packet-size', 'handshake-timeout')):
+                return None
+            hop_interval = proxy.get('hop-interval')
+            if hop_interval not in (None, '', 30, '30', '30s'):
+                return None
+
+        alpn = proxy.get('alpn')
+        if alpn not in (None, '', ['h3'], 'h3'):
+            return None
+
+        params = {}
+        if proxy.get('sni'):
+            params['sni'] = proxy.get('sni')
+        if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
+            params['insecure'] = 1
+        if proxy.get('obfs'):
+            obfs = str(proxy.get('obfs')).lower()
+            if obfs not in ('salamander', 'gecko'):
+                return None
+            params['obfs'] = obfs
+        if proxy.get('obfs-password'):
+            params['obfs-password'] = proxy.get('obfs-password')
+        if proxy.get('fingerprint'):
+            params['pinSHA256'] = proxy.get('fingerprint')
+        ech_opts = proxy.get('ech-opts') or {}
+        if ech_opts:
+            if not isinstance(ech_opts, dict) or not self._as_bool(ech_opts.get('enable')):
+                return None
+            ech_config = ech_opts.get('config')
+            if not ech_config:
+                return None
+            params['ech'] = ech_config
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        return f"hysteria2://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port_text}/{query_part}#{remarks_encoded}"
+
+    def _clash_to_hysteria(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        if not self._valid_server(server):
+            return None
+        params = {}
+        auth = proxy.get('auth-str') or proxy.get('auth')
+        if auth:
+            params['auth'] = auth
+        params['protocol'] = proxy.get('protocol') or 'udp'
+        up = self._hysteria_mbps(proxy.get('up'))
+        down = self._hysteria_mbps(proxy.get('down'))
+        if up is None or down is None:
+            return None
+        if str(proxy.get('protocol') or 'udp').lower() not in ('udp', 'wechat-video', 'faketcp'):
+            return None
+        unsupported_options = (
+            'ports', 'recv-window-conn', 'recv-window', 'ca', 'ca-str',
+            'fingerprint', 'fast-open', 'disable-mtu-discovery', 'obfs-protocol',
+            'name-cert-verify', 'certificate', 'private-key'
+        )
+        if any(proxy.get(key) not in (None, '', False, [], {}) for key in unsupported_options):
+            return None
+        params['upmbps'] = up
+        params['downmbps'] = down
+        sni = proxy.get('sni') or proxy.get('servername')
+        if sni:
+            params['peer'] = sni
+        if proxy.get('alpn') not in (None, ''):
+            alpn = proxy.get('alpn')
+            params['alpn'] = ','.join(map(str, alpn)) if isinstance(alpn, (list, tuple)) else alpn
+        obfs_password = proxy.get('obfs')
+        if obfs_password not in (None, ''):
+            params['obfs'] = 'xplus'
+            params['obfsParam'] = obfs_password
+        if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
+            params['insecure'] = 1
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        port_part = f":{port}" if port else ""
+        return f"hysteria://{self._uri_host(server)}{port_part}/{query_part}#{remarks_encoded}"
+
+    def _clash_to_anytls(self, proxy, remarks_encoded):
+        server, port, password = proxy.get('server'), proxy.get('port'), proxy.get('password')
+        if not self._valid_server(server) or not port or not password:
+            return None
+        params = {}
+        for key in ('sni', 'alpn', 'idle-session-check-interval',
+                    'idle-session-timeout', 'min-idle-session'):
+            value = proxy.get(key)
+            if value not in (None, ''):
+                params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+        if proxy.get('client-fingerprint'):
+            params['fp'] = proxy.get('client-fingerprint')
+        if proxy.get('fingerprint'):
+            params['hpkp'] = proxy.get('fingerprint')
+        if self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')):
+            params['insecure'] = 1
+        if 'udp' in proxy:
+            params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        return f"anytls://{urllib.parse.quote(str(password), safe='')}@{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+    def _clash_to_tuic(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        token = proxy.get('token')
+        uuid, password = proxy.get('uuid'), proxy.get('password')
+        if not self._valid_server(server) or not self._valid_port(port):
+            return None
+        if token not in (None, ''):
+            if uuid not in (None, '') or password not in (None, ''):
+                return None
+            auth = urllib.parse.quote(str(token), safe='')
+        else:
+            if not uuid or password in (None, ''):
+                return None
+            auth = urllib.parse.quote(str(uuid), safe='') + ':' + urllib.parse.quote(str(password), safe='')
+
+        if any(proxy.get(key) not in (None, '', False)
+               for key in ('ip', 'name-cert-verify', 'fingerprint',
+                           'client-fingerprint', 'certificate', 'private-key',
+                           'bbr-profile')):
+            return None
+
+        params = {}
+        uri_names = {
+            'sni': 'sni',
+            'alpn': 'alpn',
+            'heartbeat-interval': 'heartbeat_interval',
+            'disable-sni': 'disable_sni',
+            'reduce-rtt': 'reduce_rtt',
+            'request-timeout': 'request_timeout',
+            'udp-relay-mode': 'udp_relay_mode',
+            'congestion-controller': 'congestion_control',
+            'max-udp-relay-packet-size': 'max_udp_relay_packet_size',
+            'max-open-streams': 'max_open_streams',
+            'fast-open': 'fast_open'
+        }
+        for source, target in uri_names.items():
+            value = proxy.get(source)
+            if value not in (None, ''):
+                if isinstance(value, bool):
+                    value = str(value).lower()
+                params[target] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+        if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('allow-insecure')):
+            params['allow_insecure'] = 1
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        return f"tuic://{auth}@{self._uri_host(server)}:{port}{query_part}#{remarks_encoded}"
+
+    def _clash_to_http(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        if not self._valid_server(server) or not port:
+            return None
+        if proxy.get('headers') or proxy.get('alpn'):
+            return None
+        params = {}
+        sni = proxy.get('sni') or proxy.get('servername')
+        tls_enabled = self._as_bool(proxy.get('tls')) or bool(sni)
+        if sni:
+            params['sni'] = str(sni)
+        if self._as_bool(proxy.get('skip-cert-verify')) or self._as_bool(proxy.get('insecure')):
+            params['skip-cert-verify'] = 'true'
+        for key in ('fingerprint', 'ip-version'):
+            if proxy.get(key) not in (None, ''):
+                params[key] = proxy[key]
+        username, password = proxy.get('username'), proxy.get('password')
+        auth = ''
+        if username is not None or password is not None:
+            auth = urllib.parse.quote(str(username or ''), safe='')
+            auth += ':' + urllib.parse.quote(str(password or ''), safe='')
+            auth += '@'
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        scheme = 'https' if tls_enabled else 'http'
+        return f"{scheme}://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+    def _clash_to_socks5(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        if not self._valid_server(server) or not port:
+            return None
+        if proxy.get('headers') or proxy.get('alpn') or proxy.get('sni') or proxy.get('servername'):
+            return None
+        username, password = proxy.get('username'), proxy.get('password')
+        has_username = username not in (None, '')
+        has_password = password not in (None, '')
+        if has_username != has_password:
+            return None
+        params = {}
+        if 'udp' in proxy:
+            params['udp'] = str(self._as_bool(proxy.get('udp'))).lower()
+        auth = ''
+        if has_username and has_password:
+            auth = urllib.parse.quote(str(username), safe='')
+            auth += ':' + urllib.parse.quote(str(password), safe='')
+            auth += '@'
+        query_string = urllib.parse.urlencode(params)
+        query_part = f"?{query_string}" if query_string else ""
+        return f"socks5://{auth}{self._uri_host(server)}:{port}/{query_part}#{remarks_encoded}"
+
+    def _clash_to_mieru(self, proxy, remarks_encoded):
+        server = proxy.get('server')
+        username, password = proxy.get('username'), proxy.get('password')
+        if not self._valid_server(server) or not username or not password:
+            return None
+        port = proxy.get('port')
+        port_range = proxy.get('port-range')
+        if bool(port) == bool(port_range):
+            return None
+        transport = str(proxy.get('transport') or 'TCP').upper()
+        if transport not in ('TCP', 'UDP'):
+            return None
+        multiplexing = str(proxy.get('multiplexing') or '').upper()
+        if multiplexing and multiplexing not in (
+                'MULTIPLEXING_OFF', 'MULTIPLEXING_LOW',
+                'MULTIPLEXING_MIDDLE', 'MULTIPLEXING_HIGH'):
+            return None
+        handshake_mode = str(proxy.get('handshake-mode') or '').upper()
+        if handshake_mode and handshake_mode not in (
+                'HANDSHAKE_STANDARD', 'HANDSHAKE_NO_WAIT'):
+            return None
+        mtu = proxy.get('mtu')
+        if mtu not in (None, ''):
+            if isinstance(mtu, bool):
+                return None
+            try:
+                mtu = int(mtu)
+            except (TypeError, ValueError):
+                return None
+            if not 1280 <= mtu <= 1400:
+                return None
+
+        port_value = port_range if port_range else port
+        if port_range:
+            if not re.fullmatch(r'\d{1,5}-\d{1,5}', str(port_range)):
+                return None
+            start_port, end_port = (int(part) for part in str(port_range).split('-', 1))
+            if not (1 <= start_port <= end_port <= 65535):
+                return None
+        else:
+            if isinstance(port, bool):
+                return None
+            try:
+                port_value = int(port)
+            except (TypeError, ValueError):
+                return None
+            if not 1 <= port_value <= 65535:
+                return None
+
+        params = [('profile', str(proxy.get('profile') or 'default'))]
+        for source, target in (
+            ('mtu', 'mtu'),
+            ('multiplexing', 'multiplexing'),
+            ('handshake-mode', 'handshake-mode'),
+            ('traffic-pattern', 'traffic-pattern')
+        ):
+            value = proxy.get(source)
+            if value not in (None, ''):
+                params.append((target, str(value)))
+        params.append(('port', str(port_value)))
+        params.append(('protocol', transport))
+
+        auth = (
+            urllib.parse.quote(str(username), safe='') + ':' +
+            urllib.parse.quote(str(password), safe='')
+        )
+        query_string = urllib.parse.urlencode(params)
+        return f"mierus://{auth}@{self._uri_host(server)}?{query_string}#{remarks_encoded}"
+
+    def _clash_to_snell(self, proxy, remarks_encoded):
+        server, port, psk = proxy.get('server'), proxy.get('port'), proxy.get('psk')
+        if not self._valid_server(server) or not port or psk in (None, ''):
+            return None
+        raw_version = proxy.get('version', 1)
+        if isinstance(raw_version, bool):
+            return None
+        try:
+            version = int(raw_version)
+        except (TypeError, ValueError):
+            return None
+        if version not in range(1, 7):
+            return None
+
+        obfs_opts = proxy.get('obfs-opts') or {}
+        if not isinstance(obfs_opts, dict):
+            return None
+        obfs_mode = str(obfs_opts.get('mode') or '').lower()
+        obfs_host = obfs_opts.get('host')
+        if obfs_mode not in ('', 'http', 'tls'):
+            return None
+        if obfs_mode == 'tls' and version != 3:
+            return None
+        if obfs_mode == 'http' and version not in (3, 4, 5):
+            return None
+        if not obfs_mode and obfs_host not in (None, ''):
+            return None
+        if any(key not in ('mode', 'host') for key in obfs_opts):
+            return None
+
+        mode = str(proxy.get('mode') or '').lower()
+        if (self._as_bool(proxy.get('udp')) or self._as_bool(proxy.get('reuse'))
+                or proxy.get('userkey') or mode not in ('', 'default')
+                or proxy.get('client-fingerprint') not in (None, '', 'chrome')):
+            return None
+
+        params = [('version', str(version))]
+        if obfs_mode:
+            params.append(('obfs', obfs_mode))
+        if obfs_host not in (None, ''):
+            params.append(('obfs-host', str(obfs_host)))
+        query = urllib.parse.urlencode(params)
+        return (
+            f"snell://{urllib.parse.quote(str(psk), safe='')}@"
+            f"{self._uri_host(server)}:{port}?{query}#{remarks_encoded}"
+        )
+
+    def _clash_to_naive(self, proxy, remarks_encoded):
+        server, port = proxy.get('server'), proxy.get('port')
+        username, password = proxy.get('username'), proxy.get('password')
+        if not self._valid_server(server) or not self._valid_port(port):
+            return None
+        has_username = username not in (None, '')
+        has_password = password not in (None, '')
+        if has_username != has_password:
+            return None
+        if (proxy.get('servername') or proxy.get('sni') or
+                self._as_bool(proxy.get('insecure')) or self._as_bool(proxy.get('skip-cert-verify')) or
+                proxy.get('headers')):
+            return None
+        params = {}
+        if 'padding' in proxy:
+            params['padding'] = str(self._as_bool(proxy.get('padding'))).lower()
+        extra_headers = proxy.get('extra-headers')
+        if extra_headers not in (None, ''):
+            if not isinstance(extra_headers, str) or any(ch in extra_headers for ch in ('\x00', '\r', '\n')):
+                return None
+            params['extra-headers'] = extra_headers
+        query = urllib.parse.urlencode(params)
+
+        auth = ''
+        if has_username and has_password:
+            auth = (
+                urllib.parse.quote(str(username), safe='') + ':' +
+                urllib.parse.quote(str(password), safe='') + '@'
+            )
+        scheme = 'naive+quic' if self._as_bool(proxy.get('quic')) else 'naive+https'
+        return f"{scheme}://{auth}{self._uri_host(server)}:{port}{('?' + query) if query else ''}#{remarks_encoded}"
+
+    def _clash_to_wireguard(self, proxy, remarks_encoded):
+        private_key = proxy.get('private-key') or proxy.get('private_key')
+        peers = proxy.get('peers') or []
+        if isinstance(peers, list) and len(peers) > 1:
+            return None
+        peer = peers[0] if isinstance(peers, list) and peers else {}
+        if not isinstance(peer, dict):
+            return None
+        server = peer.get('server') or proxy.get('server')
+        port = peer.get('port') or proxy.get('port')
+        public_key = peer.get('public-key') or peer.get('public_key') or proxy.get('public-key') or proxy.get('public_key')
+        if not self._valid_server(server) or not all([private_key, port, public_key]):
+            return None
+        params = {}
+        for key, value in (
+            ('publickey', public_key),
+            ('address', proxy.get('ip') or proxy.get('address')),
+            ('allowed-ips', peer.get('allowed-ips') or proxy.get('allowed-ips')),
+            ('pre-shared-key', peer.get('pre-shared-key') or proxy.get('pre-shared-key')),
+            ('reserved', peer.get('reserved') or proxy.get('reserved')),
+            ('mtu', proxy.get('mtu')),
+            ('dns', proxy.get('dns')),
+            ('udp', proxy.get('udp')),
+            ('remote-dns-resolve', proxy.get('remote-dns-resolve'))
+        ):
+            if value not in (None, ''):
+                if isinstance(value, bool):
+                    value = str(value).lower()
+                params[key] = ','.join(map(str, value)) if isinstance(value, (list, tuple)) else value
+        if proxy.get('ipv6'):
+            params['address'] = ','.join(filter(None, [str(params.get('address', '')), str(proxy['ipv6'])]))
+        query_string = urllib.parse.urlencode(params)
+        return f"wireguard://{urllib.parse.quote(str(private_key), safe='')}@{self._uri_host(server)}:{port}/?{query_string}#{remarks_encoded}"
 
     @staticmethod
     def _provider_headers(provider):
@@ -2074,18 +2177,22 @@ class merge:
                 headers[str(key)] = str(value)
         return headers
 
-    @staticmethod
-    def _provider_name_matches(pattern, name):
+    def _provider_name_matches(self, pattern, name):
         if not pattern:
             return True
         try:
             return re.search(str(pattern), name) is not None
         except re.error as exc:
-            print(f"  -> Invalid Provider filter ignored: {exc}")
+            warned = getattr(self, '_warned_invalid_filters', None)
+            pattern_key = str(pattern)
+            if warned is None or pattern_key not in warned:
+                print(f"  -> Invalid Provider filter '{pattern_key}' (fail-closed): {exc}")
+                if warned is not None:
+                    warned.add(pattern_key)
             return None
 
     def _provider_proxy_allowed(self, proxy, provider):
-        """按 Provider 的名称、协议包含/排除规则判断节点是否保留。"""
+        """按 Provider 的名称、协议包含/排除规则判断节点是否保留；正则异常按 fail-closed 拦截。"""
         name = str(proxy.get('name') or '')
         proxy_type = str(proxy.get('type') or '').lower()
 
@@ -2093,16 +2200,22 @@ class merge:
         if isinstance(exclude_types, (list, tuple, set)):
             if proxy_type in {str(item).lower() for item in exclude_types}:
                 return False
-        elif exclude_types and self._provider_name_matches(exclude_types, proxy_type) is True:
-            return False
+        elif exclude_types:
+            matched = self._provider_name_matches(exclude_types, proxy_type)
+            if matched is not False:
+                return False
 
         include_filter = provider.get('filter')
-        if include_filter and self._provider_name_matches(include_filter, name) is False:
-            return False
+        if include_filter:
+            matched = self._provider_name_matches(include_filter, name)
+            if matched is not True:
+                return False
 
         exclude_filter = provider.get('exclude_filter')
-        if exclude_filter and self._provider_name_matches(exclude_filter, name) is True:
-            return False
+        if exclude_filter:
+            matched = self._provider_name_matches(exclude_filter, name)
+            if matched is not False:
+                return False
         return True
 
     @staticmethod
@@ -2141,6 +2254,21 @@ class merge:
         suffix = str(provider.get('additional_suffix') or '')
         return prefix + result + suffix
 
+    @staticmethod
+    def _build_session():
+        session = requests.Session()
+        retry = Retry(
+            total=2,
+            backoff_factor=0.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset(('GET', 'HEAD')),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        return session
+
     def sub_merge(self):
         url_list = self.url_list
         list_dir, merge_dir = self.list_dir, self.merge_dir
@@ -2160,7 +2288,7 @@ class merge:
             'masque://', 'juicity://', 'sudoku://'
         )
         headers = {'User-Agent': 'v2rayN/6.0'}
-        session = requests.Session()
+        max_download_bytes = int(self.format_config.get('max_download_bytes', 20 * 1024 * 1024))
         unsupported_types = {}
         conversion_failures = 0
         conversion_failure_reasons = {}
@@ -2170,152 +2298,183 @@ class merge:
         malformed_network_details = {}
         conversion_failure_details = []
 
-        for item in url_list:
-            item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
-            if not item_url:
-                continue
-            print(f"Processing [ID: {item_id}] {item_remarks} from {item_url}")
-            try:
-                request_headers = dict(headers)
-                provider_meta = item.get('_provider') or {}
-                request_headers.update(self._provider_headers(provider_meta))
-                response = session.get(item_url, headers=request_headers, timeout=(5, 25))
-                response.raise_for_status()
-                raw_content = response.content.decode('utf-8-sig', errors='replace').strip()
-                if not raw_content:
-                    raise ValueError("Downloaded content is empty.")
-
-                found_nodes = []
-                if is_base64(raw_content):
-                    print("  -> Detected Base64 format, decoding...")
-                    plain_text = base64_decode(raw_content)
-                else:
-                    print("  -> Detected Plain Text / YAML format.")
-                    plain_text = raw_content
-
-                yaml_parsed = False
+        with self._build_session() as session:
+            for item in url_list:
+                item_url, item_id, item_remarks = item.get('url'), item.get('id'), item.get('remarks')
+                if not item_url:
+                    continue
+                print(f"Processing [ID: {item_id}] {item_remarks} from {item_url}")
                 try:
-                    data = yaml.safe_load(plain_text)
-                    if isinstance(data, dict) and isinstance(data.get('proxies'), list):
-                        print("  -> Content parsed as YAML, converting proxies...")
-                        yaml_parsed = True
-                        provider_meta = item.get('_provider') or {}
-                        for proxy_dict in data['proxies']:
-                            if not isinstance(proxy_dict, dict):
-                                continue
+                    request_headers = dict(headers)
+                    provider_meta = item.get('_provider') or {}
+                    request_headers.update(self._provider_headers(provider_meta))
 
-                            proxy_data = dict(proxy_dict)
-                            proxy_type = str(proxy_data.get('type') or '').lower()
-                            if not self._provider_proxy_allowed(proxy_data, provider_meta):
-                                continue
-                            proxy_data['name'] = self._provider_node_name(
-                                proxy_data.get('name'), provider_meta
+                    with session.get(item_url, headers=request_headers, timeout=(5, 25), stream=True) as response:
+                        response.raise_for_status()
+                        content_length = response.headers.get('Content-Length')
+                        if content_length and content_length.isdigit() and int(content_length) > max_download_bytes:
+                            raise ValueError(
+                                f"Response size ({content_length} bytes) exceeds limit ({max_download_bytes} bytes)."
                             )
-                            share_link = self.clash_to_share_link(proxy_data)
-                            if share_link:
-                                expected_schemes = {
-                                    'hy2': {'hysteria2'}, 'hysteria2': {'hysteria2'},
-                                    'hy': {'hysteria'}, 'hysteria': {'hysteria'},
-                                    'wg': {'wireguard'}, 'wireguard': {'wireguard'},
-                                    'socks': {'socks5'}, 'http': {'http', 'https'},
-                                    'https': {'http', 'https'},
-                                    'naive': {'naive+https', 'naive+quic', 'naive+http'},
-                                    'mieru': {'mierus'}
-                                }
-                                actual_scheme = share_link.split('://', 1)[0].lower()
-                                allowed_schemes = expected_schemes.get(proxy_type, {proxy_type})
-                                if actual_scheme not in allowed_schemes:
+                        chunks = []
+                        total_bytes = 0
+                        for chunk in response.iter_content(chunk_size=65536):
+                            if not chunk:
+                                continue
+                            total_bytes += len(chunk)
+                            if total_bytes > max_download_bytes:
+                                raise ValueError(
+                                    f"Downloaded content exceeds {max_download_bytes} bytes limit."
+                                )
+                            chunks.append(chunk)
+                        raw_bytes = b''.join(chunks)
+
+                    raw_content = raw_bytes.decode('utf-8-sig', errors='replace').strip()
+                    if not raw_content:
+                        raise ValueError("Downloaded content is empty.")
+
+                    lowered_raw = raw_content.lstrip().lower()
+                    if lowered_raw.startswith(('<!doctype html', '<html')) and 'proxies:' not in lowered_raw:
+                        raise ValueError("Downloaded content appears to be an HTML page rather than a subscription.")
+
+                    found_nodes = []
+                    if is_base64(raw_content):
+                        print("  -> Detected Base64 format, decoding...")
+                        plain_text = base64_decode(raw_content)
+                    else:
+                        print("  -> Detected Plain Text / YAML format.")
+                        plain_text = raw_content
+
+                    yaml_parsed = False
+                    try:
+                        data = yaml.safe_load(plain_text)
+                        if isinstance(data, dict) and isinstance(data.get('proxies'), list):
+                            print("  -> Content parsed as YAML, converting proxies...")
+                            yaml_parsed = True
+                            provider_meta = item.get('_provider') or {}
+                            for proxy_dict in data['proxies']:
+                                if not isinstance(proxy_dict, dict):
+                                    continue
+
+                                proxy_data = dict(proxy_dict)
+                                proxy_type = str(proxy_data.get('type') or '').lower()
+                                if not self._provider_proxy_allowed(proxy_data, provider_meta):
+                                    continue
+                                proxy_data['name'] = self._provider_node_name(
+                                    proxy_data.get('name'), provider_meta
+                                )
+                                share_link = self.clash_to_share_link(proxy_data)
+                                if share_link:
+                                    expected_schemes = {
+                                        'hy2': {'hysteria2'}, 'hysteria2': {'hysteria2'},
+                                        'hy': {'hysteria'}, 'hysteria': {'hysteria'},
+                                        'wg': {'wireguard'}, 'wireguard': {'wireguard'},
+                                        'socks': {'socks5'}, 'http': {'http', 'https'},
+                                        'https': {'http', 'https'},
+                                        'naive': {'naive+https', 'naive+quic', 'naive+http'},
+                                        'mieru': {'mierus'}
+                                    }
+                                    actual_scheme = share_link.split('://', 1)[0].lower()
+                                    allowed_schemes = expected_schemes.get(proxy_type, {proxy_type})
+                                    if actual_scheme not in allowed_schemes:
+                                        conversion_failures += 1
+                                        unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
+                                        self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failures_by_protocol, conversion_failure_reasons)
+                                        conversion_failure_details.append({
+                                            'protocol': proxy_type,
+                                            'reason': 'output_protocol_mismatch',
+                                            'source_id': item_id,
+                                            'source_remarks': item_remarks,
+                                            'proxy': dict(proxy_dict),
+                                        })
+                                        continue
+                                    found_nodes.append(share_link)
+                                else:
                                     conversion_failures += 1
                                     unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
-                                    self._record_conversion_failure(proxy_type, 'output_protocol_mismatch', conversion_failures_by_protocol, conversion_failure_reasons)
+                                    reason = getattr(self, '_last_conversion_failure_reason', None) or 'conversion_failed'
+                                    self._record_conversion_failure(
+                                        proxy_type, reason,
+                                        conversion_failures_by_protocol,
+                                        conversion_failure_reasons
+                                    )
                                     conversion_failure_details.append({
                                         'protocol': proxy_type,
-                                        'reason': 'output_protocol_mismatch',
+                                        'reason': reason,
                                         'source_id': item_id,
                                         'source_remarks': item_remarks,
                                         'proxy': dict(proxy_dict),
                                     })
-                                    continue
-                                found_nodes.append(share_link)
+                                    if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
+                                        network = getattr(self, '_last_conversion_failure_network', None) or 'other'
+                                        vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
+                                    elif proxy_type == 'vless' and reason == 'vless_unsupported_network':
+                                        raw_network = proxy_data.get('network')
+                                        network = 'tcp' if raw_network in (None, '') else str(raw_network).strip().lower()
+                                        if network == 'h2':
+                                            network = 'http'
+                                        elif network == 'splithttp':
+                                            network = 'xhttp'
+                                        bucket = self._safe_network_diagnostic_bucket(network)
+                                        vless_unsupported_networks[bucket] = vless_unsupported_networks.get(bucket, 0) + 1
+                                        if bucket == 'malformed':
+                                            detail = self._network_malformed_diagnostic_kind(proxy_data.get('network'))
+                                            malformed_network_details[detail] = malformed_network_details.get(detail, 0) + 1
+                    except yaml.YAMLError as yaml_error:
+                        if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
+                            print(f"  -> YAML parse failed: {yaml_error}")
+
+                    if not yaml_parsed:
+                        raw_links = [
+                            line.strip()
+                            for line in plain_text.splitlines()
+                            if line.strip().lower().startswith(VALID_PROTOCOLS)
+                        ]
+                        found_nodes = []
+                        corrected_mislabeled_vless = 0
+                        suspected_mislabeled_vless = {}
+                        for raw_link in raw_links:
+                            normalized_link = self._normalize_mislabeled_vless_share_link(raw_link)
+                            if normalized_link != raw_link:
+                                corrected_mislabeled_vless += 1
                             else:
-                                conversion_failures += 1
-                                unsupported_types[proxy_type] = unsupported_types.get(proxy_type, 0) + 1
-                                reason = getattr(self, '_last_conversion_failure_reason', None) or 'conversion_failed'
-                                self._record_conversion_failure(
-                                    proxy_type, reason,
-                                    conversion_failures_by_protocol,
-                                    conversion_failure_reasons
-                                )
-                                conversion_failure_details.append({
-                                    'protocol': proxy_type,
-                                    'reason': reason,
-                                    'source_id': item_id,
-                                    'source_remarks': item_remarks,
-                                    'proxy': dict(proxy_dict),
-                                })
-                                if proxy_type == 'vmess' and reason == 'vmess_unsupported_network':
-                                    network = getattr(self, '_last_conversion_failure_network', None) or 'other'
-                                    vmess_unsupported_networks[network] = vmess_unsupported_networks.get(network, 0) + 1
-                                elif proxy_type == 'vless' and reason == 'vless_unsupported_network':
-                                    raw_network = proxy_data.get('network')
-                                    network = 'tcp' if raw_network in (None, '') else str(raw_network).strip().lower()
-                                    if network == 'h2':
-                                        network = 'http'
-                                    elif network == 'splithttp':
-                                        network = 'xhttp'
-                                    bucket = self._safe_network_diagnostic_bucket(network)
-                                    vless_unsupported_networks[bucket] = vless_unsupported_networks.get(bucket, 0) + 1
-                                    if bucket == 'malformed':
-                                        detail = self._network_malformed_diagnostic_kind(proxy_data.get('network'))
-                                        malformed_network_details[detail] = malformed_network_details.get(detail, 0) + 1
-                except yaml.YAMLError as yaml_error:
-                    if plain_text.lstrip().startswith(('proxies:', '---', 'proxy-providers:')):
-                        print(f"  -> YAML parse failed: {yaml_error}")
-
-                if not yaml_parsed:
-                    raw_links = [
-                        line.strip()
-                        for line in plain_text.splitlines()
-                        if line.strip().lower().startswith(VALID_PROTOCOLS)
-                    ]
-                    found_nodes = []
-                    corrected_mislabeled_vless = 0
-                    suspected_mislabeled_vless = {}
-                    for raw_link in raw_links:
-                        normalized_link = self._normalize_mislabeled_vless_share_link(raw_link)
-                        if normalized_link != raw_link:
-                            corrected_mislabeled_vless += 1
-                        else:
-                            suspected_transport = self._suspected_mislabeled_vless_transport(raw_link)
-                            if suspected_transport:
-                                suspected_mislabeled_vless[suspected_transport] = (
-                                    suspected_mislabeled_vless.get(suspected_transport, 0) + 1
-                                )
-                        found_nodes.append(normalized_link)
-                    if corrected_mislabeled_vless:
-                        print(
-                            f"Corrected mislabeled SS links with VLESS signatures: "
-                            f"{corrected_mislabeled_vless}"
-                        )
-                    if suspected_mislabeled_vless:
-                        print(
-                            "Potential mislabeled SS links retained unchanged "
-                            "(UUID + VLESS-style transport fields; review required): "
-                            + ", ".join(
-                                f"{transport}={count}"
-                                for transport, count in sorted(suspected_mislabeled_vless.items())
+                                suspected_transport = self._suspected_mislabeled_vless_transport(raw_link)
+                                if suspected_transport:
+                                    suspected_mislabeled_vless[suspected_transport] = (
+                                        suspected_mislabeled_vless.get(suspected_transport, 0) + 1
+                                    )
+                            found_nodes.append(normalized_link)
+                        if corrected_mislabeled_vless:
+                            print(
+                                f"Corrected mislabeled SS links with VLESS signatures: "
+                                f"{corrected_mislabeled_vless}"
                             )
-                        )
+                        if suspected_mislabeled_vless:
+                            print(
+                                "Potential mislabeled SS links retained unchanged "
+                                "(UUID + VLESS-style transport fields; review required): "
+                                + ", ".join(
+                                    f"{transport}={count}"
+                                    for transport, count in sorted(suspected_mislabeled_vless.items())
+                                )
+                            )
 
-                if found_nodes:
-                    all_nodes_raw.extend(found_nodes)
-                    print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
-                else:
-                    print("  -> 🔴🔴🔴🔴 Warning: No valid node links found.")
-            except Exception as e:
-                print(f"  -> 🔴🔴🔴🔴 Failed! Reason: {e}")
-            finally:
-                print()
+                    if found_nodes:
+                        all_nodes_raw.extend(found_nodes)
+                        print(f'  -> Success! Extracted {len(found_nodes)} valid node links.')
+                    else:
+                        print("  -> 🔴🔴🔴🔴 Warning: No valid node links found.")
+                except requests.exceptions.Timeout:
+                    print("  -> 🔴🔴🔴🔴 Failed! Reason: Request timed out.")
+                except requests.exceptions.HTTPError as e:
+                    status = e.response.status_code if e.response is not None else 'unknown'
+                    print(f"  -> 🔴🔴🔴🔴 Failed! Reason: HTTP {status}")
+                except requests.exceptions.RequestException as e:
+                    print(f"  -> 🔴🔴🔴🔴 Failed! Reason: Network error: {e}")
+                except Exception as e:
+                    print(f"  -> 🔴🔴🔴🔴 Failed! Reason: {e}")
+                finally:
+                    print()
 
         failure_report_path = os.path.join(self.merge_dir, 'conversion_failures.txt')
         if conversion_failure_details:
@@ -2422,8 +2581,16 @@ class merge:
                 top_amount = 0
 
         sub_url = 'https://raw.githubusercontent.com/rzhy1/11/master/sub/sub_merge_base64.txt'
-        with open(self.readme_file, 'w', encoding='utf-8') as f:
-            f.write(f'[{top_amount}]({sub_url})\n')
+        temp_readme = self.readme_file + '.tmp'
+        try:
+            with open(temp_readme, 'w', encoding='utf-8', newline='\n') as f:
+                f.write(f'[{top_amount}]({sub_url})\n')
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_readme, self.readme_file)
+        finally:
+            if os.path.exists(temp_readme):
+                os.remove(temp_readme)
         print('完成!\n')
 
 
@@ -2436,5 +2603,8 @@ if __name__ == '__main__':
         'readme_file': './README.md',
         'share_file': './sub/share.txt'
     }
-    format_config = {}
+    format_config = {
+        'strict_hysteria_uri': True,
+        'max_download_bytes': 20 * 1024 * 1024,
+    }
     merge(file_dir, format_config)
