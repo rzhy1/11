@@ -893,6 +893,15 @@ class merge:
             return 'vmess_unrepresentable_tls_credentials'
         return 'vmess_conversion_failed'
 
+    def _strict_hysteria_uri(self):
+        config = getattr(self, 'format_config', None)
+        if not isinstance(config, dict) or 'strict_hysteria_uri' not in config:
+            return True
+        raw = config.get('strict_hysteria_uri')
+        if raw is None or raw == '':
+            return True
+        return self._as_bool(raw)
+    
     def clash_to_share_link(self, proxy):
         """转换节点，并记录无法转换的具体原因。"""
         self._last_conversion_failure_reason = None
@@ -900,10 +909,7 @@ class merge:
         link = self._clash_to_share_link_impl(proxy)
         if link:
             return link
-
-        strict_hysteria_uri = bool(
-            getattr(self, 'format_config', {}).get('strict_hysteria_uri', True)
-        )
+        strict_hysteria_uri = self._strict_hysteria_uri()
         if not isinstance(proxy, dict):
             reason = 'invalid_proxy'
         else:
@@ -1778,7 +1784,7 @@ class merge:
                 return None
             port_text = str(port)
 
-        strict_hysteria_uri = bool(self.format_config.get('strict_hysteria_uri', True))
+        strict_hysteria_uri = self._strict_hysteria_uri()
         # 安全相关与不可表达的证书选项始终拒绝；限速/调优参数受 strict_hysteria_uri 控制。
         if any(proxy.get(key) not in (None, '', False, [], {})
                for key in ('name-cert-verify', 'ca', 'ca-str', 'certificate', 'private-key', 'realm-opts')):
@@ -2288,7 +2294,10 @@ class merge:
             'masque://', 'juicity://', 'sudoku://'
         )
         headers = {'User-Agent': 'v2rayN/6.0'}
-        max_download_bytes = int(self.format_config.get('max_download_bytes', 20 * 1024 * 1024))
+        try:
+            max_download_bytes = int(self.format_config.get('max_download_bytes') or 20 * 1024 * 1024)
+        except (TypeError, ValueError):
+            max_download_bytes = 20 * 1024 * 1024
         unsupported_types = {}
         conversion_failures = 0
         conversion_failure_reasons = {}
