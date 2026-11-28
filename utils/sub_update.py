@@ -2,61 +2,252 @@
 
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import json, re
+from urllib.parse import urljoin, urlparse
+import html
+import ipaddress
+import json
+import os
+import re
+import socket
 import requests
 import yaml
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
-class update():
-    def __init__(self,config={'list_file': './sub/sub_list.json'}):
-        self.list_file = config['list_file']
-        with open(self.list_file, 'r', encoding='utf-8') as f: # 载入订阅链接
-            raw_list = json.load(f)
-            self.raw_list = raw_list
-        self.update_main()
+class update:
+    DEFAULT_HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    MAX_PROVIDER_BYTES = 10 * 1024 * 1024  # 10 MB
 
-    def url_updated(self,url): # 判断远程链接是否已经更新
-        s = requests.Session()
+    def __init__(self, config=None):
+        config = config if isinstance(config, dict) else {}
+        self.list_file = config.get('list_file') or './sub/sub_list.json'
+        self.allow_private_provider_urls = bool(config.get('allow_private_provider_urls', False))
+        self._session = None
+        self.raw_list = self._load_list()
+        if not self.raw_list:
+            return
+
+        with self._build_session() as session:
+            self._session = session
+            try:
+                self.update_main()
+            finally:
+                self._session = None
+
+    def _load_list(self):
+        if not os.path.exists(self.list_file):
+            print(f"Error: Subscription list file not found: {self.list_file}")
+            return []
         try:
-            resp = s.get(url, timeout=2)
-            status = resp.status_code
-        except Exception:
-            status = 404
-        if status == 200:
-            url_updated = True
-        else:
-            url_updated = False
-        return url_updated
+            with open(self.list_file, 'r', encoding='utf-8') as f:
+                raw_list = json.load(f)
+        except Exception as e:
+            print(f"Error: Failed to load {self.list_file}: {e}")
+            return []
+
+        if not isinstance(raw_list, list):
+            print(f"Error: {self.list_file} top-level JSON must be a list.")
+            return []
+        return raw_list
+
+    def _save_list(self):
+        updated_list = json.dumps(self.raw_list, sort_keys=False, indent=2, ensure_ascii=False)
+        temp_file = self.list_file + '.tmp'
+        try:
+            with open(temp_file, 'w', encoding='utf-8', newline='\n') as f:
+                f.write(updated_list + '\n')
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_file, self.list_file)
+        finally:
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except OSError:
+                    pass
+
+    @staticmethod
+    def _build_session():
+        session = requests.Session()
+        retry = Retry(
+            total=2,
+            backoff_factor=0.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset(('GET', 'HEAD')),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        return session
+
+    def _get_session(self):
+        return self._session if self._session is not None else requests
+
+    @staticmethod
+    def _is_disallowed_ip(ip_obj):
+        if ip_obj.ipv4_mapped is not None:
+            ip_obj = ip_obj.ipv4_mapped
+        return (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_multicast
+            or ip_obj.is_reserved
+            or ip_obj.is_unspecified
+        )
+
+    def _is_safe_http_url(self, url):
+        """校验 URL 仅使用 HTTP/HTTPS 且不指向本机、内网或保留地址（防 SSRF）。"""
+        if not isinstance(url, str) or not url.strip():
+            return False, 'empty_url'
+        parsed = urlparse(url.strip())
+        if parsed.scheme.lower() not in ('http', 'https') or not parsed.hostname:
+            return False, 'unsupported_scheme_or_host'
+        if self.allow_private_provider_urls:
+            return True, None
+
+        hostname = parsed.hostname.strip().lower()
+        if hostname in ('localhost', 'localhost.localdomain') or hostname.endswith('.local'):
+            return False, 'disallowed_local_hostname'
+
+        port = parsed.port or (443 if parsed.scheme.lower() == 'https' else 80)
+        try:
+            ip_literal = ipaddress.ip_address(hostname)
+            if self._is_disallowed_ip(ip_literal):
+                return False, 'disallowed_ip_address'
+            return True, None
+        except ValueError:
+            pass
+
+        try:
+            addr_infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+        except socket.gaierror as exc:
+            return False, f'dns_resolution_failed: {exc}'
+
+        if not addr_infos:
+            return False, 'dns_resolution_empty'
+
+        for info in addr_infos:
+            sockaddr = info[4]
+            if not sockaddr:
+                continue
+            resolved_ip = sockaddr[0].split('%', 1)[0]
+            try:
+                ip_obj = ipaddress.ip_address(resolved_ip)
+            except ValueError:
+                return False, 'invalid_resolved_ip'
+            if self._is_disallowed_ip(ip_obj):
+                return False, 'disallowed_resolved_private_ip'
+        return True, None
+
+    def _safe_get_bytes(self, url, headers=None, timeout=(5, 20), max_bytes=MAX_PROVIDER_BYTES, check_ssrf=False):
+        """支持重定向逐跳安全校验与流式体积限制的 GET 请求。"""
+        session = self._get_session()
+        current_url = url
+        for _ in range(6):
+            if check_ssrf:
+                safe, reason = self._is_safe_http_url(current_url)
+                if not safe:
+                    raise ValueError(f"Blocked unsafe URL ({reason}): {current_url}")
+
+            with session.get(
+                current_url,
+                headers=headers or self.DEFAULT_HEADERS,
+                timeout=timeout,
+                stream=True,
+                allow_redirects=False,
+            ) as resp:
+                if 300 <= resp.status_code < 400 and resp.headers.get('Location'):
+                    current_url = urljoin(current_url, resp.headers['Location'])
+                    continue
+
+                resp.raise_for_status()
+                content_length = resp.headers.get('Content-Length')
+                if content_length and content_length.isdigit() and int(content_length) > max_bytes:
+                    raise ValueError(f"Response size ({content_length} bytes) exceeds limit ({max_bytes} bytes).")
+
+                chunks = []
+                total_bytes = 0
+                for chunk in resp.iter_content(chunk_size=65536):
+                    if not chunk:
+                        continue
+                    total_bytes += len(chunk)
+                    if total_bytes > max_bytes:
+                        raise ValueError(f"Downloaded content exceeds {max_bytes} bytes limit.")
+                    chunks.append(chunk)
+                return resp.status_code, current_url, b''.join(chunks)
+
+        raise ValueError(f"Too many redirects fetching: {url}")
+
+    def url_updated(self, url):
+        """流式检查远程链接是否可用（只检查响应头与状态码，不下载整份正文）。"""
+        if not isinstance(url, str) or not url.strip():
+            return False
+        session = self._get_session()
+        try:
+            with session.get(url, headers=self.DEFAULT_HEADERS, timeout=(5, 10), stream=True) as resp:
+                if resp.status_code != 200:
+                    return False
+                content_length = resp.headers.get('Content-Length')
+                if content_length and content_length.isdigit() and int(content_length) == 0:
+                    return False
+                return True
+        except requests.RequestException:
+            return False
 
     def update_main(self):
-        for sub in self.raw_list:
-            id = sub['id']
-            current_url = sub['url']
+        changed = False
+        for idx, sub in enumerate(self.raw_list):
+            if not isinstance(sub, dict):
+                print(f'Warning: Ignoring non-object entry at index {idx} in {self.list_file}.')
+                continue
+
+            sub_id = sub.get('id')
+            current_url = sub.get('url')
+            if sub_id is None or current_url is None:
+                print(f'Warning: Entry at index {idx} missing id or url; skipping.')
+                continue
+
+            if not sub.get('enabled'):
+                continue
+
+            update_method = sub.get('update_method')
+            if not update_method:
+                if sub.get('type') != 'clash_profile':
+                    print(f'{sub_id} Url not changed! Please define update method.')
+                continue
+
+            if update_method == 'auto':
+                continue
+
             try:
-                if sub['update_method'] != 'auto' and sub['enabled'] == True:
-                    print(f'Finding available update for ID{id}')
-                    if sub['update_method'] == 'change_date':
-                        new_url = self.change_date(id,current_url)
-                        if new_url == current_url:
-                            print(f'No available update for ID{id}\n')
-                        else:
-                            sub['url'] = new_url
-                            print(f'ID{id} url updated to {new_url}\n')
-                    elif sub['update_method'] == 'page_release':
-                        new_url = self.find_link(id,current_url)
-                        if new_url == current_url:
-                            print(f'No available update for ID{id}\n')
-                        else:
-                            sub['url'] = new_url
-                            print(f'ID{id} url updated to {new_url}\n')
-            except KeyError:
-                print(f'{id} Url not changed! Please define update method.')
-            
-            updated_list = json.dumps(self.raw_list, sort_keys=False, indent=2, ensure_ascii=False)
-            file = open(self.list_file, 'w', encoding='utf-8')
-            file.write(updated_list)
-            file.close()
+                print(f'Finding available update for ID{sub_id}')
+                if update_method == 'change_date':
+                    new_url = self.change_date(sub_id, current_url)
+                elif update_method == 'page_release':
+                    new_url = self.find_link(sub_id, current_url)
+                else:
+                    print(f'ID{sub_id} has unknown update_method: {update_method}\n')
+                    continue
+
+                if not isinstance(new_url, str) or not new_url.strip():
+                    print(f'ID{sub_id} update failed; keeping current URL.\n')
+                elif new_url == current_url:
+                    print(f'No available update for ID{sub_id}\n')
+                else:
+                    sub['url'] = new_url
+                    changed = True
+                    print(f'ID{sub_id} url updated to {new_url}\n')
+            except Exception as e:
+                print(f'ID{sub_id} update error ({e}); keeping current URL.\n')
+
+        if changed:
+            self._save_list()
 
         self.update_clash_profiles()
 
@@ -64,7 +255,10 @@ class update():
         """解析启用的 Clash Profile，递归收集远程 Provider 地址及元数据。"""
         profiles = [
             item for item in self.raw_list
-            if item.get('enabled') and item.get('type') == 'clash_profile' and item.get('url')
+            if isinstance(item, dict)
+            and item.get('enabled')
+            and item.get('type') == 'clash_profile'
+            and item.get('url')
         ]
         if not profiles:
             return
@@ -84,9 +278,7 @@ class update():
                 print(f"Clash Profile [{profile.get('id')}] refresh failed; keeping cached provider list: {e}")
 
         if changed:
-            updated_list = json.dumps(self.raw_list, sort_keys=False, indent=2, ensure_ascii=False)
-            with open(self.list_file, 'w', encoding='utf-8') as file:
-                file.write(updated_list)
+            self._save_list()
 
     def _collect_clash_providers(self, profile_url, max_depth=4):
         """递归下载 YAML 配置以发现 proxy-providers；不解析节点内容。"""
@@ -109,13 +301,15 @@ class update():
                 if not isinstance(provider_config, dict):
                     continue
 
-                provider_type = str(provider_config.get('type', 'http')).lower()
+                provider_type = str(provider_config.get('type') or 'http').lower()
                 raw_url = provider_config.get('url')
                 if provider_type != 'http' or not isinstance(raw_url, str) or not raw_url.strip():
                     continue
 
                 provider_url = urljoin(source_url, raw_url.strip())
-                if not provider_url.lower().startswith(('http://', 'https://')):
+                safe, reason = self._is_safe_http_url(provider_url)
+                if not safe:
+                    print(f"  Skipped unsafe Provider URL [{provider_name}]: {reason}")
                     continue
 
                 override = provider_config.get('override') or {}
@@ -147,189 +341,206 @@ class update():
 
                 fetched_urls.add(provider_url)
                 try:
-                    response = requests.get(provider_url, headers=headers, timeout=(5, 20))
-                    response.raise_for_status()
-                    child_text = response.content.decode('utf-8-sig', errors='replace')
+                    _, final_url, child_bytes = self._safe_get_bytes(
+                        provider_url,
+                        headers=headers,
+                        timeout=(5, 20),
+                        check_ssrf=True,
+                    )
+                    child_text = child_bytes.decode('utf-8-sig', errors='replace')
+                    # 普通节点/Base64 订阅不含 proxy-providers，直接跳过 YAML 解析以节省开销。
+                    if 'proxy-providers' not in child_text:
+                        continue
                     child_config = yaml.safe_load(child_text)
                     if isinstance(child_config, dict):
-                        walk_config(child_config, response.url or provider_url, depth + 1)
+                        walk_config(child_config, final_url or provider_url, depth + 1)
                 except Exception as e:
                     print(f"  Provider YAML discovery skipped [{provider_name}]: {e}")
 
-        response = requests.get(profile_url, headers=headers, timeout=(5, 25))
-        response.raise_for_status()
-        profile_text = response.content.decode('utf-8-sig', errors='replace')
+        _, final_profile_url, profile_bytes = self._safe_get_bytes(
+            profile_url,
+            headers=headers,
+            timeout=(5, 25),
+            check_ssrf=True,
+        )
+        profile_text = profile_bytes.decode('utf-8-sig', errors='replace')
         profile_config = yaml.safe_load(profile_text)
         if not isinstance(profile_config, dict):
             raise ValueError("Clash Profile YAML root must be a mapping.")
 
-        walk_config(profile_config, response.url or profile_url, 0)
+        walk_config(profile_config, final_profile_url or profile_url, 0)
         return providers
 
-    def change_date(self,id,current_url):
-        if id == 0:
+    def change_date(self, sub_id, current_url):
+        session = self._get_session()
+
+        if sub_id == 0:
             today = datetime.today().strftime('%m%d')
-            url_front = 'https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/'
-            url_end = '.txt'
-            new_url = url_front + today + url_end
-            
-        if id == 7:
+            new_url = f'https://raw.githubusercontent.com/pojiezhiyuanjun/freev2/master/{today}.txt'
+            return new_url if self.url_updated(new_url) else current_url
+
+        if sub_id == 7:
             try:
-                import requests
-                import re
-                from datetime import datetime, timedelta
-        
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-                for delta in [0, 1]:
+                for delta in (0, 1):
                     date_str = (datetime.today() - timedelta(days=delta)).strftime('%Y%m%d')
                     page_url = f'https://clashfreenode.com/a/fn{date_str}.html'
-        
                     try:
-                        res = requests.get(page_url, headers=headers, timeout=10)
+                        res = session.get(page_url, headers=self.DEFAULT_HEADERS, timeout=(5, 15))
                         if res.status_code == 200:
                             # 源码中的真实格式：https://nodebus.net/cfn/8568b1c0f1da79b3/20261012-v2ray.txt
                             pattern = rf'https://nodebus\.net/cfn/[a-f0-9]+/{date_str}-v2ray\.txt'
                             match = re.search(pattern, res.text)
-        
                             if match:
                                 new_url = match.group(0)
                                 if self.url_updated(new_url):
                                     return new_url
-                                break
-                    except Exception:
+                    except requests.RequestException:
                         continue
-        
             except Exception as e:
                 print(f"ID 7 获取最新链接失败: {e}")
             return current_url
-            
-        if id == 111:
-            this_month = datetime.today().strftime('%m').lstrip('0')
-            today = datetime.today().strftime('%d').lstrip('0')
-            yesterday = (datetime.today() - timedelta(days=1)).strftime('%d').lstrip('0')
-            url = f"https://agit.ai/231/123321312/src/branch/master/{this_month}"
-            response = requests.get(url)
-            soup = BeautifulSoup(response.content, "html.parser")
-            latest_URL = None
-            new_url = None
-            new_url_today = None
-            new_url_yesterday = None
-            for row in soup.find_all("tr"):
-                link = row.find("a")
-                if link and f"{this_month}" in link.text and f"{today}" in link.text and "yml" not in link.text: 
-                    latest_URL = f"{url}/{link.text}"
-                    new_url_today = latest_URL.replace("/src/", "/raw/")
-                else:
-                    if link and f"{this_month}" in link.text and f"{yesterday}" in link.text and "yml" not in link.text: 
-                        latest_URL = f"{url}/{link.text}"
-                        new_url_yesterday = latest_URL.replace("/src/", "/raw/")
-            if new_url_today:
-                new_url = new_url_today
-            else:
-                new_url = new_url_yesterday
-           
-        if id == 28:
-            url_date = datetime.today().strftime('%Y%m%d')
-            url = "https://www.cfmem.com/"
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            link = soup.find("a", href=lambda href: href and url_date in href)
-            new_url = None
-            if link:
-                link_url = link["href"]
-                link_response = requests.get(link_url)
-                link_soup = BeautifulSoup(link_response.text, "html.parser")
-                new_url = None
-                for string in link_soup.stripped_strings:
-                    if string.startswith("v2ray订阅链接") and string.endswith(".txt"):
-                        start = string.index("https://")
-                        end = string.index(".txt") + 4
-                        new_url = string[start:end]
-                        break
-        if id == 32:
-            today = datetime.today().strftime('%Y%m%d')
-            this_month = datetime.today().strftime('%m')
-            this_year = datetime.today().strftime('%Y')
-            url_front = 'https://nodefree.org/dy/'
-            url_end = '.txt'
-            new_url = url_front + this_year + '/' + this_month + '/' + today + url_end
-        if id == 40:
+
+        if sub_id == 111:
+            try:
+                now = datetime.today()
+                yesterday_dt = now - timedelta(days=1)
+                this_month = str(now.month)
+                url = f"https://agit.ai/231/123321312/src/branch/master/{this_month}"
+                response = session.get(url, headers=self.DEFAULT_HEADERS, timeout=(5, 15))
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, "html.parser")
+
+                def date_matches(text, dt):
+                    m = str(dt.month)
+                    d = str(dt.day)
+                    d_pad = f"{dt.day:02d}"
+                    pattern = rf'(?<!\d){m}[._-]?({d_pad}|{d})(?!\d)'
+                    return re.search(pattern, text) is not None
+
+                new_url_today = None
+                new_url_yesterday = None
+                for row in soup.find_all("tr"):
+                    link = row.find("a")
+                    if not link or not link.get('href'):
+                        continue
+                    link_name = link.get_text(strip=True)
+                    lowered_name = link_name.lower()
+                    if not link_name or 'yml' in lowered_name or 'yaml' in lowered_name:
+                        continue
+                    candidate = urljoin(url + '/', link['href']).replace('/src/', '/raw/')
+                    if date_matches(link_name, now):
+                        new_url_today = candidate
+                    elif date_matches(link_name, yesterday_dt):
+                        new_url_yesterday = candidate
+
+                for candidate in (new_url_today, new_url_yesterday):
+                    if candidate and self.url_updated(candidate):
+                        return candidate
+            except Exception as e:
+                print(f"ID 111 获取最新链接失败: {e}")
+            return current_url
+
+        if sub_id == 28:
+            try:
+                url_date = datetime.today().strftime('%Y%m%d')
+                url = "https://www.cfmem.com/"
+                response = session.get(url, headers=self.DEFAULT_HEADERS, timeout=(5, 15))
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
+                link = soup.find("a", href=lambda href: href and url_date in href)
+                if link and link.get("href"):
+                    link_url = urljoin(url, link["href"])
+                    link_response = session.get(link_url, headers=self.DEFAULT_HEADERS, timeout=(5, 15))
+                    link_response.raise_for_status()
+                    link_soup = BeautifulSoup(link_response.text, "html.parser")
+                    for text in link_soup.stripped_strings:
+                        if "v2ray订阅链接" in text or text.lower().endswith(".txt"):
+                            match = re.search(r'https?://[^\s<>"\']+?\.txt\b', text)
+                            if match:
+                                candidate = match.group(0)
+                                if self.url_updated(candidate):
+                                    return candidate
+            except Exception as e:
+                print(f"ID 28 获取最新链接失败: {e}")
+            return current_url
+
+        if sub_id in (32, 36):
+            new_url = datetime.today().strftime('https://nodefree.org/dy/%Y/%m/%Y%m%d.txt')
+            return new_url if self.url_updated(new_url) else current_url
+
+        if sub_id == 40:
             new_url = datetime.today().strftime('https://clashgithub.com/wp-content/uploads/rss/%Y%m%d.txt')
-            if self.url_updated(new_url):
-                return new_url
-            else:
-                return current_url
-        if id == 36:
-            today = datetime.today().strftime('%Y%m%d')
-            this_month = datetime.today().strftime('%m')
-            this_year = datetime.today().strftime('%Y')
-            url_front = 'https://nodefree.org/dy/'
-            url_end = '.txt'
-            new_url = url_front + this_year + '/' + this_month + '/' + today + url_end
+            return new_url if self.url_updated(new_url) else current_url
 
-            if self.url_updated(new_url):
-                return new_url
-            else:
-                return current_url
+        return current_url
 
-    def find_link(self, id, current_url):
-  
-        if id == 18:
+    def find_link(self, sub_id, current_url):
+        session = self._get_session()
+        github_headers = {
+            **self.DEFAULT_HEADERS,
+            'Accept': 'application/vnd.github.v3+json',
+        }
+
+        if sub_id == 18:
             try:
-                # 请求 GitHub API 获取文件列表
                 api_url = "https://api.github.com/repos/free-nodes/v2rayfree/contents/"
-                resp = requests.get(api_url, timeout=5)
-                
-                if resp.status_code == 200:
-                    res_json = resp.json()
-                    
-                    # 筛选逻辑：
-                    # 1. 排除 README.md
-                    # 2. 根据数据特征，文件均以 'v' 开头 (如 v202602122)
-                    target_files = [f for f in res_json if f['name'].startswith('v')]
-                    
-                    if target_files:
-                        # 按文件名降序排列 (字符串排序: v202602122 > v202602121)
-                        target_files.sort(key=lambda x: x['name'], reverse=True)
-                        
-                        # 返回最新文件的 raw 下载链接
-                        return target_files[0]['download_url']
-                    else:
-                        return current_url
-                return current_url
-            except Exception:
-                return current_url
-                
-        if id == 33:
+                resp = session.get(api_url, headers=github_headers, timeout=(5, 15))
+                resp.raise_for_status()
+                res_json = resp.json()
+                if not isinstance(res_json, list):
+                    return current_url
+                target_files = [
+                    f for f in res_json
+                    if isinstance(f, dict)
+                    and f.get('type') == 'file'
+                    and str(f.get('name', '')).startswith('v')
+                    and f.get('download_url')
+                ]
+                if target_files:
+                    target_files.sort(key=lambda x: x['name'], reverse=True)
+                    return target_files[0]['download_url']
+            except Exception as e:
+                print(f"ID 18 获取最新链接失败: {e}")
+            return current_url
+
+        if sub_id == 33:
             url_update = 'https://v2cross.com/archives/1884'
-
-            if self.url_updated(url_update):
-                try:
-                    resp = requests.get(url_update, timeout=5)
-                    raw_content = resp.text
-
-                    raw_content = raw_content.replace('amp;', '')
-                    pattern = re.compile(r'https://shadowshare.v2cross.com/publicserver/servers/temp/\w{16}')
-                    
-                    new_url = re.findall(pattern, raw_content)[0]
-                    return new_url
-                except Exception:
-                    return current_url
-            else:
-                return current_url
-                
-        if id == 38:
             try:
-                res_json = requests.get('https://api.github.com/repos/mianfeifq/share/contents/').json()
-                for file in res_json:
-                    if file['name'].startswith('data'):
-                        return file['download_url'] 
-                else:
+                resp = session.get(url_update, headers=self.DEFAULT_HEADERS, timeout=(5, 15))
+                resp.raise_for_status()
+                raw_content = html.unescape(resp.text).replace('amp;', '')
+                pattern = re.compile(r'https://shadowshare\.v2cross\.com/publicserver/servers/temp/\w{16}')
+                matches = re.findall(pattern, raw_content)
+                if matches:
+                    return matches[0]
+            except Exception as e:
+                print(f"ID 33 获取最新链接失败: {e}")
+            return current_url
+
+        if sub_id == 38:
+            try:
+                api_url = 'https://api.github.com/repos/mianfeifq/share/contents/'
+                resp = session.get(api_url, headers=github_headers, timeout=(5, 15))
+                resp.raise_for_status()
+                res_json = resp.json()
+                if not isinstance(res_json, list):
                     return current_url
-            except Exception:
-                return current_url
+                target_files = [
+                    f for f in res_json
+                    if isinstance(f, dict)
+                    and f.get('type') == 'file'
+                    and str(f.get('name', '')).startswith('data')
+                    and f.get('download_url')
+                ]
+                if target_files:
+                    target_files.sort(key=lambda x: x['name'], reverse=True)
+                    return target_files[0]['download_url']
+            except Exception as e:
+                print(f"ID 38 获取最新链接失败: {e}")
+            return current_url
+
+        return current_url
+
 
 if __name__ == '__main__':
     update()
