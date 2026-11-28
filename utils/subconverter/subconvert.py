@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import os
+import re
 import sys
 import subprocess
 import base64
@@ -13,54 +16,92 @@ def convert(input_content, input_type, target_format, config=None):
     - target_format: 'clash' 或 'base64'
     - config: 包含过滤、重命名规则的字典
     """
-    config = config or {}
+    if input_type not in ('url', 'base64'):
+        raise ValueError(f"Unsupported input_type: {input_type}")
+    if not isinstance(target_format, str) or target_format.strip() not in ('clash', 'base64'):
+        raise ValueError(f"Unsupported target_format: {target_format}")
+    if not isinstance(input_content, str) or not input_content.strip():
+        return ""
+
+    config = config if isinstance(config, dict) else {}
     subconverter_dir = os.path.dirname(os.path.abspath(__file__))
 
-    executable = (
-        'subconverter-windows-amd64.exe'
-        if sys.platform == 'win32'
-        else 'subconverter-linux-amd64'
-    )
+    if sys.platform == 'win32':
+        executable = 'subconverter-windows-amd64.exe'
+    elif sys.platform.startswith('linux'):
+        executable = 'subconverter-linux-amd64'
+    else:
+        print(f"  -> Unsupported platform for subconverter: {sys.platform}")
+        return ""
+
     executable_path = os.path.join(subconverter_dir, executable)
+    if not os.path.isfile(executable_path):
+        print(f"  -> Subconverter executable not found: {executable_path}")
+        return ""
+    if sys.platform != 'win32' and not os.access(executable_path, os.X_OK):
+        try:
+            os.chmod(executable_path, os.stat(executable_path).st_mode | 0o111)
+        except OSError as exc:
+            print(f"  -> Subconverter is not executable ({executable_path}): {exc}")
+            return ""
 
-    # 生成唯一的临时输出文件，避免并发冲突
-    fd, temp_output_file = tempfile.mkstemp(
-        prefix='subconv_', suffix='.tmp', dir=subconverter_dir
-    )
-    os.close(fd)
+    try:
+        max_output_bytes = int(config.get('max_output_bytes') or (20 * 1024 * 1024))
+    except (TypeError, ValueError):
+        max_output_bytes = 20 * 1024 * 1024
 
+    def resolve_local_path(raw_path):
+        cleaned = raw_path.strip()
+        if '://' not in cleaned and '\n' not in cleaned and len(cleaned) < 4096:
+            if os.path.exists(cleaned):
+                return os.path.abspath(cleaned)
+            candidate = os.path.join(subconverter_dir, cleaned)
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+        return cleaned
+
+    temp_output_file = None
     output = ""
     try:
+        # 优先在 subconverter_dir 创建临时输出文件；若目录只读则回退到系统临时目录
+        try:
+            fd, temp_output_file = tempfile.mkstemp(
+                prefix='subconv_', suffix='.tmp', dir=subconverter_dir
+            )
+        except OSError:
+            fd, temp_output_file = tempfile.mkstemp(
+                prefix='subconv_', suffix='.tmp'
+            )
+        os.close(fd)
+
         command = [
             executable_path,
             '--no-color',
-            '--target', target_format,
+            '--target', target_format.strip(),
             '--output', temp_output_file,
         ]
 
         if input_type == 'url':
-            # 如果是存在的本地文件，转为绝对路径，避免受 cwd 影响
-            if os.path.exists(input_content):
-                input_content = os.path.abspath(input_content)
-            command.extend(['--url', input_content])
+            command.extend(['--url', resolve_local_path(input_content)])
             stdin_content = None
-        elif input_type == 'base64':
+        else:
             # text=True 时 input 必须是 str，不能 encode 成 bytes
             stdin_content = input_content
-        else:
-            raise ValueError(f"Unsupported input_type: {input_type}")
 
-        if config.get('rename'):
-            command.extend(['--rename', config['rename']])
-        if config.get('include'):
-            command.extend(['--include', config['include']])
-        if config.get('exclude'):
-            command.extend(['--exclude', config['exclude']])
-        if config.get('config'):
-            cfg_path = config['config']
-            if os.path.exists(cfg_path):
-                cfg_path = os.path.abspath(cfg_path)
-            command.extend(['--config', cfg_path])
+        for flag, key in (('--rename', 'rename'), ('--include', 'include'), ('--exclude', 'exclude')):
+            val = config.get(key)
+            if val is None or val == '':
+                continue
+            if not isinstance(val, str):
+                print(f"  -> Warning: Ignoring non-string subconverter option '{key}'.")
+                continue
+            command.extend([flag, val])
+
+        cfg_path = config.get('config')
+        if isinstance(cfg_path, str) and cfg_path.strip():
+            command.extend(['--config', resolve_local_path(cfg_path)])
+        elif cfg_path not in (None, ''):
+            print("  -> Warning: Ignoring non-string subconverter option 'config'.")
 
         process = subprocess.run(
             command,
@@ -74,21 +115,32 @@ def convert(input_content, input_type, target_format, config=None):
         )
 
         if process.returncode != 0:
-            print(f"  -> Subconverter failed. Stderr: {process.stderr.strip()}")
+            err_detail = (
+                process.stderr.strip()
+                or process.stdout.strip()
+                or f"exit code {process.returncode}"
+            )
+            err_detail = re.sub(r'https?://\S+', '[REDACTED_URL]', err_detail)
+            print(f"  -> Subconverter failed: {err_detail}")
             return ""
 
         if os.path.exists(temp_output_file):
-            with open(temp_output_file, 'r', encoding='utf-8', errors='ignore') as f:
+            if os.path.getsize(temp_output_file) > max_output_bytes:
+                print(f"  -> Subconverter output exceeds {max_output_bytes} bytes limit.")
+                return ""
+            with open(temp_output_file, 'r', encoding='utf-8', errors='replace') as f:
                 output = f.read()
+            if not output.strip():
+                print("  -> Warning: Subconverter produced empty output.")
         else:
-            print("  -> Warning: Output file was not created by subconverter.")
+            print("  -> Warning: Output file is missing after subconverter finished.")
 
     except subprocess.TimeoutExpired:
         print("  -> Subconverter timed out processing the input.")
     except Exception as e:
         print(f"  -> An error occurred while running subconverter: {e}")
     finally:
-        if os.path.exists(temp_output_file):
+        if temp_output_file and os.path.exists(temp_output_file):
             try:
                 os.remove(temp_output_file)
             except OSError:
@@ -98,11 +150,16 @@ def convert(input_content, input_type, target_format, config=None):
 
 
 def base64_decode(content):
+    if not isinstance(content, str):
+        return ""
     try:
-        content = content.strip().replace('-', '+').replace('_', '/')
-        missing_padding = len(content) % 4
+        cleaned = re.sub(r'\s+', '', content)
+        if not cleaned:
+            return ""
+        cleaned = cleaned.replace('-', '+').replace('_', '/')
+        missing_padding = len(cleaned) % 4
         if missing_padding:
-            content += '=' * (4 - missing_padding)
-        return base64.b64decode(content).decode('utf-8', 'ignore')
+            cleaned += '=' * (4 - missing_padding)
+        return base64.b64decode(cleaned, validate=True).decode('utf-8', 'strict')
     except Exception:
         return ""
